@@ -95,7 +95,7 @@ Runtime записывает `dataQuality.gates`:
 node --test dota2-match-coach/test/runtime/*.test.mjs
 ```
 
-Текущий offline-suite содержит 107 тестов и не требует сети. POSIX wrapper статически проверяется на Windows; полноценный запуск на macOS/Linux остаётся задачей CI или соответствующего хоста.
+Текущий offline-suite содержит 108 тестов и не требует сети. Каждый wrapper запускается только на своей платформе: на macOS и Linux выполняется POSIX-скрипт, на Windows — PowerShell, а неприменимый на текущем хосте тест штатно пропускается. Оба wrapper дополнительно проверяются статически на всех платформах.
 
 ## Структура
 
@@ -160,7 +160,7 @@ The complete user-facing review follows the user's language: a Russian request p
 
 Set `STRATZ_API_KEY` in the Codex environment for richer position/lane/playback data. Never place the token in prompts, commands, repository files, or Git. Without it, the skill explains the missing enrichment and continues in degraded OpenDota mode.
 
-The offline suite contains 107 tests and needs no network access:
+The offline suite contains 108 tests and needs no network access. Each wrapper is executed only on its own platform — the POSIX script on macOS and Linux, PowerShell on Windows — and the test that does not apply to the current host is skipped:
 
 ```sh
 node --test dota2-match-coach/test/runtime/*.test.mjs

@@ -256,10 +256,21 @@ test('classifies unusable source data without normalizing or writing', async () 
   assert.deepEqual(calls, ['stratz']);
 });
 
-test('PowerShell wrapper returns exit 2 for an invalid numeric ID without network access', async () => {
+test('PowerShell wrapper returns exit 2 for an invalid numeric ID without network access', async (context) => {
+  if (process.platform !== 'win32') return context.skip('The PowerShell wrapper is executed on Windows hosts only.');
+
   const result = await processResult('powershell.exe', [
     '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(scriptsDirectory, 'analyze-match.ps1'), '-MatchId', '0', '-AccountId', '2',
   ]);
+
+  assert.equal(result.code, 2);
+  assert.doesNotMatch(`${result.stdout}${result.stderr}`, /STRATZ_API_KEY|Bearer|Authorization/i);
+});
+
+test('POSIX wrapper returns exit 2 for an invalid numeric ID without network access', async (context) => {
+  if (process.platform === 'win32') return context.skip('The POSIX wrapper is executed on macOS and Linux hosts only.');
+
+  const result = await processResult('/bin/sh', [path.join(scriptsDirectory, 'analyze-match.sh'), '0', '2']);
 
   assert.equal(result.code, 2);
   assert.doesNotMatch(`${result.stdout}${result.stderr}`, /STRATZ_API_KEY|Bearer|Authorization/i);
