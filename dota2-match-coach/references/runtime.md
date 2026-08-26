@@ -24,16 +24,24 @@ unset runtime_token
 
 Сам `scripts/analyze-match.sh` остаётся переносимым wrapper для `/bin/sh`; Bash требуется только для приведённого выше скрытого ввода токена.
 
-Без переменной runtime не делает запрос к STRATZ и записывает `sources.stratz.status: "unavailable"` с причиной `"missing_token"`. Это не делает доступные данные OpenDota недействительными, но не разрешает заявлять роли, playback, baseline или другое STRATZ-обогащение как доступное.
+Без переменной runtime не делает запрос к STRATZ и записывает `sources.stratz.status: "unavailable"` с причиной `"missing_token"`. Это не делает доступные данные OpenDota недействительными. Финальный ответ должен предложить подключить STRATZ для position/lane/playback enrichment, назвать конкретно недоступные данные и продолжить разрешённый OpenDota-разбор в degraded mode. Токен не следует просить вставить в чат.
+
+Текущий STRATZ-запрос не собирает role/rank/patch baseline или leaderboard сильных игроков. Поэтому наличие токена само по себе не открывает `baseline_ready`.
 
 ## Запуск
 
-Нужны положительные целые `match_id` и `account_id`. Запускайте из корня skill bundle.
+Нужен положительный целый `match_id` и селектор игрока: положительный целый `account_id` либо точное английское имя героя. Запускайте из корня skill bundle. Если указаны оба селектора, они должны соответствовать одному игроку.
 
 Windows PowerShell wrapper:
 
 ```powershell
 .\scripts\analyze-match.ps1 -MatchId 8963363814 -AccountId 56386500 --parse-timeout-ms 120000 --output-dir .\output
+```
+
+Windows, чужой матч по герою:
+
+```powershell
+.\scripts\analyze-match.ps1 -MatchId 8963363814 -Hero 'Earth Spirit' --parse-timeout-ms 120000 --output-dir .\output
 ```
 
 macOS/Linux POSIX wrapper:
@@ -42,18 +50,27 @@ macOS/Linux POSIX wrapper:
 ./scripts/analyze-match.sh 8963363814 56386500 --parse-timeout-ms 120000 --output-dir ./output
 ```
 
+macOS/Linux, чужой матч по герою:
+
+```sh
+./scripts/analyze-match.sh 8963363814 'Earth Spirit' --parse-timeout-ms 120000 --output-dir ./output
+```
+
 Прямой вызов Node (любая платформа с Node.js 18+):
 
 ```sh
 node scripts/analyze-match.mjs --match-id 8963363814 --account-id 56386500 --parse-timeout-ms 120000 --output-dir ./output
 ```
 
+Вместо `--account-id` можно передать `--hero 'Earth Spirit'`.
+
 Аргументы:
 
 | Аргумент | Обязателен | По умолчанию | Значение |
 | --- | --- | --- | --- |
 | `--match-id` / `-MatchId` / первый аргумент shell wrapper | да | — | ID матча Dota 2 |
-| `--account-id` / `-AccountId` / второй аргумент shell wrapper | да | — | Steam account ID анализируемого игрока |
+| `--account-id` / `-AccountId` / числовой второй аргумент shell wrapper | один из двух | — | Steam account ID анализируемого игрока |
+| `--hero` / `-Hero` / текстовый второй аргумент shell wrapper | один из двух | — | Точное английское имя героя; применяется для чужих матчей без известного account ID |
 | `--parse-timeout-ms` | нет | `120000` | общий лимит ожидания parse job OpenDota в миллисекундах |
 | `--output-dir` | нет | `<skill-root>/output` | каталог для нормализованных артефактов |
 
@@ -112,3 +129,5 @@ Exit codes процесса:
 | `4` | Иная runtime/data error, включая отсутствие пригодного источника, неподтверждённый или старый точный патч |
 
 В артефакты намеренно попадают только нормализованные JSON и Markdown. Runtime не сохраняет raw API responses, HTTP-заголовки или токены; не добавляйте такие данные вручную при отладке.
+
+Безопасные ошибки селектора игрока: `hero_not_found`, `hero_ambiguous`, `hero_account_unavailable`, `hero_lookup_unavailable` и `selector_conflict`; все возвращают exit code `2` без вывода сырых ответов.

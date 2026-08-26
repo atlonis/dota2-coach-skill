@@ -1,4 +1,0 @@
-interface:
-  display_name: "Выше контекста"
-  short_description: "Контекстный разбор матчей Dota 2"
-  default_prompt: "Use $dota2-above-context to analyze my current-patch Dota 2 match by match ID."

@@ -3,6 +3,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createOpenDotaClient } from './lib/opendota.mjs';
 import { createStratzClient } from './lib/stratz.mjs';
 import { createValveClient } from './lib/valve.mjs';
+import { resolveAccountIdByHero } from './lib/heroes.mjs';
 import { NormalizationError, normalizeEvidence } from './lib/normalize.mjs';
 import { writeArtifacts } from './lib/report.mjs';
 
@@ -28,10 +29,11 @@ function positiveInteger(value, name) {
 }
 
 export function parseArgs(argv) {
-  const values = { matchId: null, accountId: null, outputDir: null, parseTimeoutMs: DEFAULT_PARSE_TIMEOUT_MS };
+  const values = { matchId: null, accountId: null, heroName: null, outputDir: null, parseTimeoutMs: DEFAULT_PARSE_TIMEOUT_MS };
   const names = new Map([
     ['--match-id', 'matchId'],
     ['--account-id', 'accountId'],
+    ['--hero', 'heroName'],
     ['--output-dir', 'outputDir'],
     ['--parse-timeout-ms', 'parseTimeoutMs'],
   ]);
@@ -44,13 +46,20 @@ export function parseArgs(argv) {
     }
     const value = argv[index + 1];
     if (typeof value !== 'string' || value.startsWith('--')) throw new AnalysisError('invalid_arguments');
-    if (name === 'matchId' || name === 'accountId' || name === 'parseTimeoutMs') values[name] = positiveInteger(value, name);
-    else if (value.length > 0) values[name] = value;
-    else throw new AnalysisError('invalid_arguments');
+    if (name === 'matchId' || name === 'accountId' || name === 'parseTimeoutMs') {
+      values[name] = positiveInteger(value, name);
+    } else if (name === 'heroName') {
+      if (value.trim().length === 0) throw new AnalysisError('invalid_arguments');
+      values[name] = value.trim();
+    } else if (value.length > 0) {
+      values[name] = value;
+    } else {
+      throw new AnalysisError('invalid_arguments');
+    }
     seen.add(name);
     index += 1;
   }
-  if (values.matchId === null || values.accountId === null) throw new AnalysisError('invalid_arguments');
+  if (values.matchId === null || (values.accountId === null && values.heroName === null)) throw new AnalysisError('invalid_arguments');
   return values;
 }
 
@@ -95,11 +104,25 @@ export async function runAnalysis(options, { openDotaClient, stratzClient, valve
   if (valve?.status !== 'ready') throw new AnalysisError('patch_unverified');
   if (valve.isCurrentExactPatch !== true) throw new AnalysisError('unsupported_patch');
 
+  let accountId = options.accountId ?? null;
+  if (options.heroName != null) {
+    const constants = await openDotaClient.loadHeroConstants();
+    if (constants?.status !== 'ready') throw new AnalysisError('hero_lookup_unavailable');
+    const selected = resolveAccountIdByHero({
+      heroName: options.heroName,
+      heroConstants: constants.heroes,
+      openDota,
+      stratz,
+    });
+    if (accountId != null && accountId !== selected.accountId) throw new AnalysisError('selector_conflict');
+    accountId = selected.accountId;
+  }
+
   let model;
   try {
     model = normalize({
       matchId: options.matchId,
-      accountId: options.accountId,
+      accountId,
       openDota,
       stratz,
       valve,
@@ -124,13 +147,14 @@ function defaultDependencies() {
 }
 
 function exitCodeFor(error) {
-  if (error?.code === 'invalid_arguments' || error?.code === 'account_not_found' || error?.code === 'account_ambiguous') return 2;
+  if (['invalid_arguments', 'account_not_found', 'account_ambiguous', 'hero_not_found', 'hero_ambiguous', 'hero_account_unavailable', 'hero_lookup_unavailable', 'selector_conflict'].includes(error?.code)) return 2;
   if (error?.code === 'match_not_found') return 3;
   return 4;
 }
 
 const SAFE_DIAGNOSTICS = new Set([
   'invalid_arguments', 'account_not_found', 'account_ambiguous', 'match_not_found',
+  'hero_not_found', 'hero_ambiguous', 'hero_account_unavailable', 'hero_lookup_unavailable', 'selector_conflict',
   'no_usable_source_data', 'patch_unverified', 'unsupported_patch',
 ]);
 

@@ -24,6 +24,14 @@ function retryDelayMs(value, now) {
   return Number.isFinite(timestamp) ? Math.max(0, timestamp - now) : null;
 }
 
+function validHeroConstants(heroes) {
+  if (!heroes || typeof heroes !== 'object' || Array.isArray(heroes)) return false;
+  return Object.values(heroes).some((hero) =>
+    hero && typeof hero === 'object'
+    && Number.isSafeInteger(hero.id) && hero.id > 0
+    && [hero.name, hero.localized_name, hero.localizedName].some((name) => typeof name === 'string' && name.trim()));
+}
+
 export function createOpenDotaClient({
   fetchImpl = fetch,
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
@@ -52,6 +60,17 @@ export function createOpenDotaClient({
   const degraded = (match, parse, error) => makeResult('ready', match, parse, error);
 
   return {
+    async loadHeroConstants() {
+      try {
+        const heroes = (await request('/constants/heroes')).data;
+        if (!validHeroConstants(heroes)) throw new SourceError('invalid_response', 'Hero constants unavailable');
+        return { status: 'ready', heroes };
+      } catch (error) {
+        const code = error instanceof SourceError ? error.code : 'unknown';
+        return { status: 'failed', error: { code } };
+      }
+    },
+
     async loadMatch(matchId, { parseTimeoutMs = 30_000, pollIntervalMs = 1_000 } = {}) {
       const notRequested = { requested: false, state: 'not_requested', jobId: undefined };
       let match;

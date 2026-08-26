@@ -5,7 +5,7 @@
 
 ## Цель
 
-Добавить в bundle `dota2-above-context` автономный кроссплатформенный runtime, который по `match_id` и `account_id` получает доступные данные OpenDota и STRATZ, нормализует их и создаёт доказательную основу для тренерского разбора.
+Добавить в bundle `dota2-match-coach` автономный кроссплатформенный runtime, который по `match_id` и селектору игрока (`account_id` или точному английскому имени героя) получает доступные данные OpenDota и STRATZ, нормализует их и создаёт доказательную основу для тренерского разбора.
 
 Runtime работает на Node.js 18+ без npm-пакетов. На macOS/Linux его запускает shell-wrapper, на Windows — PowerShell-wrapper. Вся логика HTTP, GraphQL и JSON находится в общих `.mjs`-модулях.
 
@@ -14,17 +14,17 @@ Runtime работает на Node.js 18+ без npm-пакетов. На macOS/
 Основные команды:
 
 ```bash
-./dota2-above-context/scripts/analyze-match.sh 8963363814 56386500
+./dota2-match-coach/scripts/analyze-match.sh 8963363814 56386500
 ```
 
 ```powershell
-./dota2-above-context/scripts/analyze-match.ps1 -MatchId 8963363814 -AccountId 56386500
+./dota2-match-coach/scripts/analyze-match.ps1 -MatchId 8963363814 -AccountId 56386500
 ```
 
 Прямой кроссплатформенный вызов:
 
 ```text
-node dota2-above-context/scripts/analyze-match.mjs --match-id 8963363814 --account-id 56386500
+node dota2-match-coach/scripts/analyze-match.mjs --match-id 8963363814 --account-id 56386500
 ```
 
 Успешный запуск печатает краткую сводку и создаёт:
@@ -42,7 +42,7 @@ node dota2-above-context/scripts/analyze-match.mjs --match-id 8963363814 --accou
 - запрос parse, если replay-derived поля отсутствуют;
 - ограниченное ожидание parse job с настраиваемым timeout;
 - STRATZ GraphQL enrichment с точным `User-Agent: STRATZ_API`;
-- идентификация игрока по `account_id`;
+- идентификация игрока по `account_id` либо по точному английскому имени героя; при обоих селекторах — обязательная перекрёстная проверка;
 - команды, полный пик, роль/позиция и lane outcome, если источники их возвращают;
 - итоговые показатели, временные ряды, покупки, kills/deaths, teamfights и доступные playback/event данные;
 - разбиение временных рядов на `0–10`, `10–15`, `15–25`, `25+`;
@@ -72,11 +72,11 @@ analyze-match.mjs
   `-- output/<match_id>.{json,md}
 ```
 
-Файлы располагаются внутри `dota2-above-context/scripts/`. Тесты — в `dota2-above-context/test/` и используют встроенный `node:test` с подменённым `fetch`.
+Файлы располагаются внутри `dota2-match-coach/scripts/`. Тесты — в `dota2-match-coach/test/` и используют встроенный `node:test` с подменённым `fetch`.
 
 ## Поток данных
 
-1. CLI проверяет положительные целые `match_id` и `account_id`.
+1. CLI проверяет положительный целый `match_id` и принимает `account_id` либо точное английское имя героя. Для имени героя runtime загружает OpenDota hero constants и разрешает только единственного участника матча; неоднозначность, скрытый account ID и конфликт двух селекторов завершаются безопасной ошибкой.
 2. OpenDota загружает match object.
 3. Parse-state определяется по `version` и необходимым replay-derived полям, а не по одному наличию `players`.
 4. Если данных нет, runtime отправляет parse request, опрашивает job до terminal state или timeout и повторно загружает матч.

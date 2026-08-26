@@ -1,9 +1,9 @@
 ---
-name: dota2-above-context
-description: Use when a user asks for a current-patch Dota 2 post-match review from a match ID or parsed replay, including draft, role, lane matchup, item build, stage-by-stage efficiency, macro, or supported micro-mechanics.
+name: dota2-match-coach
+description: Use when a user asks for a current-patch Dota 2 post-match review by match ID and identifies a player by account ID or hero, including draft, role, lane matchup, item build, stage efficiency, macro, or supported micro-mechanics.
 ---
 
-# Выше контекста
+# Dota 2 Match Coach («Выше контекста»)
 
 ## Цель
 
@@ -18,15 +18,29 @@ description: Use when a user asks for a current-patch Dota 2 post-match review f
 
 Перед получением данных прочитай [политику источников](references/source-policy.md). Перед написанием ответа прочитай [контракт разбора](references/review-template.md).
 
+Функции из [roadmap](references/roadmap.md) ещё не реализованы; не открывай соответствующие gates по одному факту их описания.
+
 ## Обязательный процесс
 
-1. Для обычного запроса по `match_id` первым шагом сбора прочитай [runtime contract](references/runtime.md), запусти подходящий wrapper: `scripts/analyze-match.ps1` на Windows или `scripts/analyze-match.sh` на macOS/Linux, затем проверь `sources` и `dataQuality.gates` созданного артефакта.
-2. Определи игрока, героя, позицию, линию, соперника по линии, ранг, режим и точный подпатч. Если игрок неоднозначен, запроси `account_id`.
+1. Для обычного запроса по `match_id` первым шагом сбора прочитай [runtime contract](references/runtime.md) и используй `scripts/analyze-match.ps1` на Windows либо `scripts/analyze-match.sh` на macOS/Linux. Если дан `account_id`, передай его wrapper. Если вместо него в запросе однозначно назван герой, передай имя героя через `-Hero` на Windows или вторым позиционным аргументом на macOS/Linux. Если нет ни одного селектора либо герой неоднозначен, запроси `account_id`. После запуска проверь `sources` и `dataQuality.gates` созданного артефакта.
+2. Определи выбранного игрока, героя, позицию, линию, соперника по линии, ранг, режим и точный подпатч. Если одновременно даны герой и `account_id`, runtime обязан подтвердить, что они указывают на одного игрока.
 3. Проверь parse-state. Если replay-derived данных нет, запроси parse через OpenDota и дождись результата; при недоступном replay явно включи degraded mode.
 4. Если полный пик и актуальные механики доступны, построй контекст до оценки игрока: задачи героя, ожидаемый матчап, сильные и слабые стороны обеих команд, релевантные power spikes. Иначе пометь эти поля недоступными.
 5. Сравнивай исполнение сначала с самим игроком, затем с выборкой того же героя, позиции, рейтинга, режима и текущего патча. Более широкую выборку маркируй как слабый ориентир.
 6. Раздели матч на линию, переход, мидгейм и завершение. Границы можно сдвинуть по реальным событиям матча, но назови их.
 7. Выдели переломный эпизод или окно и кандидат/подтверждённый паттерн согласно доступному уровню данных.
+
+### Если STRATZ не подключён
+
+Если `sources.stratz.reason` равно `missing_token`, в начале ответа один раз сообщи, что STRATZ не подключён, перечисли конкретно закрытые для этого матча данные и предложи настроить `STRATZ_API_KEY` через переменную окружения или менеджер секретов. Не проси вставлять токен в чат. Продолжай доступный OpenDota-разбор в degraded mode, если пользователь явно не просит остановиться ради более полного сбора.
+
+Не обещай, что один токен автоматически откроет `baseline_ready`: текущий runtime получает из STRATZ match/player/playback enrichment, но сбор role/rank/patch baseline и выборки сильных игроков запланирован отдельно.
+
+### Основания контекста пика
+
+- `lane_expectation` получает `favorable/even/unfavorable` только из выборки того же matchup на текущем точном патче, тех же позициях и близком bracket. Актуальные механики объясняют статистику, но не заменяют выборку. Без неё — `insufficient_data`.
+- `team_fit` — качественная тренерская оценка по полному пику и актуальным механикам. Явно проверь initiation, control, save, frontline, damage profile, tower/objective pressure, wave clear, scaling и способы продолжить драку; назови факты, пробелы и уверенность. Не выдавай её за статистическую вероятность.
+- `draft_prior` требует документированной модели, её выходного поля, размера/релевантности выборки и понятной интерпретации. Без такого сигнала — `insufficient_data`; не вычисляй процент перевеса впечатлением от десяти героев.
 
 ## Ворота достаточности данных
 

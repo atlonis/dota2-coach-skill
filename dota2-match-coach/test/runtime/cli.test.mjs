@@ -28,20 +28,41 @@ test('parses required positive integer IDs and timeout options', () => {
   assert.deepEqual(parseArgs(['--match-id', '8963363814', '--account-id', '56386500']), {
     matchId: 8963363814,
     accountId: 56386500,
+    heroName: null,
     outputDir: null,
     parseTimeoutMs: 120000,
   });
   assert.deepEqual(parseArgs(['--match-id', '1', '--account-id', '2', '--output-dir', 'artifacts', '--parse-timeout-ms', '4000']), {
     matchId: 1,
     accountId: 2,
+    heroName: null,
     outputDir: 'artifacts',
     parseTimeoutMs: 4000,
+  });
+});
+
+test('accepts a hero name instead of account ID and preserves an optional selector cross-check', () => {
+  assert.deepEqual(parseArgs(['--match-id', '8963363814', '--hero', 'Earth Spirit']), {
+    matchId: 8963363814,
+    accountId: null,
+    heroName: 'Earth Spirit',
+    outputDir: null,
+    parseTimeoutMs: 120000,
+  });
+  assert.deepEqual(parseArgs(['--match-id', '1', '--account-id', '2', '--hero', 'Earth Spirit']), {
+    matchId: 1,
+    accountId: 2,
+    heroName: 'Earth Spirit',
+    outputDir: null,
+    parseTimeoutMs: 120000,
   });
 });
 
 test('rejects missing, duplicate, fractional, zero, and unknown CLI arguments', () => {
   for (const argv of [
     ['--match-id', '1'],
+    ['--match-id', '1', '--hero', ''],
+    ['--match-id', '1', '--hero', '   '],
     ['--match-id', '1', '--account-id', '2', '--account-id', '3'],
     ['--match-id', '1', '--account-id', '2', '--parse-timeout-ms', '3', '--parse-timeout-ms', '4'],
     ['--match-id', '1.5', '--account-id', '2'],
@@ -51,6 +72,55 @@ test('rejects missing, duplicate, fractional, zero, and unknown CLI arguments', 
   ]) {
     assert.throws(() => parseArgs(argv), /invalid|missing|duplicate|unknown/i);
   }
+});
+
+test('resolves account ID from an unambiguous hero name before normalization', async () => {
+  const calls = [];
+  const result = await runAnalysis({ matchId: 1, accountId: null, heroName: 'Earth Spirit' }, {
+    openDotaClient: {
+      loadMatch: async () => ({ status: 'ready', match: { start_time: 123, duration: 1, players: [{ account_id: 55, hero_id: 107 }] } }),
+      loadHeroConstants: async () => {
+        calls.push('heroes');
+        return { status: 'ready', heroes: { 107: { id: 107, name: 'npc_dota_hero_earth_spirit', localized_name: 'Earth Spirit' } } };
+      },
+    },
+    valveClient: { resolvePatch: async () => readyValve() },
+    stratzClient: { loadMatch: async () => ({ status: 'unavailable', reason: 'missing_token' }) },
+    normalize: (input) => {
+      calls.push(['normalize', input.accountId]);
+      return { request: { matchId: 1, accountId: input.accountId }, sources: {}, dataQuality: { mode: 'degraded' } };
+    },
+    write: async () => ({ jsonPath: '1.json', markdownPath: '1.md' }),
+  });
+
+  assert.deepEqual(calls, ['heroes', ['normalize', 55]]);
+  assert.equal(result.model.request.accountId, 55);
+});
+
+test('rejects an account ID that conflicts with the requested hero', async () => {
+  await assert.rejects(() => runAnalysis({ matchId: 1, accountId: 2, heroName: 'Earth Spirit' }, {
+    openDotaClient: {
+      loadMatch: async () => ({ status: 'ready', match: { start_time: 123, duration: 1, players: [{ account_id: 2, hero_id: 1 }, { account_id: 55, hero_id: 107 }] } }),
+      loadHeroConstants: async () => ({ status: 'ready', heroes: { 107: { id: 107, localized_name: 'Earth Spirit' } } }),
+    },
+    valveClient: { resolvePatch: async () => readyValve() },
+    stratzClient: { loadMatch: async () => ({ status: 'unavailable', reason: 'missing_token' }) },
+    normalize: () => ({ request: {}, sources: {}, dataQuality: {} }),
+    write: async () => ({ jsonPath: '1.json', markdownPath: '1.md' }),
+  }), (error) => error?.code === 'selector_conflict');
+});
+
+test('rejects an ambiguous duplicated hero selector', async () => {
+  await assert.rejects(() => runAnalysis({ matchId: 1, accountId: null, heroName: 'Earth Spirit' }, {
+    openDotaClient: {
+      loadMatch: async () => ({ status: 'ready', match: { start_time: 123, duration: 1, players: [{ account_id: 55, hero_id: 107 }, { account_id: 56, hero_id: 107 }] } }),
+      loadHeroConstants: async () => ({ status: 'ready', heroes: { 107: { id: 107, localized_name: 'Earth Spirit' } } }),
+    },
+    valveClient: { resolvePatch: async () => readyValve() },
+    stratzClient: { loadMatch: async () => ({ status: 'unavailable', reason: 'missing_token' }) },
+    normalize: () => ({ request: {}, sources: {}, dataQuality: {} }),
+    write: async () => ({ jsonPath: '1.json', markdownPath: '1.md' }),
+  }), (error) => error?.code === 'hero_ambiguous');
 });
 
 test('orchestrates OpenDota before patch and STRATZ then writes normalized artifacts', async () => {
@@ -202,8 +272,18 @@ test('POSIX wrapper remains portable and quotes positional arguments', async () 
   assert.match(wrapper, /^set -eu$/m);
   assert.match(wrapper, /SCRIPT_DIR=\$\(CDPATH= cd -- "\$\(dirname -- "\$0"\)" && pwd\)/);
   assert.match(wrapper, /MATCH_ID=\$1/);
-  assert.match(wrapper, /ACCOUNT_ID=\$2/);
-  assert.match(wrapper, /--match-id "\$MATCH_ID" --account-id "\$ACCOUNT_ID" "\$@"/);
+  assert.match(wrapper, /PLAYER_SELECTOR=\$2/);
+  assert.match(wrapper, /--match-id "\$MATCH_ID" --account-id "\$PLAYER_SELECTOR" "\$@"/);
+});
+
+test('platform wrappers accept a hero name selector when account ID is unavailable', async () => {
+  const powershell = await readFile(path.join(scriptsDirectory, 'analyze-match.ps1'), 'utf8');
+  const posix = await readFile(path.join(scriptsDirectory, 'analyze-match.sh'), 'utf8');
+
+  assert.match(powershell, /\[string\]\$Hero/);
+  assert.match(powershell, /--hero/);
+  assert.match(posix, /--hero "\$PLAYER_SELECTOR"/);
+  assert.match(posix, /--account-id "\$PLAYER_SELECTOR"/);
 });
 
 function readyOpenDota() {

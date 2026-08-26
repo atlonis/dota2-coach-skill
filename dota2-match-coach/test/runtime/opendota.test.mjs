@@ -9,6 +9,32 @@ function jsonResponse(data, status = 200) {
   });
 }
 
+test('loads and validates the OpenDota hero constants used by hero-name selection', async () => {
+  const calls = [];
+  const client = createOpenDotaClient({ fetchImpl: async (url) => {
+    calls.push(url);
+    return jsonResponse({ 107: { id: 107, name: 'npc_dota_hero_earth_spirit', localized_name: 'Earth Spirit' } });
+  } });
+
+  assert.equal(typeof client.loadHeroConstants, 'function');
+  assert.deepEqual(await client.loadHeroConstants(), {
+    status: 'ready',
+    heroes: { 107: { id: 107, name: 'npc_dota_hero_earth_spirit', localized_name: 'Earth Spirit' } },
+  });
+  assert.match(calls[0], /\/constants\/heroes$/);
+});
+
+for (const payload of [{}, [], { 107: { localized_name: 'Earth Spirit' } }]) {
+  test(`rejects malformed hero constants payload ${JSON.stringify(payload)}`, async () => {
+    const client = createOpenDotaClient({ fetchImpl: async () => jsonResponse(payload) });
+
+    const result = await client.loadHeroConstants();
+
+    assert.equal(result.status, 'failed');
+    assert.equal(result.error.code, 'invalid_response');
+  });
+}
+
 test('parsed state requires version and replay-derived player series', () => {
   assert.equal(hasReplayData({ version: 22, players: [{ gold_t: [0, 100] }] }), true);
   assert.equal(hasReplayData({ players: [{ kills: 4 }] }), false);

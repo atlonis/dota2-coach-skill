@@ -1,6 +1,6 @@
-# «Выше контекста» — Dota 2 coaching skill
+# Dota 2 Match Coach — «Выше контекста»
 
-Codex-скилл для доказательного разбора матча Dota 2 по `match_id` и `account_id`. Перед тренерской интерпретацией встроенный runtime собирает OpenDota, STRATZ и официальный Valve patch timeline, нормализует данные с provenance и открывает только подтверждённые data gates.
+Codex-скилл для доказательного разбора матча Dota 2 по `match_id`; игрок выбирается по `account_id` или точному имени героя. Перед тренерской интерпретацией встроенный runtime собирает OpenDota, STRATZ и официальный Valve patch timeline, нормализует данные с provenance и открывает только подтверждённые data gates.
 
 Проект ориентирован только на последний точный подпатч. Старые или не подтверждённые по Valve timeline матчи не создают success-артефакт.
 
@@ -15,15 +15,18 @@ Codex-скилл для доказательного разбора матча D
 - явные source conflicts с сохранением альтернатив и provenance;
 - детерминированные JSON/Markdown-артефакты и безопасные CLI-ошибки;
 - PowerShell и POSIX wrappers без npm-зависимостей.
+- выбор игрока по точному английскому имени героя для разбора чужих матчей.
 
 Сбор role/rank/patch baseline и глубокий разбор сырого `.dem` намеренно не входят в runtime v1. Без baseline нельзя выдавать нормативный вердикт по роли; без `.dem` нельзя достоверно объяснять каждый input или пропущенного крипа.
+
+Следующие этапы — статистическая модель пика, baseline сильных игроков и глубокий `.dem`-анализ — зафиксированы в [ROADMAP.md](ROADMAP.md).
 
 ## Требования
 
 - Node.js 18+;
 - сетевой доступ к OpenDota, STRATZ и Valve;
 - PowerShell на Windows либо POSIX `sh` на macOS/Linux;
-- необязательный `STRATZ_API_KEY` для STRATZ enrichment.
+- рекомендуемый `STRATZ_API_KEY` для STRATZ position/lane/playback enrichment; без него скилл явно работает в degraded mode.
 
 `npm install` и `package.json` не нужны.
 
@@ -32,7 +35,7 @@ Codex-скилл для доказательного разбора матча D
 Установите скилл глобально для Codex через [Vercel Skills](https://github.com/vercel-labs/skills):
 
 ```sh
-npx skills add atlonis/dota2-coach-skill --skill dota2-above-context --agent codex --global --copy --yes
+npx skills add atlonis/dota2-coach-skill --skill dota2-match-coach --agent codex --global --copy --yes
 ```
 
 Проверьте установку:
@@ -44,16 +47,22 @@ npx skills list --global --agent codex
 После установки откройте новую сессию Codex и попросите:
 
 ```text
-Используй $dota2-above-context и разбери матч 8963363814 для account_id 56386500.
+Используй $dota2-match-coach и разбери матч 8963363814 для account_id 56386500.
 ```
 
-Скилл сам выберет платформенный runtime, соберёт данные и проверит data gates до начала разбора. Для STRATZ enrichment задайте `STRATZ_API_KEY` в среде Codex. Настройка токена, schema, exit codes и troubleshooting описаны в [runtime contract](dota2-above-context/references/runtime.md); не добавляйте токен в команды, файлы или Git.
+Для чужого матча можно выбрать игрока по герою:
+
+```text
+Используй $dota2-match-coach и разбери игрока на Earth Spirit в матче 8963363814.
+```
+
+Скилл сам выберет платформенный runtime, соберёт данные и проверит data gates до начала разбора. Для STRATZ enrichment задайте `STRATZ_API_KEY` в среде Codex. Это открывает position/lane/playback, но автоматический baseline появится на следующем этапе. Настройка токена, schema, exit codes и troubleshooting описаны в [runtime contract](dota2-match-coach/references/runtime.md); не добавляйте токен в команды, файлы или Git.
 
 ## Обновление и удаление
 
 ```sh
-npx skills update dota2-above-context --global --yes
-npx skills remove dota2-above-context --global --agent codex --yes
+npx skills update dota2-match-coach --global --yes
+npx skills remove dota2-match-coach --global --agent codex --yes
 ```
 
 ## Data gates
@@ -74,15 +83,15 @@ Runtime записывает `dataQuality.gates`:
 Из корня репозитория:
 
 ```sh
-node --test dota2-above-context/test/runtime/*.test.mjs
+node --test dota2-match-coach/test/runtime/*.test.mjs
 ```
 
-Текущий offline-suite содержит 91 тест и не требует сети. POSIX wrapper статически проверяется на Windows; полноценный запуск на macOS/Linux остаётся задачей CI или соответствующего хоста.
+Текущий offline-suite содержит 106 тестов и не требует сети. POSIX wrapper статически проверяется на Windows; полноценный запуск на macOS/Linux остаётся задачей CI или соответствующего хоста.
 
 ## Структура
 
 ```text
-dota2-above-context/
+dota2-match-coach/
   SKILL.md                 инструкции скилла
   agents/openai.yaml       метаданные Codex
   references/              runtime, source policy и review template
@@ -96,4 +105,4 @@ RESEARCH.md                исследование источников и ре
 
 ## Политика источников
 
-OpenDota служит основным источником match object и parse job; STRATZ добавляет position/lane/playback enrichment; Valve подтверждает точный текущий подпатч. Dota2ProTracker, старый Fandom и Valve `GetMatchDetails` не являются runtime-зависимостями. Полные правила находятся в [source policy](dota2-above-context/references/source-policy.md).
+OpenDota служит основным источником match object и parse job; STRATZ добавляет position/lane/playback enrichment; Valve подтверждает точный текущий подпатч. Dota2ProTracker, старый Fandom и Valve `GetMatchDetails` не являются runtime-зависимостями. Полные правила находятся в [source policy](dota2-match-coach/references/source-policy.md).

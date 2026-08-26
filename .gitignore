@@ -6,7 +6,7 @@
 *.key
 
 # Generated match evidence
-dota2-above-context/output/
+dota2-match-coach/output/
 
 # Local implementation workflow artifacts
 .superpowers/

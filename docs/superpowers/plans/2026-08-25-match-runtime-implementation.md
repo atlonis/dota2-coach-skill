@@ -23,28 +23,28 @@
 
 ## File Map
 
-- Create `dota2-above-context/scripts/lib/http.mjs`: safe JSON HTTP, timeout, rate-limit and error normalization.
-- Create `dota2-above-context/scripts/lib/opendota.mjs`: match load, parse-state, parse request and job polling.
-- Create `dota2-above-context/scripts/lib/stratz.mjs`: tested GraphQL query and enrichment contract.
-- Create `dota2-above-context/scripts/lib/valve.mjs`: exact current-subpatch resolution from Valve's official timeline.
-- Create `dota2-above-context/scripts/lib/normalize.mjs`: canonical evidence model, phase deltas, extrema and gates.
-- Create `dota2-above-context/scripts/lib/report.mjs`: deterministic Markdown and atomic artifact writes.
-- Create `dota2-above-context/scripts/analyze-match.mjs`: CLI parsing and orchestration.
-- Create `dota2-above-context/scripts/analyze-match.sh`: POSIX wrapper.
-- Create `dota2-above-context/scripts/analyze-match.ps1`: PowerShell wrapper.
-- Create `dota2-above-context/test/runtime/*.test.mjs`: offline unit and orchestration tests.
-- Create `dota2-above-context/references/runtime.md`: commands, schema and troubleshooting.
-- Modify `dota2-above-context/SKILL.md`: require runtime for match-ID analysis.
-- Modify `dota2-above-context/references/source-policy.md`: source status and degraded-mode contract.
+- Create `dota2-match-coach/scripts/lib/http.mjs`: safe JSON HTTP, timeout, rate-limit and error normalization.
+- Create `dota2-match-coach/scripts/lib/opendota.mjs`: match load, parse-state, parse request and job polling.
+- Create `dota2-match-coach/scripts/lib/stratz.mjs`: tested GraphQL query and enrichment contract.
+- Create `dota2-match-coach/scripts/lib/valve.mjs`: exact current-subpatch resolution from Valve's official timeline.
+- Create `dota2-match-coach/scripts/lib/normalize.mjs`: canonical evidence model, phase deltas, extrema and gates.
+- Create `dota2-match-coach/scripts/lib/report.mjs`: deterministic Markdown and atomic artifact writes.
+- Create `dota2-match-coach/scripts/analyze-match.mjs`: CLI parsing and orchestration.
+- Create `dota2-match-coach/scripts/analyze-match.sh`: POSIX wrapper.
+- Create `dota2-match-coach/scripts/analyze-match.ps1`: PowerShell wrapper.
+- Create `dota2-match-coach/test/runtime/*.test.mjs`: offline unit and orchestration tests.
+- Create `dota2-match-coach/references/runtime.md`: commands, schema and troubleshooting.
+- Modify `dota2-match-coach/SKILL.md`: require runtime for match-ID analysis.
+- Modify `dota2-match-coach/references/source-policy.md`: source status and degraded-mode contract.
 
 ---
 
 ### Task 1: Safe HTTP and OpenDota parse-first client
 
 **Files:**
-- Create: `dota2-above-context/test/runtime/opendota.test.mjs`
-- Create: `dota2-above-context/scripts/lib/http.mjs`
-- Create: `dota2-above-context/scripts/lib/opendota.mjs`
+- Create: `dota2-match-coach/test/runtime/opendota.test.mjs`
+- Create: `dota2-match-coach/scripts/lib/http.mjs`
+- Create: `dota2-match-coach/scripts/lib/opendota.mjs`
 
 **Interfaces:**
 - Produces: `requestJson(url, options) -> Promise<{ ok, status, data, headers }>` or throws `SourceError`.
@@ -89,7 +89,7 @@ test('requests parse, polls job, then reloads the match', async () => {
 
 - [ ] **Step 2: Run tests and verify RED**
 
-Run: `node --test dota2-above-context/test/runtime/opendota.test.mjs`
+Run: `node --test dota2-match-coach/test/runtime/opendota.test.mjs`
 
 Expected: FAIL with `ERR_MODULE_NOT_FOUND` for `scripts/lib/opendota.mjs`.
 
@@ -142,7 +142,7 @@ Implement `loadMatch` with exact endpoints `GET /matches/{matchId}`, `POST /requ
 
 Add tests for match `404`, HTML response, `429`, parse timeout and unavailable job ID. Run:
 
-`node --test dota2-above-context/test/runtime/opendota.test.mjs`
+`node --test dota2-match-coach/test/runtime/opendota.test.mjs`
 
 Expected: all OpenDota tests PASS.
 
@@ -151,7 +151,7 @@ Expected: all OpenDota tests PASS.
 Run separately:
 
 ```text
-node --test dota2-above-context/test/runtime/opendota.test.mjs
+node --test dota2-match-coach/test/runtime/opendota.test.mjs
 git -C . rev-parse --is-inside-work-tree
 ```
 
@@ -162,8 +162,8 @@ Expected: tests PASS; git reports that the workspace is not a repository. Record
 ### Task 2: STRATZ GraphQL client with exact headers
 
 **Files:**
-- Create: `dota2-above-context/test/runtime/stratz.test.mjs`
-- Create: `dota2-above-context/scripts/lib/stratz.mjs`
+- Create: `dota2-match-coach/test/runtime/stratz.test.mjs`
+- Create: `dota2-match-coach/scripts/lib/stratz.mjs`
 
 **Interfaces:**
 - Produces: `createStratzClient({ apiKey, fetchImpl, endpoint }).loadMatch(matchId) -> Promise<StratzResult>`.
@@ -200,7 +200,7 @@ test('does not call STRATZ without a token', async () => {
 
 - [ ] **Step 2: Run tests and verify RED**
 
-Run: `node --test dota2-above-context/test/runtime/stratz.test.mjs`
+Run: `node --test dota2-match-coach/test/runtime/stratz.test.mjs`
 
 Expected: FAIL with `ERR_MODULE_NOT_FOUND` for `scripts/lib/stratz.mjs`.
 
@@ -242,13 +242,13 @@ If a selected field becomes invalid, return `failed/graphql` with the GraphQL me
 
 Add tests for GraphQL errors, HTML/Cloudflare, `401`, `403`, `429`, null match and malformed payload. Run:
 
-`node --test dota2-above-context/test/runtime/stratz.test.mjs`
+`node --test dota2-match-coach/test/runtime/stratz.test.mjs`
 
 Expected: all STRATZ tests PASS and no error object contains `secret`.
 
 - [ ] **Step 5: Verification checkpoint**
 
-Run: `node --test dota2-above-context/test/runtime/stratz.test.mjs`
+Run: `node --test dota2-match-coach/test/runtime/stratz.test.mjs`
 
 Expected: PASS. Record the count; no commit because the workspace has no `.git`.
 
@@ -257,8 +257,8 @@ Expected: PASS. Record the count; no commit because the workspace has no `.git`.
 ### Task 3: Valve exact-subpatch resolver
 
 **Files:**
-- Create: `dota2-above-context/test/runtime/valve.test.mjs`
-- Create: `dota2-above-context/scripts/lib/valve.mjs`
+- Create: `dota2-match-coach/test/runtime/valve.test.mjs`
+- Create: `dota2-match-coach/scripts/lib/valve.mjs`
 
 **Interfaces:**
 - Produces: `createValveClient({ fetchImpl, endpoint }).resolvePatch(startTime) -> Promise<ValvePatchResult>`.
@@ -288,7 +288,7 @@ test('resolves the match patch and exact current subpatch from timestamps', asyn
 
 - [ ] **Step 2: Run tests and verify RED**
 
-Run: `node --test dota2-above-context/test/runtime/valve.test.mjs`
+Run: `node --test dota2-match-coach/test/runtime/valve.test.mjs`
 
 Expected: FAIL with `ERR_MODULE_NOT_FOUND` for `scripts/lib/valve.mjs`.
 
@@ -315,7 +315,7 @@ export function resolveTimeline(patches, startTime) {
 
 Add tests for unsorted entries, timestamp before all known patches, invalid JSON, HTTP failure and a match on `7.41d` while current is `7.41e`.
 
-Run: `node --test dota2-above-context/test/runtime/valve.test.mjs`
+Run: `node --test dota2-match-coach/test/runtime/valve.test.mjs`
 
 Expected: all Valve tests PASS.
 
@@ -328,8 +328,8 @@ Run the focused Valve test file and record the passing count. No commit because 
 ### Task 4: Provenance-preserving normalization and phase metrics
 
 **Files:**
-- Create: `dota2-above-context/test/runtime/normalize.test.mjs`
-- Create: `dota2-above-context/scripts/lib/normalize.mjs`
+- Create: `dota2-match-coach/test/runtime/normalize.test.mjs`
+- Create: `dota2-match-coach/scripts/lib/normalize.mjs`
 
 **Interfaces:**
 - Consumes: ready or degraded OpenDota/STRATZ/Valve results from Tasks 1–3.
@@ -382,7 +382,7 @@ test('preserves conflicting positions instead of silently choosing one', () => {
 
 - [ ] **Step 2: Run tests and verify RED**
 
-Run: `node --test dota2-above-context/test/runtime/normalize.test.mjs`
+Run: `node --test dota2-match-coach/test/runtime/normalize.test.mjs`
 
 Expected: FAIL with `ERR_MODULE_NOT_FOUND` for `scripts/lib/normalize.mjs`.
 
@@ -416,13 +416,13 @@ Gate rules:
 
 Add tests for short matches, missing final minute, empty arrays, absent account, duplicate account, Radiant/Dire result, ten-hero draft completeness, extrema across four phases and one-phase ties. Extremum labels compare each metric independently and omit labels for missing values.
 
-Run: `node --test dota2-above-context/test/runtime/normalize.test.mjs`
+Run: `node --test dota2-match-coach/test/runtime/normalize.test.mjs`
 
 Expected: all normalization tests PASS.
 
 - [ ] **Step 5: Verification checkpoint**
 
-Run: `node --test dota2-above-context/test/runtime/normalize.test.mjs`
+Run: `node --test dota2-match-coach/test/runtime/normalize.test.mjs`
 
 Expected: PASS. Save the test count in the plan execution notes.
 
@@ -431,8 +431,8 @@ Expected: PASS. Save the test count in the plan execution notes.
 ### Task 5: Deterministic report and atomic artifacts
 
 **Files:**
-- Create: `dota2-above-context/test/runtime/report.test.mjs`
-- Create: `dota2-above-context/scripts/lib/report.mjs`
+- Create: `dota2-match-coach/test/runtime/report.test.mjs`
+- Create: `dota2-match-coach/scripts/lib/report.mjs`
 
 **Interfaces:**
 - Consumes: `EvidenceModel` from Task 4.
@@ -461,7 +461,7 @@ test('aggregate-only report localizes metrics without inventing a cause', () => 
 
 - [ ] **Step 2: Run test and verify RED**
 
-Run: `node --test dota2-above-context/test/runtime/report.test.mjs`
+Run: `node --test dota2-match-coach/test/runtime/report.test.mjs`
 
 Expected: FAIL with `ERR_MODULE_NOT_FOUND` for `scripts/lib/report.mjs`.
 
@@ -484,13 +484,13 @@ export async function writeArtifacts(model, outputDir) {
 
 Use a temporary directory. Assert stable Markdown for the same model, valid JSON round-trip, both final files exist and no `.tmp-*` file remains after success.
 
-Run: `node --test dota2-above-context/test/runtime/report.test.mjs`
+Run: `node --test dota2-match-coach/test/runtime/report.test.mjs`
 
 Expected: all report tests PASS.
 
 - [ ] **Step 5: Verification checkpoint**
 
-Run: `node --test dota2-above-context/test/runtime/report.test.mjs`
+Run: `node --test dota2-match-coach/test/runtime/report.test.mjs`
 
 Expected: PASS; no secret-like strings appear in fixture artifacts.
 
@@ -499,10 +499,10 @@ Expected: PASS; no secret-like strings appear in fixture artifacts.
 ### Task 6: CLI orchestration and cross-platform wrappers
 
 **Files:**
-- Create: `dota2-above-context/test/runtime/cli.test.mjs`
-- Create: `dota2-above-context/scripts/analyze-match.mjs`
-- Create: `dota2-above-context/scripts/analyze-match.sh`
-- Create: `dota2-above-context/scripts/analyze-match.ps1`
+- Create: `dota2-match-coach/test/runtime/cli.test.mjs`
+- Create: `dota2-match-coach/scripts/analyze-match.mjs`
+- Create: `dota2-match-coach/scripts/analyze-match.sh`
+- Create: `dota2-match-coach/scripts/analyze-match.ps1`
 
 **Interfaces:**
 - Consumes: source clients, normalizer and artifact writer from Tasks 1–5.
@@ -542,13 +542,13 @@ test('orchestrates both sources and writes normalized artifacts', async () => {
 
 - [ ] **Step 2: Run tests and verify RED**
 
-Run: `node --test dota2-above-context/test/runtime/cli.test.mjs`
+Run: `node --test dota2-match-coach/test/runtime/cli.test.mjs`
 
 Expected: FAIL with `ERR_MODULE_NOT_FOUND` for `scripts/analyze-match.mjs`.
 
 - [ ] **Step 3: Implement CLI and wrappers**
 
-The CLI reads `STRATZ_API_KEY` only from `process.env`, chooses default output directory `dota2-above-context/output`, and prints only statuses and artifact paths.
+The CLI reads `STRATZ_API_KEY` only from `process.env`, chooses default output directory `dota2-match-coach/output`, and prints only statuses and artifact paths.
 
 ```sh
 #!/bin/sh
@@ -570,13 +570,13 @@ exit $LASTEXITCODE
 
 Run CLI tests plus Windows wrapper with invalid ID and assert exit `2`. On this Windows host, validate POSIX wrapper statically for `#!/bin/sh`, `set -eu`, `$SCRIPT_DIR` and quoted positional arguments; the live macOS execution remains a documented platform handoff.
 
-Run: `node --test dota2-above-context/test/runtime/cli.test.mjs`
+Run: `node --test dota2-match-coach/test/runtime/cli.test.mjs`
 
 Expected: all CLI tests PASS.
 
 - [ ] **Step 5: Run complete offline suite**
 
-Run: `node --test dota2-above-context/test/runtime/*.test.mjs`
+Run: `node --test dota2-match-coach/test/runtime/*.test.mjs`
 
 Expected: every runtime test PASS with zero network access.
 
@@ -585,9 +585,9 @@ Expected: every runtime test PASS with zero network access.
 ### Task 7: Runtime documentation and skill integration
 
 **Files:**
-- Create: `dota2-above-context/references/runtime.md`
-- Modify: `dota2-above-context/SKILL.md`
-- Modify: `dota2-above-context/references/source-policy.md`
+- Create: `dota2-match-coach/references/runtime.md`
+- Modify: `dota2-match-coach/SKILL.md`
+- Modify: `dota2-match-coach/references/source-policy.md`
 
 **Interfaces:**
 - `SKILL.md` routes match-ID analysis through `scripts/analyze-match.*` before applying review-template gates.
@@ -630,8 +630,8 @@ Expected: `Skill is valid!` and all Node tests PASS.
 ### Task 8: Live match run and evidence-backed review
 
 **Files:**
-- Create: `dota2-above-context/output/8963363814.json`
-- Create: `dota2-above-context/output/8963363814.md`
+- Create: `dota2-match-coach/output/8963363814.json`
+- Create: `dota2-match-coach/output/8963363814.md`
 - Modify only if a live contract bug is proven: the smallest relevant runtime module and its regression test.
 
 **Interfaces:**
@@ -643,7 +643,7 @@ Expected: `Skill is valid!` and all Node tests PASS.
 Run:
 
 ```powershell
-./dota2-above-context/scripts/analyze-match.ps1 -MatchId 8963363814 -AccountId 56386500
+./dota2-match-coach/scripts/analyze-match.ps1 -MatchId 8963363814 -AccountId 56386500
 ```
 
 Expected: exit `0`, both artifacts created, OpenDota `ready`, STRATZ `ready` or explicit safe degraded status.
@@ -665,8 +665,8 @@ Use `references/review-template.md`. Distinguish facts, role/patch baseline, int
 Run:
 
 ```text
-node --test dota2-above-context/test/runtime/*.test.mjs
-quick_validate.py dota2-above-context
+node --test dota2-match-coach/test/runtime/*.test.mjs
+quick_validate.py dota2-match-coach
 analyze-match.ps1 -MatchId 8963363814 -AccountId 56386500
 ```
 
