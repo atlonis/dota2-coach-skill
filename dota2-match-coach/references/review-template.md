@@ -2,6 +2,10 @@
 
 Шаблон адаптирован из [Dota 2 Replay Review Template](https://bsjdota.com/blog/dota-2-replay-review-template/): match details, draft, laning, midgame, late game, key moments и action plan. Здесь к нему добавлены role-aware baselines, явная доказательность и гибридные границы стадий.
 
+## Язык ответа / Response language
+
+Сохраняй структуру контракта, но локализуй все пользовательские заголовки и объяснения на язык, выбранный по `SKILL.md`. Для английского ответа используй естественные эквиваленты: `Паспорт матча` → `Match overview`, `Пик, роль и матчап` → `Draft, role, and matchup`, `Карточки стадий` → `Game stages`, `Переломный момент` → `Turning point`, `Общие наблюдения` → `Overall findings`, `План действий` → `Action plan`. Идентификаторы evidence, названия героев/предметов, API, JSON/schema keys, data gates и error codes оставляй без перевода.
+
 ## Aggregate-only ветка
 
 Используй эту сокращённую форму, если есть фазовые агрегаты, но нет полного пика, role/rank/patch baseline или event timeline. Не пытайся заполнить недоступные поля полной формы.

@@ -1,4 +1,4 @@
 interface:
   display_name: "Dota 2 Match Coach"
   short_description: "Контекстный разбор матчей Dota 2"
-  default_prompt: "Use $dota2-match-coach to analyze a current-patch Dota 2 match by match ID and account ID or hero name."
+  default_prompt: "Use $dota2-match-coach to analyze a current-patch Dota 2 match by match ID and account ID or hero name, responding in the user's language."
