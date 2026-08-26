@@ -1,0 +1,14 @@
+* text=auto
+.gitattributes text eol=lf
+.gitignore text eol=lf
+
+# Cross-platform runtime sources and POSIX entrypoint must remain LF.
+*.sh text eol=lf
+*.mjs text eol=lf
+*.md text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+
+# Native Windows wrapper.
+*.ps1 text eol=crlf
