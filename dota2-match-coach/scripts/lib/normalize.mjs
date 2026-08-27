@@ -2,7 +2,7 @@ import { rankLabel } from './rank.mjs';
 import { bracketLabelFor, positionEnumFor } from './baseline.mjs';
 import { GAME_MODES, LOBBY_TYPES, resolveVocabularyField } from './vocabulary.mjs';
 
-const SCHEMA_VERSION = '1.0.0';
+const SCHEMA_VERSION = '1.1.0';
 const PHASES = [
   { id: 'lane', start: 0, end: 600 },
   { id: 'transition', start: 600, end: 900 },
@@ -51,6 +51,19 @@ function sourced(value, source) {
 
 function rankField(code) {
   const field = sourced(code, 'stratz');
+  field.label = field.value == null ? null : rankLabel(field.value);
+  return field;
+}
+
+// Медаль самого игрока: OpenDota `rank_tier` и STRATZ `seasonRank` — оба снимка
+// профиля, а не ранг на момент матча. Расхождение между ними не разрешается в
+// пользу одного источника: код остаётся неизвестным, и baseline падает на средний
+// bracket матча, который заведомо шире.
+function playerRankFor(openPlayer, stratzPlayer, warnings) {
+  const field = resolvedField('Player rank', [
+    { value: openPlayer?.rank_tier, source: 'opendota' },
+    { value: stratzPlayer?.steamAccount?.seasonRank, source: 'stratz' },
+  ], warnings);
   field.label = field.value == null ? null : rankLabel(field.value);
   return field;
 }
@@ -408,7 +421,8 @@ export function buildBaseline({ baseline, openPlayer, events, duration, patch, r
       position: baseline.position ?? positionEnumFor(position),
       bracket: baseline.bracket,
       bracketLabel: bracketLabelFor(baseline.bracket),
-      rankCode: finiteNumber(rankCode) ? rankCode : null,
+      bracketSource: baseline.bracketSource ?? null,
+      rankCode: finiteNumber(baseline.rankCode) ? baseline.rankCode : finiteNumber(rankCode) ? rankCode : null,
       patch: patch ?? null,
       weeks: Array.isArray(baseline.weeks) ? [...baseline.weeks] : [],
       statistic: 'mean',
@@ -494,7 +508,7 @@ export function normalizeEvidence({ matchId, accountId, openDota, stratz, valve,
     side,
     position,
     lane: sourced(stratzPlayer?.lane, 'stratz'),
-    rank: rankField(stratz?.match?.rank),
+    rank: playerRankFor(openPlayer, stratzPlayer, warnings),
     kills: summary.kills,
     deaths: summary.deaths,
     assists: summary.assists,
@@ -509,6 +523,7 @@ export function normalizeEvidence({ matchId, accountId, openDota, stratz, valve,
       result,
       durationSeconds: durationField,
       startTime: field('Start time', openDota?.match?.start_time, stratz?.match?.startDateTime),
+      averageRank: rankField(stratz?.match?.rank),
       gameMode: vocabulary('Game mode', GAME_MODES, openDota?.match?.game_mode, stratz?.match?.gameMode),
       lobbyType: vocabulary('Lobby type', LOBBY_TYPES, openDota?.match?.lobby_type, stratz?.match?.lobbyType),
     },
@@ -540,7 +555,7 @@ export function normalizeEvidence({ matchId, accountId, openDota, stratz, valve,
       events,
       duration,
       patch: valve?.currentPatch ?? null,
-      rankCode: stratz?.match?.rank ?? null,
+      rankCode: player.rank.value ?? stratz?.match?.rank ?? null,
       position: position?.value ?? null,
     }),
     eventInventory: eventInventory(events),

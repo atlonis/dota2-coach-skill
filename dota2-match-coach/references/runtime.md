@@ -88,13 +88,17 @@ dataQuality, warnings
 
 `draft.radiant` и `draft.dire` хранят стороны отдельно; `draft_ready` открывается только при пяти различных героях с каждой стороны. `events` содержит компактный allowlisted таймлайн выбранного игрока из STRATZ и валидированные `teamfights` OpenDota с `source` у каждой записи. Булевый `eventInventory` сам по себе не открывает `event_ready`: в записываемом артефакте должны остаться пригодные события с таймкодами. `summary`, `items`, `series` и `phases` содержат итоговые метрики, финальный инвентарь/покупки, исходные ряды и фазовые дельты/экстремумы. Материальные расхождения источников сохраняются как `candidates` с provenance и предупреждением.
 
-`player.rank` хранит сырой двузначный код STRATZ и его человекочитаемый `label`: десятки — медаль (`Herald`…`Immortal`), единицы — звезда. `60` → `Ancient`, `42` → `Archon 2`, `80` → `Immortal`. Неизвестный код оставляет `label: null` и в Markdown печатается как `лейбл неизвестен`; выдумывать медаль по незнакомому коду нельзя. Это средний bracket матча, а не подтверждённый ранг конкретного игрока, и он не является baseline.
+Ранг хранится в двух разных полях, и путать их нельзя. `player.rank` — медаль самого игрока: OpenDota `rank_tier` и STRATZ `steamAccount.seasonRank`. `match.averageRank` — средний bracket матча из STRATZ `match.rank`. В смешанном лобби они расходятся на несколько корзин: в матче 8963443105 игрок был `42` (Archon 2) при среднем `60` (Ancient).
+
+Оба поля хранят сырой двузначный код и человекочитаемый `label`: десятки — медаль (`Herald`…`Immortal`), единицы — звезда. `60` → `Ancient`, `42` → `Archon 2`, `80` → `Immortal`. Неизвестный код оставляет `label: null` и в Markdown печатается как `лейбл неизвестен`; выдумывать медаль по незнакомому коду нельзя.
+
+Медаль игрока — снимок профиля на момент сбора, а не ранг на момент матча: этого ни один источник не отдаёт. Если OpenDota и STRATZ дают разные коды, runtime не выбирает победителя: `player.rank.value` остаётся `null` с `candidates`, а bracket выбирается по среднему bracket матча. Сам по себе ранг baseline не является.
 
 ### Baseline
 
 `baseline` — нормативная выборка того же героя, позиции и bracket на текущем патче. Она собирается вторым запросом к STRATZ `heroStats.stats` уже после нормализации, потому что селекторы известны только оттуда. Отказ baseline никогда не отменяет остальные факты матча.
 
-`baseline.sameHeroPositionRankPatch` описывает выборку: `heroId`, `position`, `bracket` с человекочитаемым `bracketLabel`, `patch`, список `weeks` и `points` — кумулятивные средние на выбранных минутах с собственным `matchCount` у каждой. `baseline.comparisons` содержит готовые строки сравнения: `metric`, `minute`, `player`, `baseline`, `delta`, `ratio`, `matchCount` и `crossSourceProxy`.
+`baseline.sameHeroPositionRankPatch` описывает выборку: `heroId`, `position`, `bracket` с человекочитаемым `bracketLabel` и `bracketSource`, `rankCode`, `patch`, список `weeks` и `points` — кумулятивные средние на выбранных минутах с собственным `matchCount` у каждой. `baseline.comparisons` содержит готовые строки сравнения: `metric`, `minute`, `player`, `baseline`, `delta`, `ratio`, `matchCount` и `crossSourceProxy`.
 
 Ограничения, которые нужно называть в ответе:
 
@@ -103,6 +107,8 @@ dataQuality, warnings
 - Патч фильтруется неделями. Берутся только недели, целиком лежащие внутри текущего патча, максимум шесть последних; неделя, пересекающая границу патча, отбрасывается целиком.
 - Минута попадает в выборку только при `matchCount` не меньше 200, а `matchCount` естественно падает к поздним минутам: сравнение на 50-й минуте обусловлено тем, что матч до неё дожил.
 - Сравнения net worth здесь нет. OpenDota `gold_t` — накопленное золото, а не net worth: в матче 8963443105 последняя точка ряда равна 12 772 при `net_worth` 11 150, и прокси систематически завышал игрока против baseline `networth`. Сопоставимого минутного ряда net worth не отдаёт ни один источник runtime, поэтому строка убрана. Флаг `crossSourceProxy` остаётся в схеме для будущих рядов и сейчас не выставлен ни одной строкой; итоговый `summary.netWorth` берётся из `net_worth`, а не из `total_gold`.
+
+`bracketSource` называет основание корзины: `player_medal` — по медали самого игрока, `match_average` — по среднему bracket матча, когда медаль неизвестна или источники по ней разошлись. `rankCode` рядом хранит код, по которому корзина реально выбрана. Строку `match_average` в разборе обязательно сопровождай оговоркой: выборка может лежать выше или ниже уровня самого игрока.
 
 Возможные `baseline.reason` при закрытом гейте: `not_requested`, `missing_token`, `hero_unknown`, `position_unknown`, `rank_unknown`, `no_full_week_in_current_patch`, `empty_sample`, `no_comparable_point`. При `status: "failed"` причина заменяется безопасным `error.code`.
 

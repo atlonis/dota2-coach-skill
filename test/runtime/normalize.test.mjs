@@ -41,10 +41,11 @@ test('builds the pinned canonical evidence schema with provenance', () => {
     stratz: {
       status: 'ready',
       match: {
-        startDateTime: 1785400000, lobbyType: 'RANKED', gameMode: 'ALL_PICK', rank: 42,
+        startDateTime: 1785400000, lobbyType: 'RANKED', gameMode: 'ALL_PICK', rank: 60,
         midLaneOutcome: 'RADIANT_VICTORY',
         players: [{
           steamAccountId: accountId, heroId: 107, isRadiant: true, position: 'POSITION_2', lane: 'MID_LANE',
+          steamAccount: { seasonRank: 42 },
           kills: 4, deaths: 2, assists: 6, numLastHits: 3, numDenies: 1,
           goldPerMinute: 125, experiencePerMinute: 150, networth: 250,
           heroDamage: 170, towerDamage: 40, heroHealing: 5, imp: 12,
@@ -65,7 +66,7 @@ test('builds the pinned canonical evidence schema with provenance', () => {
     },
   });
 
-  assert.equal(model.schemaVersion, '1.0.0');
+  assert.equal(model.schemaVersion, '1.1.0');
   assert.deepEqual(model.match.startTime, { value: 1785400000, source: 'opendota' });
   assert.deepEqual(model.match.lobbyType, { value: 7, label: 'Ranked', source: 'opendota' });
   assert.deepEqual(model.match.gameMode, {
@@ -76,6 +77,7 @@ test('builds the pinned canonical evidence schema with provenance', () => {
   });
   assert.deepEqual(model.player.side, { value: 'radiant', source: 'opendota' });
   assert.deepEqual(model.player.rank, { value: 42, label: 'Archon 2', source: 'stratz' });
+  assert.deepEqual(model.match.averageRank, { value: 60, label: 'Ancient', source: 'stratz' });
   assert.deepEqual(model.lane.outcome, { value: 'RADIANT_VICTORY', source: 'stratz' });
   assert.deepEqual(model.summary.kda, { kills: 4, deaths: 2, assists: 6, source: 'opendota' });
   assert.deepEqual(model.summary.denies, { value: 1, source: 'opendota' });
@@ -86,15 +88,66 @@ test('builds the pinned canonical evidence schema with provenance', () => {
   assert.deepEqual(model.events.teamfights, []);
 });
 
-test('keeps the rank label null when STRATZ is missing or the code is unknown', () => {
-  const withoutStratz = normalize({ match: { start_time: 1785400000 } });
-  assert.deepEqual(withoutStratz.player.rank, { value: null, label: null, source: null });
+test('keeps the rank label null when no source reports a medal or the code is unknown', () => {
+  const withoutRank = normalize({ match: { start_time: 1785400000 } });
+  assert.deepEqual(withoutRank.player.rank, { value: null, label: null, source: null });
+  assert.deepEqual(withoutRank.match.averageRank, { value: null, label: null, source: null });
 
   const unknownCode = normalize({
+    player: openDotaPlayer({ rank_tier: 99 }),
     match: { start_time: 1785400000 },
     stratz: { status: 'ready', match: { rank: 99, players: [{ steamAccountId: accountId, heroId: 107, isRadiant: true }] } },
   });
-  assert.deepEqual(unknownCode.player.rank, { value: 99, label: null, source: 'stratz' });
+  assert.deepEqual(unknownCode.player.rank, { value: 99, label: null, source: 'opendota' });
+  assert.deepEqual(unknownCode.match.averageRank, { value: 99, label: null, source: 'stratz' });
+});
+
+test('reads the player medal from the account, not from the match bracket', () => {
+  const model = normalize({
+    player: openDotaPlayer({ rank_tier: 42 }),
+    stratz: {
+      status: 'ready',
+      match: { rank: 60, players: [{ steamAccountId: accountId, heroId: 107, steamAccount: { seasonRank: 42 } }] },
+    },
+  });
+
+  assert.deepEqual(model.player.rank, { value: 42, label: 'Archon 2', source: 'opendota' });
+  assert.deepEqual(model.match.averageRank, { value: 60, label: 'Ancient', source: 'stratz' });
+});
+
+test('leaves the medal unknown when the two account snapshots disagree', () => {
+  const model = normalize({
+    player: openDotaPlayer({ rank_tier: 42 }),
+    stratz: {
+      status: 'ready',
+      match: { rank: 60, players: [{ steamAccountId: accountId, heroId: 107, steamAccount: { seasonRank: 51 } }] },
+    },
+  });
+
+  assert.equal(model.player.rank.value, null);
+  assert.equal(model.player.rank.label, null);
+  assert.deepEqual(model.player.rank.candidates, [{ value: 42, source: 'opendota' }, { value: 51, source: 'stratz' }]);
+  assert.equal(model.warnings.includes('Player rank conflict between opendota and stratz.'), true);
+});
+
+test('records which rank code selected the baseline bracket', () => {
+  const byMedal = normalize({
+    player: longMatchPlayer(),
+    match: { duration: 1500 },
+    stratz: { status: 'ready', match: { rank: 60, players: [] } },
+    baseline: { ...readyBaseline([baselinePoint(10, 90_000)]), rankCode: 42, bracketSource: 'player_medal' },
+  });
+  assert.equal(byMedal.baseline.sameHeroPositionRankPatch.bracketSource, 'player_medal');
+  assert.equal(byMedal.baseline.sameHeroPositionRankPatch.rankCode, 42);
+
+  const byAverage = normalize({
+    player: longMatchPlayer(),
+    match: { duration: 1500 },
+    stratz: { status: 'ready', match: { rank: 60, players: [] } },
+    baseline: { ...readyBaseline([baselinePoint(10, 90_000)]), rankCode: 60, bracketSource: 'match_average' },
+  });
+  assert.equal(byAverage.baseline.sameHeroPositionRankPatch.bracketSource, 'match_average');
+  assert.equal(byAverage.baseline.sameHeroPositionRankPatch.rankCode, 60);
 });
 
 test('preserves material cross-source summary disagreements', () => {

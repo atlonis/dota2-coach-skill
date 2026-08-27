@@ -10,6 +10,7 @@ const MATCH_RUNTIME_QUERY = `query MatchRuntime($matchId: Long!) {
     pickBans { isPick heroId order bannedHeroId isRadiant playerIndex }
     players {
       steamAccountId heroId isRadiant position lane roleBasic
+      steamAccount { seasonRank }
       kills deaths assists numLastHits numDenies goldPerMinute
       experiencePerMinute networth heroDamage towerDamage heroHealing imp
       item0Id item1Id item2Id item3Id item4Id item5Id

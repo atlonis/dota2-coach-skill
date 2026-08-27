@@ -92,10 +92,19 @@ async function loadBaseline(model, valve, baselineClient, nowSeconds) {
   if (!Number.isInteger(heroId)) return { status: 'unavailable', reason: 'hero_unknown' };
   const position = positionEnumFor(model.player?.position?.value ?? null);
   if (!position) return { status: 'unavailable', reason: 'position_unknown' };
-  const bracket = bracketBasicFor(model.player?.rank?.value ?? null);
-  if (!bracket) return { status: 'unavailable', reason: 'rank_unknown' };
+  // Медаль игрока точнее среднего bracket матча: в смешанном лобби средний код
+  // может лежать на несколько корзин выше или ниже самого игрока. Средний bracket
+  // остаётся запасным вариантом, и артефакт всегда называет использованное основание.
+  const selectors = [
+    { rankCode: model.player?.rank?.value ?? null, bracketSource: 'player_medal' },
+    { rankCode: model.match?.averageRank?.value ?? null, bracketSource: 'match_average' },
+  ];
+  const selector = selectors.find((candidate) => bracketBasicFor(candidate.rankCode));
+  if (!selector) return { status: 'unavailable', reason: 'rank_unknown' };
+  const bracket = bracketBasicFor(selector.rankCode);
   const weeks = fullWeeksWithin(valve?.currentPatchStartTime, nowSeconds);
-  return baselineClient.loadPeerBaseline({ heroId, position, bracket: bracket.id, weeks });
+  const baseline = await baselineClient.loadPeerBaseline({ heroId, position, bracket: bracket.id, weeks });
+  return { ...baseline, rankCode: selector.rankCode, bracketSource: selector.bracketSource };
 }
 
 export async function runAnalysis(options, { openDotaClient, stratzClient, valveClient, baselineClient, normalize, write, now = () => Date.now() } = {}) {

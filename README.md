@@ -59,7 +59,7 @@ To review someone else's match, select the player by hero:
 Use $dota2-match-coach to analyze the Earth Spirit player in match 8963363814.
 ```
 
-The skill chooses the platform runtime, gathers data, and checks data gates before starting the review. Set `STRATZ_API_KEY` in the environment of your chosen agent for richer position/lane/playback data. A token is also required for the peer baseline, though it does not guarantee one: the match rank and position must be known and at least one full week must fall inside the current patch. See the [runtime contract](dota2-match-coach/references/runtime.md) for token setup, schema, exit codes, and troubleshooting. Never place the token in prompts, commands, repository files, or Git.
+The skill chooses the platform runtime, gathers data, and checks data gates before starting the review. Set `STRATZ_API_KEY` in the environment of your chosen agent for richer position/lane/playback data. A token is also required for the peer baseline, though it does not guarantee one: the position and a rank must be known — the player's own medal, or the match average bracket as a fallback and at least one full week must fall inside the current patch. See the [runtime contract](dota2-match-coach/references/runtime.md) for token setup, schema, exit codes, and troubleshooting. Never place the token in prompts, commands, repository files, or Git.
 
 ## Language
 
@@ -95,7 +95,7 @@ From the repository root:
 node --test test/runtime/*.test.mjs
 ```
 
-The offline suite contains 144 tests and needs no network access. Each wrapper runs only on its own platform: the POSIX script on macOS and Linux, and PowerShell on Windows. The test that does not apply to the current host is skipped, while both wrappers are also checked statically on every platform.
+The offline suite contains 151 tests and needs no network access. Each wrapper runs only on its own platform: the POSIX script on macOS and Linux, and PowerShell on Windows. The test that does not apply to the current host is skipped, while both wrappers are also checked statically on every platform.
 
 ## Repository structure
 

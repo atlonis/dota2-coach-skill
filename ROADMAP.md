@@ -21,10 +21,11 @@ Definition of done: `draft_prior` имеет provenance, model version, sample s
 
 Цель — открыть `baseline_ready` и заменить внутриматчевые extrema релевантным нормативным сравнением.
 
-Peer baseline реализован: runtime записывает `model.baseline.sameHeroPositionRankPatch` из STRATZ `heroStats.stats` и открывает `baseline_ready` только при выборке, прошедшей порог размера. Остаётся:
+Peer baseline реализован: runtime записывает `model.baseline.sameHeroPositionRankPatch` из STRATZ `heroStats.stats`, выбирает корзину по медали самого игрока и открывает `baseline_ready` только при выборке, прошедшей порог размера. Остаётся:
 
 - self-baseline: тот же игрок, герой, позиция, patch и mode;
 - strong-player baseline: свежие матчи STRATZ leaderboard на том же hero + position + exact patch;
+- ранг на момент матча вместо снимка профиля: ни OpenDota, ни STRATZ его не отдают, поэтому медаль игрока берётся из текущего состояния аккаунта;
 - отдельные распределения по lane matchup, item components и power-spike timing;
 - percentile вместо отношения к среднему: текущий источник отдаёт только средние, поэтому нужен другой сбор;
 - точный патч вместо приближения неделями и фильтр по mode;

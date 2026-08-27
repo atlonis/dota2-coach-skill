@@ -107,7 +107,7 @@ function projectBaseline(baseline) {
     reason: typeof baseline?.reason === 'string' ? baseline.reason : null,
     sameHeroPositionRankPatch: sample === null ? null : {
       ...pickNumbers(sample, ['heroId', 'rankCode'], { nullable: true }),
-      ...pickStrings(sample, ['position', 'bracket', 'bracketLabel', 'patch', 'statistic', 'source']),
+      ...pickStrings(sample, ['position', 'bracket', 'bracketLabel', 'bracketSource', 'patch', 'statistic', 'source']),
       weeks: Array.isArray(sample.weeks) ? sample.weeks.filter(Number.isInteger) : [],
       points: Array.isArray(sample.points)
         ? sample.points.map((point) => pickNumbers(point, BASELINE_POINT_FIELDS, { nullable: true }))
@@ -151,7 +151,7 @@ function normalizedArtifactModel(model) {
   const player = Object.fromEntries(['accountId', 'heroId', 'side', 'position', 'lane', 'rank', 'kills', 'deaths', 'assists', 'result']
     .filter((name) => Object.hasOwn(model.player ?? {}, name))
     .map((name) => [name, projectSourced(model.player[name])]));
-  const match = Object.fromEntries(['result', 'durationSeconds', 'startTime', 'gameMode', 'lobbyType']
+  const match = Object.fromEntries(['result', 'durationSeconds', 'startTime', 'averageRank', 'gameMode', 'lobbyType']
     .filter((name) => Object.hasOwn(model.match ?? {}, name))
     .map((name) => [name, projectSourced(model.match[name])]));
   const patch = Object.fromEntries(['match', 'current', 'isCurrentExactPatch']
@@ -287,6 +287,7 @@ function baselineSampleRows(baseline) {
     ['heroId', valueOf({ value: sample.heroId })],
     ['position', valueOf({ value: sample.position })],
     ['bracket', `${valueOf({ value: sample.bracket })} (${valueOf({ value: sample.bracketLabel })})`],
+    ['основание bracket', `${valueOf({ value: sample.bracketSource })} (код ${valueOf({ value: sample.rankCode })})`],
     ['patch', valueOf({ value: sample.patch })],
     ['недели STRATZ', (sample.weeks ?? []).join(', ') || 'недостаточно данных'],
     ['статистика', `${valueOf({ value: sample.statistic })} (перцентили этим источником не отдаются)`],
@@ -326,7 +327,8 @@ export function renderEvidenceMarkdown(model = {}) {
       ['lobbyType', `${labelledCell(match.lobbyType)} (источник: ${sourceOf(match.lobbyType)})`],
       ['heroId', `${valueOf(player.heroId)} (источник: ${sourceOf(player.heroId)})`],
       ['position', `${valueOf(player.position)} (источник: ${sourceOf(player.position)})`],
-      ['rank (средний bracket матча)', `${labelledCell(player.rank)} (источник: ${sourceOf(player.rank)})`],
+      ['rank (медаль игрока)', `${labelledCell(player.rank)} (источник: ${sourceOf(player.rank)})`],
+      ['rank (средний bracket матча)', `${labelledCell(match.averageRank)} (источник: ${sourceOf(match.averageRank)})`],
       ['result', `${valueOf(player.result)} (источник: ${sourceOf(player.result)})`],
       ['K / D / A', `${valueOf(player.kills)} / ${valueOf(player.deaths)} / ${valueOf(player.assists)}`],
     ]),

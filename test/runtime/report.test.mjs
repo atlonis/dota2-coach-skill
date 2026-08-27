@@ -7,7 +7,7 @@ import { renderEvidenceMarkdown, writeArtifacts } from '../../dota2-match-coach/
 
 function evidenceModel() {
   return {
-    schemaVersion: '1.0.0',
+    schemaVersion: '1.1.0',
     request: { matchId: '42', accountId: 56386500 },
     generatedAt: '2026-08-25T00:00:00.000Z',
     sources: {
@@ -17,7 +17,8 @@ function evidenceModel() {
     },
     match: {
       result: { value: 'win', source: 'opendota' }, durationSeconds: { value: 1800, source: 'opendota' },
-      startTime: { value: 1785400000, source: 'opendota' }, gameMode: { value: 22, label: 'All Draft', source: 'opendota' },
+      startTime: { value: 1785400000, source: 'opendota' }, averageRank: { value: 60, label: 'Ancient', source: 'stratz' },
+      gameMode: { value: 22, label: 'All Draft', source: 'opendota' },
       lobbyType: { value: 0, label: 'Unranked', source: 'opendota' },
     },
     player: {
@@ -47,6 +48,7 @@ function evidenceModel() {
       reason: null,
       sameHeroPositionRankPatch: {
         heroId: 107, rankCode: 42, position: 'POSITION_2', bracket: 'CRUSADER_ARCHON', bracketLabel: 'Crusader–Archon',
+        bracketSource: 'player_medal',
         patch: '7.40', statistic: 'mean', source: 'stratz', weeks: [2953, 2954],
         points: [{ minute: 10, matchCount: 1200, networth: 3600, cs: 45.5, dn: 6.7, xp: 4300, level: 7.8, kills: 1.4, deaths: 0.9, assists: 0.6, heroDamage: 4400 }],
       },
@@ -81,10 +83,17 @@ test('aggregate-only report localizes metrics without inventing a cause', () => 
   assert.doesNotMatch(markdown, /фармил вместо|потерял темп|обязан был ротировать/i);
 });
 
-test('renders the rank code with its label and marks the row as the match bracket', () => {
+test('separates the player medal from the average bracket of the match', () => {
   const markdown = renderEvidenceMarkdown(evidenceModel());
 
-  assert.match(markdown, /| rank (средний bracket матча) | 42 — Archon 2 (источник: stratz) |/);
+  assert.match(markdown, /| rank (медаль игрока) | 42 — Archon 2 (источник: stratz) |/);
+  assert.match(markdown, /| rank (средний bracket матча) | 60 — Ancient (источник: stratz) |/);
+});
+
+test('names the rank code the baseline bracket was selected by', () => {
+  const markdown = renderEvidenceMarkdown(evidenceModel());
+
+  assert.match(markdown, /| основание bracket | player_medal (код 42) |/);
 });
 
 test('renders the game mode and lobby type with their labels', () => {
@@ -175,7 +184,7 @@ test('writeArtifacts persists the canonical schema and consumable event timeline
   const artifacts = await writeArtifacts(evidenceModel(), directory);
   const persisted = JSON.parse(await readFile(artifacts.jsonPath, 'utf8'));
 
-  assert.equal(persisted.schemaVersion, '1.0.0');
+  assert.equal(persisted.schemaVersion, '1.1.0');
   assert.deepEqual(persisted.draft.radiant, [{ value: 107, source: 'opendota' }]);
   assert.deepEqual(persisted.summary.kda, { kills: 8, deaths: 2, assists: 6, source: 'opendota' });
   assert.deepEqual(persisted.items.purchases, [{ time: 80, item: 'boots', source: 'opendota' }]);

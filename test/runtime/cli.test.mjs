@@ -396,3 +396,56 @@ test('CLI boundary emits only a fixed allowlisted diagnostic for unexpected exce
   assert.deepEqual(stderr, ['error: runtime_error']);
   assert.doesNotMatch(stderr.join(' '), /Bearer|secret|response body|query text/i);
 });
+
+function baselineSelectorRun({ rank, averageRank }) {
+  const requests = [];
+  const model = {
+    request: {}, sources: {}, dataQuality: {},
+    player: { heroId: { value: 74 }, position: { value: 4 }, rank: { value: rank } },
+    match: { averageRank: { value: averageRank } },
+  };
+  return {
+    requests,
+    run: () => runAnalysis({ matchId: 1, accountId: 2 }, {
+      openDotaClient: { loadMatch: async () => ({ status: 'ready', match: { start_time: 123, duration: 1, players: [{ account_id: 2 }] } }) },
+      valveClient: { resolvePatch: async () => ({ ...readyValve(), currentPatchStartTime: 1_785_000_000 }) },
+      stratzClient: { loadMatch: async () => ({ status: 'unavailable', reason: 'missing_token' }) },
+      baselineClient: {
+        loadPeerBaseline: async (selectors) => {
+          requests.push(selectors);
+          return { status: 'ready', heroId: 74, position: selectors.position, bracket: selectors.bracket, weeks: selectors.weeks, points: [] };
+        },
+      },
+      normalize: (input) => ({ ...model, baseline: input.baseline ?? null }),
+      write: async () => ({ jsonPath: '1.json', markdownPath: '1.md' }),
+      now: () => 1_788_000_000_000,
+    }),
+  };
+}
+
+test('selects the baseline bracket from the player medal and labels the basis', async () => {
+  const { requests, run } = baselineSelectorRun({ rank: 42, averageRank: 60 });
+  const result = await run();
+
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].bracket, 'CRUSADER_ARCHON');
+  assert.equal(result.model.baseline.bracketSource, 'player_medal');
+  assert.equal(result.model.baseline.rankCode, 42);
+});
+
+test('falls back to the match average bracket only when the player medal is unknown', async () => {
+  const { requests, run } = baselineSelectorRun({ rank: null, averageRank: 60 });
+  const result = await run();
+
+  assert.equal(requests[0].bracket, 'LEGEND_ANCIENT');
+  assert.equal(result.model.baseline.bracketSource, 'match_average');
+  assert.equal(result.model.baseline.rankCode, 60);
+});
+
+test('reports rank_unknown when neither the medal nor the match bracket is known', async () => {
+  const { requests, run } = baselineSelectorRun({ rank: null, averageRank: null });
+  const result = await run();
+
+  assert.deepEqual(requests, []);
+  assert.deepEqual(result.model.baseline, { status: 'unavailable', reason: 'rank_unknown' });
+});
