@@ -28,7 +28,7 @@ Peer baseline реализован: runtime записывает `model.baseline
 - отдельные распределения по lane matchup, item components и power-spike timing;
 - percentile вместо отношения к среднему: текущий источник отдаёт только средние, поэтому нужен другой сбор;
 - точный патч вместо приближения неделями и фильтр по mode;
-- сравнение net worth без cross-source proxy: сейчас игрок берётся из OpenDota `gold_t`, а baseline — из STRATZ `networth`;
+- сравнение net worth по минутам: прокси из OpenDota `gold_t` убран как завышающий, а сопоставимого минутного ряда net worth не отдаёт ни OpenDota, ни STRATZ `playbackData`;
 - автоматический fallback к более широкой выборке только с маркировкой слабого ориентира.
 
 Definition of done для остатка: каждое сравнение несёт percentile и confidence, а не только отношение к среднему и размер выборки.

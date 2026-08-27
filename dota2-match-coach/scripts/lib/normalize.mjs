@@ -1,5 +1,6 @@
 import { rankLabel } from './rank.mjs';
 import { bracketLabelFor, positionEnumFor } from './baseline.mjs';
+import { GAME_MODES, LOBBY_TYPES, resolveVocabularyField } from './vocabulary.mjs';
 
 const SCHEMA_VERSION = '1.0.0';
 const PHASES = [
@@ -17,14 +18,18 @@ const SERIES_METRICS = [
   ['heroDamage', 'hero_damage_t', 'heroDamagePerMin'],
 ];
 const EVENT_METRICS = [['kills', 'killEvents'], ['deaths', 'deathEvents'], ['assists', 'assistEvents']];
-// Сопоставимые ряды. `netWorth` помечен как cross-source proxy: игрок берётся из
-// OpenDota `gold_t`, а baseline — из STRATZ `networth`, и это разные измерения.
+// Сопоставимые ряды: слева минутный ряд игрока, справа метрика выборки STRATZ.
+// Ряда net worth здесь нет намеренно. OpenDota `gold_t` — накопленное золото, а не
+// net worth: в матче 8963443105 последняя точка ряда равна 12 772 при `net_worth`
+// 11 150, то есть прокси систематически завышал игрока против baseline `networth`.
+// Сопоставимого минутного ряда net worth ни один источник runtime не отдаёт, поэтому
+// строка убрана, а не оставлена с оговоркой. Флаг `crossSourceProxy` остаётся в схеме
+// для будущих рядов и сейчас не выставлен ни одной строкой.
 const BASELINE_COMPARISONS = [
   { metric: 'lastHits', playerSeries: 'lh_t', baselineMetric: 'cs', crossSourceProxy: false },
   { metric: 'denies', playerSeries: 'dn_t', baselineMetric: 'dn', crossSourceProxy: false },
   { metric: 'xp', playerSeries: 'xp_t', baselineMetric: 'xp', crossSourceProxy: false },
   { metric: 'heroDamage', playerSeries: 'hero_damage_t', baselineMetric: 'heroDamage', crossSourceProxy: false },
-  { metric: 'netWorth', playerSeries: 'gold_t', baselineMetric: 'networth', crossSourceProxy: true },
 ];
 const BASELINE_MINUTES = [10, 15, 25];
 const BASELINE_MAX_MINUTE = 75;
@@ -449,6 +454,12 @@ export function normalizeEvidence({ matchId, accountId, openDota, stratz, valve,
     { value: openValue, source: 'opendota' },
     { value: stratzValue, source: 'stratz' },
   ], warnings);
+  // Режим и тип лобби приходят разными словарями, поэтому идут не через `field`.
+  const vocabulary = (label, table, openValue, stratzValue) => {
+    const resolved = resolveVocabularyField(label, table, { opendota: openValue, stratz: stratzValue });
+    warnings.push(...resolved.warnings);
+    return resolved.field;
+  };
   const durationField = field('Duration', openDota?.match?.duration, stratz?.match?.durationSeconds);
   const duration = durationField.value ?? openDota?.match?.duration ?? stratz?.match?.durationSeconds;
   const position = positionFor(openPlayer, stratzPlayer, warnings);
@@ -465,7 +476,7 @@ export function normalizeEvidence({ matchId, accountId, openDota, stratz, valve,
     denies: field('Denies', openPlayer?.denies, stratzPlayer?.numDenies),
     gpm: field('GPM', openPlayer?.gold_per_min, stratzPlayer?.goldPerMinute),
     xpm: field('XPM', openPlayer?.xp_per_min, stratzPlayer?.experiencePerMinute),
-    netWorth: field('Net worth', openPlayer?.total_gold, stratzPlayer?.networth),
+    netWorth: field('Net worth', openPlayer?.net_worth, stratzPlayer?.networth),
     heroDamage: field('Hero damage', openPlayer?.hero_damage, stratzPlayer?.heroDamage),
     towerDamage: field('Tower damage', openPlayer?.tower_damage, stratzPlayer?.towerDamage),
     healing: field('Healing', openPlayer?.hero_healing, stratzPlayer?.heroHealing),
@@ -498,8 +509,8 @@ export function normalizeEvidence({ matchId, accountId, openDota, stratz, valve,
       result,
       durationSeconds: durationField,
       startTime: field('Start time', openDota?.match?.start_time, stratz?.match?.startDateTime),
-      gameMode: field('Game mode', openDota?.match?.game_mode, stratz?.match?.gameMode),
-      lobbyType: field('Lobby type', openDota?.match?.lobby_type, stratz?.match?.lobbyType),
+      gameMode: vocabulary('Game mode', GAME_MODES, openDota?.match?.game_mode, stratz?.match?.gameMode),
+      lobbyType: vocabulary('Lobby type', LOBBY_TYPES, openDota?.match?.lobby_type, stratz?.match?.lobbyType),
     },
     player,
     draft: draft.draft,

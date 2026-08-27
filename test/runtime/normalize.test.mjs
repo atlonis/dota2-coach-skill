@@ -11,7 +11,7 @@ function openDotaPlayer(extra = {}) {
     gold_t: [0, 100, 250], xp_t: [0, 120, 300], lh_t: [0, 1, 3],
     dn_t: [0, 0, 1], hero_damage_t: [0, 50, 170],
     kills: 4, deaths: 2, assists: 6, last_hits: 3, denies: 1,
-    gold_per_min: 125, xp_per_min: 150, total_gold: 250,
+    gold_per_min: 125, xp_per_min: 150, total_gold: 250, net_worth: 210,
     hero_damage: 170, tower_damage: 40, hero_healing: 5,
     item_0: 50, item_1: 60, item_2: 70, item_3: 80, item_4: 90, item_5: 100,
     purchase_log: [{ time: 80, key: 'boots' }], ...extra,
@@ -67,10 +67,12 @@ test('builds the pinned canonical evidence schema with provenance', () => {
 
   assert.equal(model.schemaVersion, '1.0.0');
   assert.deepEqual(model.match.startTime, { value: 1785400000, source: 'opendota' });
-  assert.deepEqual(model.match.lobbyType, {
+  assert.deepEqual(model.match.lobbyType, { value: 7, label: 'Ranked', source: 'opendota' });
+  assert.deepEqual(model.match.gameMode, {
     value: null,
+    label: null,
     source: null,
-    candidates: [{ value: 7, source: 'opendota' }, { value: 'RANKED', source: 'stratz' }],
+    candidates: [{ value: 22, source: 'opendota' }, { value: 'ALL_PICK', source: 'stratz' }],
   });
   assert.deepEqual(model.player.side, { value: 'radiant', source: 'opendota' });
   assert.deepEqual(model.player.rank, { value: 42, label: 'Archon 2', source: 'stratz' });
@@ -486,7 +488,13 @@ test('compares the player against the peer sample only at minutes both series ac
   });
 });
 
-test('marks the net-worth comparison as a cross-source proxy', () => {
+test('reads net worth from the net-worth field instead of accumulated gold', () => {
+  const model = normalize({ stratz: { status: 'ready', match: { players: [] } } });
+
+  assert.deepEqual(model.summary.netWorth, { value: 210, source: 'opendota' });
+});
+
+test('compares no baseline metric across measurements after dropping the net-worth proxy', () => {
   const model = normalize({
     player: longMatchPlayer(),
     match: { duration: 1500 },
@@ -494,11 +502,9 @@ test('marks the net-worth comparison as a cross-source proxy', () => {
     baseline: readyBaseline([baselinePoint(10, 90_000)]),
   });
 
-  const netWorth = model.baseline.comparisons.find((row) => row.metric === 'netWorth');
-  assert.equal(netWorth.crossSourceProxy, true);
-  for (const row of model.baseline.comparisons.filter((entry) => entry.metric !== 'netWorth')) {
-    assert.equal(row.crossSourceProxy, false);
-  }
+  assert.equal(model.baseline.comparisons.some((row) => row.metric === 'netWorth'), false);
+  assert.equal(model.baseline.comparisons.length > 0, true);
+  for (const row of model.baseline.comparisons) assert.equal(row.crossSourceProxy, false);
 });
 
 test('drops a baseline minute whose sample is too thin to compare against', () => {

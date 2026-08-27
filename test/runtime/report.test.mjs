@@ -17,8 +17,8 @@ function evidenceModel() {
     },
     match: {
       result: { value: 'win', source: 'opendota' }, durationSeconds: { value: 1800, source: 'opendota' },
-      startTime: { value: 1785400000, source: 'opendota' }, gameMode: { value: 'All Pick', source: 'stratz' },
-      lobbyType: { value: 'RANKED', source: 'stratz' },
+      startTime: { value: 1785400000, source: 'opendota' }, gameMode: { value: 22, label: 'All Draft', source: 'opendota' },
+      lobbyType: { value: 0, label: 'Unranked', source: 'opendota' },
     },
     player: {
       accountId: { value: 56386500, source: 'opendota' }, heroId: { value: 107, source: 'opendota' },
@@ -52,7 +52,7 @@ function evidenceModel() {
       },
       comparisons: [
         { metric: 'lastHits', minute: 10, player: 60, baseline: 45.5, delta: 14.5, ratio: 1.319, matchCount: 1200, crossSourceProxy: false, source: 'stratz' },
-        { metric: 'netWorth', minute: 10, player: 3200, baseline: 3600, delta: -400, ratio: 0.889, matchCount: 1200, crossSourceProxy: true, source: 'stratz' },
+        { metric: 'netWorth', minute: 10, player: 3200, baseline: 3600, delta: -400, ratio: 0.889, matchCount: 1200, crossSourceProxy: true, source: 'stratz' }, // проверка колонки: сравнения этот флаг сейчас не выставляют
       ],
     },
     eventInventory: { timedEvents: false, deaths: false, positions: false, fights: false, runes: false, abilityUses: false },
@@ -85,6 +85,25 @@ test('renders the rank code with its label and marks the row as the match bracke
   const markdown = renderEvidenceMarkdown(evidenceModel());
 
   assert.match(markdown, /| rank (средний bracket матча) | 42 — Archon 2 (источник: stratz) |/);
+});
+
+test('renders the game mode and lobby type with their labels', () => {
+  const markdown = renderEvidenceMarkdown(evidenceModel());
+
+  assert.match(markdown, /| gameMode | 22 — All Draft (источник: opendota) |/);
+  assert.match(markdown, /| lobbyType | 0 — Unranked (источник: opendota) |/);
+});
+
+test('shows both candidates when a mode vocabulary could not be compared', () => {
+  const current = evidenceModel();
+  current.match.gameMode = {
+    value: null,
+    label: null,
+    source: null,
+    candidates: [{ value: 99, source: 'opendota' }, { value: 'BRAND_NEW_MODE', source: 'stratz' }],
+  };
+
+  assert.match(renderEvidenceMarkdown(current), /| gameMode | — (кандидаты: 99 (opendota), BRAND_NEW_MODE (stratz))/);
 });
 
 test('renders an unknown rank code without inventing a label', () => {

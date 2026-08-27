@@ -102,9 +102,11 @@ dataQuality, warnings
 - Bracket грубый, четыре корзины: `HERALD_GUARDIAN`, `CRUSADER_ARCHON`, `LEGEND_ANCIENT`, `DIVINE_IMMORTAL`.
 - Патч фильтруется неделями. Берутся только недели, целиком лежащие внутри текущего патча, максимум шесть последних; неделя, пересекающая границу патча, отбрасывается целиком.
 - Минута попадает в выборку только при `matchCount` не меньше 200, а `matchCount` естественно падает к поздним минутам: сравнение на 50-й минуте обусловлено тем, что матч до неё дожил.
-- `crossSourceProxy: true` стоит на `netWorth`: значение игрока берётся из OpenDota `gold_t`, а baseline — из STRATZ `networth`. Это разные измерения, и уверенность по такой строке ниже.
+- Сравнения net worth здесь нет. OpenDota `gold_t` — накопленное золото, а не net worth: в матче 8963443105 последняя точка ряда равна 12 772 при `net_worth` 11 150, и прокси систематически завышал игрока против baseline `networth`. Сопоставимого минутного ряда net worth не отдаёт ни один источник runtime, поэтому строка убрана. Флаг `crossSourceProxy` остаётся в схеме для будущих рядов и сейчас не выставлен ни одной строкой; итоговый `summary.netWorth` берётся из `net_worth`, а не из `total_gold`.
 
 Возможные `baseline.reason` при закрытом гейте: `not_requested`, `missing_token`, `hero_unknown`, `position_unknown`, `rank_unknown`, `no_full_week_in_current_patch`, `empty_sample`, `no_comparable_point`. При `status: "failed"` причина заменяется безопасным `error.code`.
+
+`match.gameMode` и `match.lobbyType` приходят разными словарями: OpenDota отдаёт числа Valve, STRATZ — строки своих enum. Runtime сводит их к числовому id Valve и печатает человекочитаемый `label` (`22` и `ALL_PICK_RANKED` — один режим `All Draft`, `0` и `UNRANKED` — один тип лобби). Таблицы покрывают game mode 0–24 и lobby type 0–9, где словари совпадают. Значение вне таблицы не объявляется конфликтом источников: поле остаётся `null` с `candidates`, а предупреждение звучит как `outside the known vocabulary`. Настоящее расхождение режимов по-прежнему даёт предупреждение `conflict`.
 
 `sources` содержит `opendota`, `stratz` и `valve`. Каждый источник имеет `status` (`ready`, `unavailable`, `failed` или `not_found`) и, если применимо, безопасные `reason`, `error.code` и `parse` (`requested`, `state`). Для OpenDota parse state может быть `not_requested`, `requested`, `completed`, `timeout`, `unavailable`, `failed` или `error`.
 

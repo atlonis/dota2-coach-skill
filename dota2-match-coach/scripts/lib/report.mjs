@@ -75,10 +75,17 @@ function stringArray(values) {
   return Array.isArray(values) ? values.filter((value) => typeof value === 'string') : undefined;
 }
 
-function rankCell(field) {
+// Поле с человекочитаемым лейблом: rank, game mode, lobby type. Нерешённое поле
+// печатает кандидатов, чтобы несравнимый словарь не выглядел отсутствием данных.
+function labelledCell(field, unknown = 'лейбл неизвестен') {
   const value = valueOf(field);
-  if (field?.value == null) return value;
-  return field.label ? `${value} — ${field.label}` : `${value} — лейбл неизвестен`;
+  if (field?.value == null) {
+    const candidates = Array.isArray(field?.candidates) ? field.candidates : [];
+    return candidates.length > 0
+      ? `${value} (кандидаты: ${candidates.map((candidate) => `${valueOf(candidate)} (${sourceOf(candidate)})`).join(', ')})`
+      : value;
+  }
+  return field.label ? `${value} — ${field.label}` : `${value} — ${unknown}`;
 }
 
 function projectSourced(field) {
@@ -315,10 +322,11 @@ export function renderEvidenceMarkdown(model = {}) {
     '',
     table([
       ['durationSeconds', `${valueOf(match.durationSeconds)} (источник: ${sourceOf(match.durationSeconds)})`],
-      ['gameMode', `${valueOf(match.gameMode)} (источник: ${sourceOf(match.gameMode)})`],
+      ['gameMode', `${labelledCell(match.gameMode)} (источник: ${sourceOf(match.gameMode)})`],
+      ['lobbyType', `${labelledCell(match.lobbyType)} (источник: ${sourceOf(match.lobbyType)})`],
       ['heroId', `${valueOf(player.heroId)} (источник: ${sourceOf(player.heroId)})`],
       ['position', `${valueOf(player.position)} (источник: ${sourceOf(player.position)})`],
-      ['rank (средний bracket матча)', `${rankCell(player.rank)} (источник: ${sourceOf(player.rank)})`],
+      ['rank (средний bracket матча)', `${labelledCell(player.rank)} (источник: ${sourceOf(player.rank)})`],
       ['result', `${valueOf(player.result)} (источник: ${sourceOf(player.result)})`],
       ['K / D / A', `${valueOf(player.kills)} / ${valueOf(player.deaths)} / ${valueOf(player.assists)}`],
     ]),

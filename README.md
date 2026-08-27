@@ -95,7 +95,7 @@ From the repository root:
 node --test test/runtime/*.test.mjs
 ```
 
-The offline suite contains 133 tests and needs no network access. Each wrapper runs only on its own platform: the POSIX script on macOS and Linux, and PowerShell on Windows. The test that does not apply to the current host is skipped, while both wrappers are also checked statically on every platform.
+The offline suite contains 144 tests and needs no network access. Each wrapper runs only on its own platform: the POSIX script on macOS and Linux, and PowerShell on Windows. The test that does not apply to the current host is skipped, while both wrappers are also checked statically on every platform.
 
 ## Repository structure
 
