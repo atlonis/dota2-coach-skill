@@ -10,6 +10,7 @@ dota2-match-coach/output/
 
 # Local implementation workflow artifacts
 .superpowers/
+.worktrees/
 
 # JavaScript tooling (runtime itself has no package dependencies)
 node_modules/
