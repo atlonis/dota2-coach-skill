@@ -18,6 +18,8 @@ description: Use when a user asks for a current-patch Dota 2 post-match review b
 
 Перед получением данных прочитай [политику источников](references/source-policy.md). Перед написанием ответа прочитай [контракт разбора](references/review-template.md).
 
+Чтобы отнести найденную проблему к слою механик и выбрать горизонт, метрику и формат тренировки, используй [стек решений](references/decision-stack.md).
+
 Функции из [roadmap](references/roadmap.md) ещё не реализованы; не открывай соответствующие gates по одному факту их описания.
 
 ### Язык ответа
