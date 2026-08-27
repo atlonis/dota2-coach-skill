@@ -34,6 +34,7 @@ test('routes the complete user-facing review to Russian or English without chang
   const skill = await readFile(path.join(bundleRoot, 'SKILL.md'), 'utf8');
   const template = await readFile(path.join(bundleRoot, 'references', 'review-template.md'), 'utf8');
   const readmePath = path.resolve(bundleRoot, '..', 'README.md');
+  const russianReadmePath = path.resolve(bundleRoot, '..', 'README.ru.md');
   const languageContract = skill.split('### Язык ответа')[1]?.split('\n### ')[0]?.split('\n## ')[0] ?? '';
 
   assert.match(languageContract, /русск.+русск|Russian.+Russian/is);
@@ -47,8 +48,14 @@ test('routes the complete user-facing review to Russian or English without chang
   assert.match(template, /язык ответа|response language/i);
   if (existsSync(readmePath)) {
     const readme = await readFile(readmePath, 'utf8');
+    assert.equal(existsSync(russianReadmePath), true);
+    const russianReadme = await readFile(russianReadmePath, 'utf8');
     assert.match(readme, /Language|Язык/);
     assert.match(readme, /Analyze match 8963363814/i);
+    assert.match(readme, /\[Русский\]\(README\.ru\.md\)/);
+    assert.doesNotMatch(readme, /^## Русский$/m);
+    assert.match(russianReadme, /\[English\]\(README\.md\)/);
+    assert.match(russianReadme, /Используй \$dota2-match-coach/);
   }
 });
 

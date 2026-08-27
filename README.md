@@ -1,73 +1,73 @@
-# Dota 2 Match Coach — «Выше контекста»
+# Dota 2 Match Coach — “Above Context”
 
-[Русский](#русский) · [English](#english)
+[English](README.md) | [Русский](README.ru.md)
 
-## Русский
+An evidence-based Codex skill for reviewing a current-patch Dota 2 match by `match_id`. Select the player by `account_id` or by their hero's exact English name. Before coaching interpretation, the bundled runtime collects OpenDota, STRATZ, and the official Valve patch timeline, normalizes the evidence with provenance, and opens only conclusions supported by the available data gates.
 
-Codex-скилл для доказательного разбора матча Dota 2 по `match_id`; игрок выбирается по `account_id` или точному имени героя. Перед тренерской интерпретацией встроенный runtime собирает OpenDota, STRATZ и официальный Valve patch timeline, нормализует данные с provenance и открывает только подтверждённые data gates.
+The project targets only the latest exact subpatch. Older matches or matches that cannot be verified against the Valve timeline do not produce a success artifact.
 
-Проект ориентирован только на последний точный подпатч. Старые или не подтверждённые по Valve timeline матчи не создают success-артефакт.
+## Features
 
-## Что уже умеет
+- OpenDota parse-first collection with scoreboard fallback when replay data is unavailable;
+- STRATZ GraphQL enrichment with the required `User-Agent: STRATZ_API`;
+- latest exact-subpatch verification through the Valve timeline;
+- Radiant/Dire draft, lane outcome, final metrics, purchases, and inventory;
+- four game stages, time series, and within-match extrema;
+- allowlisted event timeline and teamfights bounded by match duration;
+- explicit source conflicts with alternatives and provenance preserved;
+- deterministic JSON/Markdown artifacts and safe CLI errors;
+- dependency-free PowerShell and POSIX wrappers;
+- player selection by exact English hero name for reviewing someone else's match;
+- automatic Russian or English user-facing reviews based on the user's language.
 
-- parse-first сбор OpenDota с сохранением базового scoreboard при недоступном replay;
-- STRATZ GraphQL с обязательным `User-Agent: STRATZ_API`;
-- проверка последнего точного подпатча через Valve timeline;
-- Radiant/Dire draft, lane outcome, итоговые метрики, покупки и инвентарь;
-- четыре стадии матча, временные ряды и extrema внутри матча;
-- allowlisted timeline событий и teamfights с проверкой границ duration;
-- явные source conflicts с сохранением альтернатив и provenance;
-- детерминированные JSON/Markdown-артефакты и безопасные CLI-ошибки;
-- PowerShell и POSIX wrappers без npm-зависимостей.
-- выбор игрока по точному английскому имени героя для разбора чужих матчей;
-- автоматический русский или английский язык полного тренерского ответа по языку пользователя.
+Role/rank/patch baselines and deep raw `.dem` analysis are intentionally outside runtime v1. Without a baseline, the skill cannot issue a normative verdict for the role; without `.dem`, it cannot reliably explain every input or missed creep.
 
-Сбор role/rank/patch baseline и глубокий разбор сырого `.dem` намеренно не входят в runtime v1. Без baseline нельзя выдавать нормативный вердикт по роли; без `.dem` нельзя достоверно объяснять каждый input или пропущенного крипа.
+The statistical draft model, strong-player baseline, and deep `.dem` analysis are tracked in [ROADMAP.md](ROADMAP.md).
 
-Следующие этапы — статистическая модель пика, baseline сильных игроков и глубокий `.dem`-анализ — зафиксированы в [ROADMAP.md](ROADMAP.md).
-
-## Требования
+## Requirements
 
 - Node.js 18+;
-- сетевой доступ к OpenDota, STRATZ и Valve;
-- PowerShell на Windows либо POSIX `sh` на macOS/Linux;
-- рекомендуемый `STRATZ_API_KEY` для STRATZ position/lane/playback enrichment; без него скилл явно работает в degraded mode.
+- network access to OpenDota, STRATZ, and Valve;
+- PowerShell on Windows or POSIX `sh` on macOS/Linux;
+- recommended `STRATZ_API_KEY` for STRATZ position/lane/playback enrichment.
 
-`npm install` и `package.json` не нужны.
+No `npm install` or `package.json` is required.
 
-## Установка
+## Install
 
-Установите скилл глобально для Codex через [Vercel Skills](https://github.com/vercel-labs/skills):
+Install globally for Codex with [Vercel Skills](https://github.com/vercel-labs/skills):
 
 ```sh
 npx skills add atlonis/dota2-coach-skill --skill dota2-match-coach --agent codex --global --copy --yes
 ```
 
-Проверьте установку:
+Verify the installation:
 
 ```sh
 npx skills list --global --agent codex
 ```
 
-После установки откройте новую сессию Codex и попросите:
+Open a new Codex session and ask:
 
 ```text
-Используй $dota2-match-coach и разбери матч 8963363814 для account_id 56386500.
+Use $dota2-match-coach to analyze match 8963363814 for account_id 56386500.
 ```
 
-Для чужого матча можно выбрать игрока по герою:
+To review someone else's match, select the player by hero:
 
 ```text
-Используй $dota2-match-coach и разбери игрока на Earth Spirit в матче 8963363814.
+Use $dota2-match-coach to analyze the Earth Spirit player in match 8963363814.
 ```
 
-### Язык ответа
+The skill chooses the platform runtime, gathers data, and checks data gates before starting the review. Set `STRATZ_API_KEY` in the Codex environment for richer position/lane/playback data. A token alone does not enable the planned automatic baseline. See the [runtime contract](dota2-match-coach/references/runtime.md) for token setup, schema, exit codes, and troubleshooting. Never place the token in prompts, commands, repository files, or Git.
 
-Скилл отвечает по-русски на русский запрос и по-английски на английский. Явное указание языка имеет приоритет; в смешанном диалоге используется язык последнего содержательного сообщения. Локализуются заголовки, стадийный разбор, ограничения данных, STRATZ-уведомления и action plan. Названия героев и предметов, API, JSON/schema keys, data gates и error codes остаются без перевода.
+## Language
 
-Скилл сам выберет платформенный runtime, соберёт данные и проверит data gates до начала разбора. Для STRATZ enrichment задайте `STRATZ_API_KEY` в среде Codex. Это открывает position/lane/playback, но автоматический baseline появится на следующем этапе. Настройка токена, schema, exit codes и troubleshooting описаны в [runtime contract](dota2-match-coach/references/runtime.md); не добавляйте токен в команды, файлы или Git.
+The complete user-facing review follows the user's language: a Russian request produces Russian output and an English request produces English output. An explicit language instruction overrides detection; mixed-language conversations follow the last substantive user message.
 
-## Обновление и удаление
+Headings, stage reviews, data limitations, STRATZ notices, and the action plan are localized. Hero and item names, APIs, JSON/schema keys, data gates, and error codes remain unchanged.
+
+## Update and remove
 
 ```sh
 npx skills update dota2-match-coach --global --yes
@@ -76,94 +76,42 @@ npx skills remove dota2-match-coach --global --agent codex --yes
 
 ## Data gates
 
-Runtime записывает `dataQuality.gates`:
+The runtime writes `dataQuality.gates`:
 
-- `scoreboard` — доступны базовые факты матча;
-- `phase_aggregates` — доступны наблюдаемые фазовые метрики;
-- `draft_ready` — известны пять героев Radiant и пять Dire;
-- `event_ready` — сохранён пригодный временной ряд событий;
-- `baseline_ready` — доступна релевантная нормативная выборка;
-- `current_patch` — подтверждён последний точный подпатч.
+- `scoreboard` — basic match facts are available;
+- `phase_aggregates` — observable stage metrics are available;
+- `draft_ready` — five Radiant and five Dire heroes are known;
+- `event_ready` — a usable event timeline is stored;
+- `baseline_ready` — a relevant normative sample is available;
+- `current_patch` — the latest exact subpatch is verified.
 
-Закрытый gate запрещает соответствующий тип вывода. Например, без `event_ready` нельзя придумывать причину конкретного эпизода, а без `baseline_ready` — называть показатель хорошим или плохим относительно роли/rank/patch.
+A closed gate blocks the corresponding conclusion. For example, without `event_ready` the skill cannot invent the cause of a specific episode, and without `baseline_ready` it cannot label a metric good or bad for the relevant role/rank/patch.
 
-## Проверка
+## Validation
 
-Из корня репозитория:
+From the repository root:
 
 ```sh
 node --test dota2-match-coach/test/runtime/*.test.mjs
 ```
 
-Текущий offline-suite содержит 108 тестов и не требует сети. Каждый wrapper запускается только на своей платформе: на macOS и Linux выполняется POSIX-скрипт, на Windows — PowerShell, а неприменимый на текущем хосте тест штатно пропускается. Оба wrapper дополнительно проверяются статически на всех платформах.
+The offline suite contains 108 tests and needs no network access. Each wrapper runs only on its own platform: the POSIX script on macOS and Linux, and PowerShell on Windows. The test that does not apply to the current host is skipped, while both wrappers are also checked statically on every platform.
 
-## Структура
+## Repository structure
 
 ```text
 dota2-match-coach/
-  SKILL.md                 инструкции скилла
-  agents/openai.yaml       метаданные Codex
-  references/              runtime, source policy и review template
-  scripts/                 runtime и платформенные wrappers
+  SKILL.md                 skill instructions
+  agents/openai.yaml       Codex metadata
+  references/              runtime, source policy, and review template
+  scripts/                 runtime and platform wrappers
   test/runtime/            offline node:test suite
-docs/superpowers/          design spec и implementation plan
-RESEARCH.md                исследование источников и решений
+docs/superpowers/          design spec and implementation plan
+RESEARCH.md                source and design research
 ```
 
-Локальные `output/`, секреты и процессные `.superpowers/`-артефакты не входят в репозиторий.
+Local `output/`, secrets, and process-specific `.superpowers/` artifacts are excluded from the repository.
 
-## Политика источников
+## Source policy
 
-OpenDota служит основным источником match object и parse job; STRATZ добавляет position/lane/playback enrichment; Valve подтверждает точный текущий подпатч. Dota2ProTracker, старый Fandom и Valve `GetMatchDetails` не являются runtime-зависимостями. Полные правила находятся в [source policy](dota2-match-coach/references/source-policy.md).
-
-## English
-
-Dota 2 Match Coach is an evidence-based Codex skill for reviewing a current-patch match by `match_id`. The player can be selected by `account_id` or by their hero's exact English name. The bundled runtime collects OpenDota, STRATZ, and Valve patch-timeline data before the coaching interpretation and exposes only conclusions allowed by the available data gates.
-
-### Features
-
-- OpenDota parse-first collection with scoreboard fallback;
-- STRATZ position, lane, and playback enrichment;
-- exact current-subpatch verification through Valve;
-- draft, lane outcome, item build, four game stages, time series, and bounded events;
-- explicit source conflicts, provenance, and degraded mode;
-- automatic Russian or English user-facing reviews;
-- dependency-free Node.js 18+ runtime with PowerShell and POSIX wrappers.
-
-Role/rank/patch baselines, a statistical draft model, and raw `.dem` micro-analysis are planned rather than implemented. See [ROADMAP.md](ROADMAP.md).
-
-### Install
-
-Install globally for Codex with [Vercel Skills](https://github.com/vercel-labs/skills):
-
-```sh
-npx skills add atlonis/dota2-coach-skill --skill dota2-match-coach --agent codex --global --copy --yes
-```
-
-Start a new Codex session and ask:
-
-```text
-Use $dota2-match-coach to analyze match 8963363814 for account_id 56386500.
-```
-
-Or select a player in someone else's match by hero:
-
-```text
-Use $dota2-match-coach to analyze the Earth Spirit player in match 8963363814.
-```
-
-### Language
-
-The complete user-facing review follows the user's language: a Russian request produces Russian output and an English request produces English output. An explicit language request overrides detection; mixed-language conversations follow the last substantive user message. Hero and item names, APIs, JSON/schema keys, data gates, and error codes remain unchanged.
-
-### Data and validation
-
-Set `STRATZ_API_KEY` in the Codex environment for richer position/lane/playback data. Never place the token in prompts, commands, repository files, or Git. Without it, the skill explains the missing enrichment and continues in degraded OpenDota mode.
-
-The offline suite contains 108 tests and needs no network access. Each wrapper is executed only on its own platform — the POSIX script on macOS and Linux, PowerShell on Windows — and the test that does not apply to the current host is skipped:
-
-```sh
-node --test dota2-match-coach/test/runtime/*.test.mjs
-```
-
-The runtime contract is documented in [runtime.md](dota2-match-coach/references/runtime.md), source rules in [source-policy.md](dota2-match-coach/references/source-policy.md), and the coaching format in [review-template.md](dota2-match-coach/references/review-template.md).
+OpenDota is the primary source for the match object and parse job. STRATZ adds position/lane/playback enrichment, while Valve verifies the exact current subpatch. Dota2ProTracker, the old Fandom wiki, and Valve `GetMatchDetails` are not runtime dependencies. See the full [source policy](dota2-match-coach/references/source-policy.md).
