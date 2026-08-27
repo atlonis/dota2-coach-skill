@@ -2,7 +2,7 @@
 
 [English](README.md) | [Русский](README.ru.md)
 
-An evidence-based Codex skill for reviewing a current-patch Dota 2 match by `match_id`. Select the player by `account_id` or by their hero's exact English name. Before coaching interpretation, the bundled runtime collects OpenDota, STRATZ, and the official Valve patch timeline, normalizes the evidence with provenance, and opens only conclusions supported by the available data gates.
+An evidence-based agent skill for reviewing a current-patch Dota 2 match by `match_id`. Select the player by `account_id` or by their hero's exact English name. Before coaching interpretation, the bundled runtime collects OpenDota, STRATZ, and the official Valve patch timeline, normalizes the evidence with provenance, and opens only conclusions supported by the available data gates.
 
 The project targets only the latest exact subpatch. Older matches or matches that cannot be verified against the Valve timeline do not produce a success artifact.
 
@@ -35,19 +35,19 @@ No `npm install` or `package.json` is required.
 
 ## Install
 
-Install globally for Codex with [Vercel Skills](https://github.com/vercel-labs/skills):
+Install globally with [Vercel Skills](https://github.com/vercel-labs/skills). The CLI will let you choose which detected agent or agents should receive the skill:
 
 ```sh
-npx skills add atlonis/dota2-coach-skill --skill dota2-match-coach --agent codex --global --copy --yes
+npx skills add atlonis/dota2-coach-skill --skill dota2-match-coach --global --copy
 ```
 
 Verify the installation:
 
 ```sh
-npx skills list --global --agent codex
+npx skills list --global
 ```
 
-Open a new Codex session and ask:
+Open a new session in the agent where you installed the skill and ask:
 
 ```text
 Use $dota2-match-coach to analyze match 8963363814 for account_id 56386500.
@@ -59,7 +59,7 @@ To review someone else's match, select the player by hero:
 Use $dota2-match-coach to analyze the Earth Spirit player in match 8963363814.
 ```
 
-The skill chooses the platform runtime, gathers data, and checks data gates before starting the review. Set `STRATZ_API_KEY` in the Codex environment for richer position/lane/playback data. A token alone does not enable the planned automatic baseline. See the [runtime contract](dota2-match-coach/references/runtime.md) for token setup, schema, exit codes, and troubleshooting. Never place the token in prompts, commands, repository files, or Git.
+The skill chooses the platform runtime, gathers data, and checks data gates before starting the review. Set `STRATZ_API_KEY` in the environment of your chosen agent for richer position/lane/playback data. A token alone does not enable the planned automatic baseline. See the [runtime contract](dota2-match-coach/references/runtime.md) for token setup, schema, exit codes, and troubleshooting. Never place the token in prompts, commands, repository files, or Git.
 
 ## Language
 
@@ -71,7 +71,7 @@ Headings, stage reviews, data limitations, STRATZ notices, and the action plan a
 
 ```sh
 npx skills update dota2-match-coach --global --yes
-npx skills remove dota2-match-coach --global --agent codex --yes
+npx skills remove dota2-match-coach --global
 ```
 
 ## Data gates
@@ -102,7 +102,7 @@ The offline suite contains 108 tests and needs no network access. Each wrapper r
 ```text
 dota2-match-coach/
   SKILL.md                 skill instructions
-  agents/openai.yaml       Codex metadata
+  agents/openai.yaml       OpenAI-compatible UI metadata
   references/              runtime, source policy, and review template
   scripts/                 runtime and platform wrappers
   test/runtime/            offline node:test suite

@@ -2,7 +2,7 @@
 
 [English](README.md) | [Русский](README.ru.md)
 
-Codex-скилл для доказательного разбора матча Dota 2 текущего патча по `match_id`. Игрок выбирается по `account_id` или точному английскому имени героя. Перед тренерской интерпретацией встроенный runtime собирает OpenDota, STRATZ и официальный Valve patch timeline, нормализует данные с provenance и открывает только подтверждённые data gates.
+Агентский скилл для доказательного разбора матча Dota 2 текущего патча по `match_id`. Игрок выбирается по `account_id` или точному английскому имени героя. Перед тренерской интерпретацией встроенный runtime собирает OpenDota, STRATZ и официальный Valve patch timeline, нормализует данные с provenance и открывает только подтверждённые data gates.
 
 Проект ориентирован только на последний точный подпатч. Старые или не подтверждённые по Valve timeline матчи не создают success-артефакт.
 
@@ -35,19 +35,19 @@ Codex-скилл для доказательного разбора матча D
 
 ## Установка
 
-Установите скилл глобально для Codex через [Vercel Skills](https://github.com/vercel-labs/skills):
+Установите скилл глобально через [Vercel Skills](https://github.com/vercel-labs/skills). CLI предложит выбрать, в какого обнаруженного агента или агентов его добавить:
 
 ```sh
-npx skills add atlonis/dota2-coach-skill --skill dota2-match-coach --agent codex --global --copy --yes
+npx skills add atlonis/dota2-coach-skill --skill dota2-match-coach --global --copy
 ```
 
 Проверьте установку:
 
 ```sh
-npx skills list --global --agent codex
+npx skills list --global
 ```
 
-После установки откройте новую сессию Codex и попросите:
+После установки откройте новую сессию выбранного агента и попросите:
 
 ```text
 Используй $dota2-match-coach и разбери матч 8963363814 для account_id 56386500.
@@ -59,7 +59,7 @@ npx skills list --global --agent codex
 Используй $dota2-match-coach и разбери игрока на Earth Spirit в матче 8963363814.
 ```
 
-Скилл сам выберет платформенный runtime, соберёт данные и проверит data gates до начала разбора. Для расширенных position/lane/playback данных задайте `STRATZ_API_KEY` в среде Codex. Один токен не включает запланированный автоматический baseline. Настройка токена, schema, exit codes и troubleshooting описаны в [runtime contract](dota2-match-coach/references/runtime.md). Не добавляйте токен в запросы, команды, файлы проекта или Git.
+Скилл сам выберет платформенный runtime, соберёт данные и проверит data gates до начала разбора. Для расширенных position/lane/playback данных задайте `STRATZ_API_KEY` в среде выбранного агента. Один токен не включает запланированный автоматический baseline. Настройка токена, schema, exit codes и troubleshooting описаны в [runtime contract](dota2-match-coach/references/runtime.md). Не добавляйте токен в запросы, команды, файлы проекта или Git.
 
 ## Язык ответа
 
@@ -71,7 +71,7 @@ npx skills list --global --agent codex
 
 ```sh
 npx skills update dota2-match-coach --global --yes
-npx skills remove dota2-match-coach --global --agent codex --yes
+npx skills remove dota2-match-coach --global
 ```
 
 ## Data gates
@@ -102,7 +102,7 @@ node --test dota2-match-coach/test/runtime/*.test.mjs
 ```text
 dota2-match-coach/
   SKILL.md                 инструкции скилла
-  agents/openai.yaml       метаданные Codex
+  agents/openai.yaml       OpenAI-совместимые UI-метаданные
   references/              runtime, source policy и review template
   scripts/                 runtime и платформенные wrappers
   test/runtime/            offline node:test suite
