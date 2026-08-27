@@ -1,3 +1,6 @@
+import { rankLabel } from './rank.mjs';
+import { bracketLabelFor, positionEnumFor } from './baseline.mjs';
+
 const SCHEMA_VERSION = '1.0.0';
 const PHASES = [
   { id: 'lane', start: 0, end: 600 },
@@ -14,6 +17,19 @@ const SERIES_METRICS = [
   ['heroDamage', 'hero_damage_t', 'heroDamagePerMin'],
 ];
 const EVENT_METRICS = [['kills', 'killEvents'], ['deaths', 'deathEvents'], ['assists', 'assistEvents']];
+// Сопоставимые ряды. `netWorth` помечен как cross-source proxy: игрок берётся из
+// OpenDota `gold_t`, а baseline — из STRATZ `networth`, и это разные измерения.
+const BASELINE_COMPARISONS = [
+  { metric: 'lastHits', playerSeries: 'lh_t', baselineMetric: 'cs', crossSourceProxy: false },
+  { metric: 'denies', playerSeries: 'dn_t', baselineMetric: 'dn', crossSourceProxy: false },
+  { metric: 'xp', playerSeries: 'xp_t', baselineMetric: 'xp', crossSourceProxy: false },
+  { metric: 'heroDamage', playerSeries: 'hero_damage_t', baselineMetric: 'heroDamage', crossSourceProxy: false },
+  { metric: 'netWorth', playerSeries: 'gold_t', baselineMetric: 'networth', crossSourceProxy: true },
+];
+const BASELINE_MINUTES = [10, 15, 25];
+const BASELINE_MAX_MINUTE = 75;
+const BASELINE_MIN_SAMPLE = 200;
+
 const EXTREMA_METRICS = SERIES_METRICS.map(([, , rate]) => rate).concat(EVENT_METRICS.map(([metric]) => metric));
 
 export class NormalizationError extends Error {
@@ -26,6 +42,12 @@ export class NormalizationError extends Error {
 
 function sourced(value, source) {
   return { value: value ?? null, source: value == null ? null : source };
+}
+
+function rankField(code) {
+  const field = sourced(code, 'stratz');
+  field.label = field.value == null ? null : rankLabel(field.value);
+  return field;
 }
 
 function finiteNumber(value) {
@@ -308,6 +330,90 @@ function purchasesFor(openPlayer, stratzPlayer, duration) {
     .sort((left, right) => left.time - right.time || left.source.localeCompare(right.source));
 }
 
+
+function baselineMinutes(duration) {
+  const final = finiteNumber(duration) ? Math.floor(duration / 60) : null;
+  const minutes = [...BASELINE_MINUTES, final]
+    .filter((minute) => Number.isInteger(minute) && minute >= 1 && minute <= BASELINE_MAX_MINUTE)
+    .filter((minute) => !finiteNumber(duration) || minute * 60 <= duration);
+  return [...new Set(minutes)].sort((left, right) => left - right);
+}
+
+function cumulativeDeathsAt(events, minute) {
+  const deaths = Array.isArray(events?.deaths) ? events.deaths.filter((death) => finiteNumber(death?.time)) : [];
+  return deaths.length === 0 ? null : deaths.filter((death) => death.time <= minute * 60).length;
+}
+
+function comparisonRow({ metric, minute, playerValue, baselineValue, matchCount, crossSourceProxy }) {
+  const delta = playerValue - baselineValue;
+  return {
+    metric,
+    minute,
+    player: playerValue,
+    baseline: baselineValue,
+    delta: Number(delta.toFixed(2)),
+    ratio: baselineValue === 0 ? null : Number((playerValue / baselineValue).toFixed(3)),
+    matchCount,
+    crossSourceProxy,
+    source: 'stratz',
+  };
+}
+
+export function buildBaseline({ baseline, openPlayer, events, duration, patch, rankCode, position }) {
+  const empty = { sameHeroPositionRankPatch: null, comparisons: [] };
+  if (!baseline || baseline.status !== 'ready') {
+    return {
+      status: baseline?.status ?? 'unavailable',
+      reason: baseline?.reason ?? (baseline ? null : 'not_requested'),
+      ...(baseline?.error?.code ? { error: { code: baseline.error.code } } : {}),
+      ...empty,
+    };
+  }
+  const minutes = baselineMinutes(duration);
+  const byMinute = new Map((baseline.points ?? []).map((point) => [point.minute, point]));
+  const points = [];
+  const comparisons = [];
+  for (const minute of minutes) {
+    const point = byMinute.get(minute);
+    if (!point || !finiteNumber(point.matchCount) || point.matchCount < BASELINE_MIN_SAMPLE) continue;
+    points.push(point);
+    for (const spec of BASELINE_COMPARISONS) {
+      const sample = seriesSampleAt(openPlayer?.[spec.playerSeries], minute * 60);
+      const baselineValue = point[spec.baselineMetric];
+      if (!sample || sample.index !== minute || !finiteNumber(baselineValue)) continue;
+      comparisons.push(comparisonRow({
+        metric: spec.metric, minute, playerValue: sample.value, baselineValue,
+        matchCount: point.matchCount, crossSourceProxy: spec.crossSourceProxy,
+      }));
+    }
+    const playerDeaths = cumulativeDeathsAt(events, minute);
+    if (playerDeaths != null && finiteNumber(point.deaths)) {
+      comparisons.push(comparisonRow({
+        metric: 'deaths', minute, playerValue: playerDeaths, baselineValue: point.deaths,
+        matchCount: point.matchCount, crossSourceProxy: false,
+      }));
+    }
+  }
+  if (comparisons.length === 0) return { status: 'unavailable', reason: 'no_comparable_point', ...empty };
+  return {
+    status: 'ready',
+    reason: null,
+    sameHeroPositionRankPatch: {
+      heroId: baseline.heroId,
+      position: baseline.position ?? positionEnumFor(position),
+      bracket: baseline.bracket,
+      bracketLabel: bracketLabelFor(baseline.bracket),
+      rankCode: finiteNumber(rankCode) ? rankCode : null,
+      patch: patch ?? null,
+      weeks: Array.isArray(baseline.weeks) ? [...baseline.weeks] : [],
+      statistic: 'mean',
+      source: 'stratz',
+      points,
+    },
+    comparisons,
+  };
+}
+
 export function dataQualityFor(model) {
   const events = model.events ?? {};
   const hasTimed = (name, field = 'time') => Array.isArray(events[name]) && events[name].some((event) => finiteNumber(event?.[field]));
@@ -317,7 +423,8 @@ export function dataQualityFor(model) {
       || Object.keys(events).some((name) => hasTimed(name, name === 'teamfights' ? 'start' : 'time'))),
     draft_ready: Boolean(model.draft?.complete && model.draft?.radiant?.length === 5 && model.draft?.dire?.length === 5),
     event_ready: Boolean(hasTimed('deaths') && (hasTimed('positions') || hasTimed('teamfights', 'start') || hasTimed('runes') || hasTimed('abilityUses'))),
-    baseline_ready: Boolean(model.baseline?.sameHeroPositionRankPatch),
+    baseline_ready: Boolean(model.baseline?.sameHeroPositionRankPatch?.points?.length > 0
+      && model.baseline?.comparisons?.length > 0),
     current_patch: Boolean(model.patch?.isCurrentExactPatch?.value === true),
   };
   const missing = [];
@@ -335,7 +442,7 @@ export function dataQualityFor(model) {
   };
 }
 
-export function normalizeEvidence({ matchId, accountId, openDota, stratz, valve, generatedAt } = {}) {
+export function normalizeEvidence({ matchId, accountId, openDota, stratz, valve, baseline, generatedAt } = {}) {
   const { openPlayer, stratzPlayer } = resolvePlayer(accountId, openDota, stratz);
   const warnings = [];
   const field = (label, openValue, stratzValue) => resolvedField(label, [
@@ -376,7 +483,7 @@ export function normalizeEvidence({ matchId, accountId, openDota, stratz, valve,
     side,
     position,
     lane: sourced(stratzPlayer?.lane, 'stratz'),
-    rank: sourced(stratz?.match?.rank, 'stratz'),
+    rank: rankField(stratz?.match?.rank),
     kills: summary.kills,
     deaths: summary.deaths,
     assists: summary.assists,
@@ -416,6 +523,15 @@ export function normalizeEvidence({ matchId, accountId, openDota, stratz, valve,
       isCurrentExactPatch: sourced(valve?.status === 'ready' ? valve.isCurrentExactPatch : null, 'valve'),
     },
     phases: buildPhases(openPlayer ?? {}, stratzPlayer, duration),
+    baseline: buildBaseline({
+      baseline,
+      openPlayer,
+      events,
+      duration,
+      patch: valve?.currentPatch ?? null,
+      rankCode: stratz?.match?.rank ?? null,
+      position: position?.value ?? null,
+    }),
     eventInventory: eventInventory(events),
     warnings,
   };

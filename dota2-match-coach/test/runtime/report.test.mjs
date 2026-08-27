@@ -22,7 +22,7 @@ function evidenceModel() {
     },
     player: {
       accountId: { value: 56386500, source: 'opendota' }, heroId: { value: 107, source: 'opendota' },
-      side: { value: 'radiant', source: 'opendota' }, position: { value: 2, source: 'opendota' }, lane: { value: 'MID', source: 'stratz' }, rank: { value: 42, source: 'stratz' },
+      side: { value: 'radiant', source: 'opendota' }, position: { value: 2, source: 'opendota' }, lane: { value: 'MID', source: 'stratz' }, rank: { value: 42, label: 'Archon 2', source: 'stratz' },
       kills: { value: 8, source: 'opendota' }, deaths: { value: 2, source: 'opendota' }, assists: { value: 6, source: 'opendota' }, result: { value: 'win', source: 'opendota' },
     },
     draft: { radiant: [{ value: 107, source: 'opendota' }], dire: [{ value: 1, source: 'opendota' }], complete: false },
@@ -42,8 +42,21 @@ function evidenceModel() {
     series: { gold: { values: [0, 100], source: 'opendota' }, xp: { values: [0, 120], source: 'opendota' }, lh: { values: [0, 1], source: 'opendota' }, denies: { values: [0, 0], source: 'opendota' } },
     patch: { match: { value: '7.40', source: 'valve' }, current: { value: '7.40', source: 'valve' }, isCurrentExactPatch: { value: true, source: 'valve' } },
     phases: [{ id: 'midgame', start: 900, end: 1500, interval: '15–25', metrics: { lhPerMin: 7.4, heroDamagePerMin: 348 }, extremaWithinMatch: ['lhPerMin:max', 'heroDamagePerMin:min'] }],
+    baseline: {
+      status: 'ready',
+      reason: null,
+      sameHeroPositionRankPatch: {
+        heroId: 107, rankCode: 42, position: 'POSITION_2', bracket: 'CRUSADER_ARCHON', bracketLabel: 'Crusader–Archon',
+        patch: '7.40', statistic: 'mean', source: 'stratz', weeks: [2953, 2954],
+        points: [{ minute: 10, matchCount: 1200, networth: 3600, cs: 45.5, dn: 6.7, xp: 4300, level: 7.8, kills: 1.4, deaths: 0.9, assists: 0.6, heroDamage: 4400 }],
+      },
+      comparisons: [
+        { metric: 'lastHits', minute: 10, player: 60, baseline: 45.5, delta: 14.5, ratio: 1.319, matchCount: 1200, crossSourceProxy: false, source: 'stratz' },
+        { metric: 'netWorth', minute: 10, player: 3200, baseline: 3600, delta: -400, ratio: 0.889, matchCount: 1200, crossSourceProxy: true, source: 'stratz' },
+      ],
+    },
     eventInventory: { timedEvents: false, deaths: false, positions: false, fights: false, runes: false, abilityUses: false },
-    dataQuality: { mode: 'degraded', gates: { scoreboard: true, phase_aggregates: true, draft_ready: false, event_ready: false, baseline_ready: false, current_patch: true }, missing: ['event timeline'], warnings: ['Position unavailable'] },
+    dataQuality: { mode: 'degraded', gates: { scoreboard: true, phase_aggregates: true, draft_ready: false, event_ready: false, baseline_ready: true, current_patch: true }, missing: ['event timeline'], warnings: ['Position unavailable'] },
     warnings: ['Position unavailable'],
   };
 }
@@ -66,6 +79,19 @@ test('aggregate-only report localizes metrics without inventing a cause', () => 
   assert.match(markdown, /приоритет.*разбор/i);
   assert.match(markdown, /не диагноз/i);
   assert.doesNotMatch(markdown, /фармил вместо|потерял темп|обязан был ротировать/i);
+});
+
+test('renders the rank code with its label and marks the row as the match bracket', () => {
+  const markdown = renderEvidenceMarkdown(evidenceModel());
+
+  assert.match(markdown, /| rank (средний bracket матча) | 42 — Archon 2 (источник: stratz) |/);
+});
+
+test('renders an unknown rank code without inventing a label', () => {
+  const model = evidenceModel();
+  model.player.rank = { value: 99, label: null, source: 'stratz' };
+
+  assert.match(renderEvidenceMarkdown(model), /| 99 — лейбл неизвестен (источник: stratz) |/);
 });
 
 test('renderer uses every fixed evidence section for a full model', () => {

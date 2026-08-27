@@ -26,7 +26,7 @@ unset runtime_token
 
 Без переменной runtime не делает запрос к STRATZ и записывает `sources.stratz.status: "unavailable"` с причиной `"missing_token"`. Это не делает доступные данные OpenDota недействительными. Финальный ответ должен предложить подключить STRATZ для position/lane/playback enrichment, назвать конкретно недоступные данные и продолжить разрешённый OpenDota-разбор в degraded mode. Токен не следует просить вставить в чат.
 
-Текущий STRATZ-запрос не собирает role/rank/patch baseline или leaderboard сильных игроков. Поэтому наличие токена само по себе не открывает `baseline_ready`.
+Runtime собирает peer baseline вторым запросом к STRATZ `heroStats.stats`. Leaderboard сильных игроков и self-baseline по-прежнему не собираются, поэтому токен сам по себе `baseline_ready` не гарантирует.
 
 ## Запуск
 
@@ -82,11 +82,29 @@ JSON — нормализованная evidence model, а Markdown — её д�
 
 ```text
 schemaVersion, generatedAt, request, sources, match, player, draft, lane,
-summary, items, events, series, patch, phases, eventInventory, dataQuality,
-warnings
+summary, items, events, series, patch, phases, baseline, eventInventory,
+dataQuality, warnings
 ```
 
 `draft.radiant` и `draft.dire` хранят стороны отдельно; `draft_ready` открывается только при пяти различных героях с каждой стороны. `events` содержит компактный allowlisted таймлайн выбранного игрока из STRATZ и валидированные `teamfights` OpenDota с `source` у каждой записи. Булевый `eventInventory` сам по себе не открывает `event_ready`: в записываемом артефакте должны остаться пригодные события с таймкодами. `summary`, `items`, `series` и `phases` содержат итоговые метрики, финальный инвентарь/покупки, исходные ряды и фазовые дельты/экстремумы. Материальные расхождения источников сохраняются как `candidates` с provenance и предупреждением.
+
+`player.rank` хранит сырой двузначный код STRATZ и его человекочитаемый `label`: десятки — медаль (`Herald`…`Immortal`), единицы — звезда. `60` → `Ancient`, `42` → `Archon 2`, `80` → `Immortal`. Неизвестный код оставляет `label: null` и в Markdown печатается как `лейбл неизвестен`; выдумывать медаль по незнакомому коду нельзя. Это средний bracket матча, а не подтверждённый ранг конкретного игрока, и он не является baseline.
+
+### Baseline
+
+`baseline` — нормативная выборка того же героя, позиции и bracket на текущем патче. Она собирается вторым запросом к STRATZ `heroStats.stats` уже после нормализации, потому что селекторы известны только оттуда. Отказ baseline никогда не отменяет остальные факты матча.
+
+`baseline.sameHeroPositionRankPatch` описывает выборку: `heroId`, `position`, `bracket` с человекочитаемым `bracketLabel`, `patch`, список `weeks` и `points` — кумулятивные средние на выбранных минутах с собственным `matchCount` у каждой. `baseline.comparisons` содержит готовые строки сравнения: `metric`, `minute`, `player`, `baseline`, `delta`, `ratio`, `matchCount` и `crossSourceProxy`.
+
+Ограничения, которые нужно называть в ответе:
+
+- `statistic` всегда `mean`. Источник не отдаёт перцентили, поэтому «ты в нижних 30%» сказать нельзя — только отношение к среднему.
+- Bracket грубый, четыре корзины: `HERALD_GUARDIAN`, `CRUSADER_ARCHON`, `LEGEND_ANCIENT`, `DIVINE_IMMORTAL`.
+- Патч фильтруется неделями. Берутся только недели, целиком лежащие внутри текущего патча, максимум шесть последних; неделя, пересекающая границу патча, отбрасывается целиком.
+- Минута попадает в выборку только при `matchCount` не меньше 200, а `matchCount` естественно падает к поздним минутам: сравнение на 50-й минуте обусловлено тем, что матч до неё дожил.
+- `crossSourceProxy: true` стоит на `netWorth`: значение игрока берётся из OpenDota `gold_t`, а baseline — из STRATZ `networth`. Это разные измерения, и уверенность по такой строке ниже.
+
+Возможные `baseline.reason` при закрытом гейте: `not_requested`, `missing_token`, `hero_unknown`, `position_unknown`, `rank_unknown`, `no_full_week_in_current_patch`, `empty_sample`, `no_comparable_point`. При `status: "failed"` причина заменяется безопасным `error.code`.
 
 `sources` содержит `opendota`, `stratz` и `valve`. Каждый источник имеет `status` (`ready`, `unavailable`, `failed` или `not_found`) и, если применимо, безопасные `reason`, `error.code` и `parse` (`requested`, `state`). Для OpenDota parse state может быть `not_requested`, `requested`, `completed`, `timeout`, `unavailable`, `failed` или `error`.
 
@@ -98,7 +116,7 @@ warnings
 | `phase_aggregates` | сравнение наблюдаемых фаз внутри матча |
 | `draft_ready` | полный пик и контекст пика |
 | `event_ready` | таймлайн событий и анализ конкретного эпизода |
-| `baseline_ready` | нормативное сравнение по роли/rank/patch |
+| `baseline_ready` | нормативное сравнение с выборкой hero + position + bracket на текущем патче |
 | `current_patch` | анализ в области поддерживаемого точного текущего подпатча |
 
 `dataQuality.mode: "degraded"`, `missing` или закрытый gate ограничивают выводы по [review template](review-template.md); не заполняйте закрытые слоты догадками.
@@ -115,7 +133,7 @@ Evidence Markdown — это **не** финальный тренерский о
 | `error.code: "auth"` (HTTP 401/403) | Токен отсутствует, неверен или не имеет доступа | Проверьте secret manager/переменную в текущей сессии и права токена; не печатайте его для диагностики. |
 | `error.code: "invalid_response"` и HTML/Cloudflare | API вернул не JSON, часто challenge/proxy-страницу | Не парсите HTML и не обходите challenge; повторите позднее из разрешённой сети или используйте доступные источники. |
 | `error.code: "rate_limited"` (HTTP 429) | Временный лимит источника | Подождите и запустите запрос позднее. Не делайте агрессивный параллельный retry. |
-| `error.code: "network"`, `"timeout"` или `"http"` | Временная сеть/серверная ошибка | Сохраните статус источника, повторите позже и оставьте соответствующие гейты закрытыми. |
+| `error.code: "network"`, `"timeout"` или `"http"` | Временная сеть/серверная ошибка | Сохраните статус источника, повторите позже и оставьте соответствующие гейты закрытыми. STRATZ периодически отдаёт `503` на тяжёлый match-запрос при неисчерпанной квоте, поэтому один такой отказ — не признак неверного токена. |
 | `error: patch_unverified` | Valve timeline недоступен или точный патч не подтверждён | Runtime завершился с кодом `4` и не записал success-артефакт; повторите после восстановления timeline. |
 | `error: unsupported_patch` | Матч относится не к последнему точному подпатчу | Runtime завершился с кодом `4` и не записал success-артефакт; этот матч вне области первой версии. |
 

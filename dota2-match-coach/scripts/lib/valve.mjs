@@ -11,6 +11,7 @@ export function resolveTimeline(patches, startTime) {
   return {
     matchPatch: match?.patch_number ?? null,
     currentPatch: current?.patch_number ?? null,
+    currentPatchStartTime: current?.patch_timestamp ?? null,
     isCurrentExactPatch: Boolean(match && current && match.patch_number === current.patch_number),
   };
 }

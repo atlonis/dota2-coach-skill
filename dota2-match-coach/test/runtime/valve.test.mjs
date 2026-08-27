@@ -14,7 +14,7 @@ test('resolves the match patch and exact current subpatch from timestamps', asyn
   const result = await createValveClient({ fetchImpl }).resolvePatch(1785400000);
 
   assert.deepEqual(result, {
-    status: 'ready', matchPatch: '7.41e', currentPatch: '7.41e', isCurrentExactPatch: true,
+    status: 'ready', matchPatch: '7.41e', currentPatch: '7.41e', currentPatchStartTime: 1785394800, isCurrentExactPatch: true,
   });
 });
 
@@ -30,7 +30,7 @@ test('sorts an unsorted timeline and keeps an older match outside the exact-patc
   const result = await createValveClient({ fetchImpl }).resolvePatch(1781000000);
 
   assert.deepEqual(result, {
-    status: 'ready', matchPatch: '7.41d', currentPatch: '7.41e', isCurrentExactPatch: false,
+    status: 'ready', matchPatch: '7.41d', currentPatch: '7.41e', currentPatchStartTime: 1785394800, isCurrentExactPatch: false,
   });
 });
 
@@ -43,7 +43,7 @@ test('returns no match patch when the match predates every known patch', async (
   const result = await createValveClient({ fetchImpl }).resolvePatch(1780000000);
 
   assert.deepEqual(result, {
-    status: 'ready', matchPatch: null, currentPatch: '7.41e', isCurrentExactPatch: false,
+    status: 'ready', matchPatch: null, currentPatch: '7.41e', currentPatchStartTime: 1785394800, isCurrentExactPatch: false,
   });
 });
 

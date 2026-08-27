@@ -18,9 +18,9 @@ function openDotaPlayer(extra = {}) {
   };
 }
 
-function normalize({ player = openDotaPlayer(), match = {}, stratz = { status: 'unavailable', reason: 'missing_token' }, valve } = {}) {
+function normalize({ player = openDotaPlayer(), match = {}, stratz = { status: 'unavailable', reason: 'missing_token' }, valve, baseline } = {}) {
   return normalizeEvidence({
-    matchId: 1, accountId, generatedAt,
+    matchId: 1, accountId, generatedAt, baseline,
     openDota: { status: 'ready', match: { duration: 120, radiant_win: true, players: [player], ...match }, parse: { state: 'completed' } },
     stratz, valve,
   });
@@ -73,6 +73,7 @@ test('builds the pinned canonical evidence schema with provenance', () => {
     candidates: [{ value: 7, source: 'opendota' }, { value: 'RANKED', source: 'stratz' }],
   });
   assert.deepEqual(model.player.side, { value: 'radiant', source: 'opendota' });
+  assert.deepEqual(model.player.rank, { value: 42, label: 'Archon 2', source: 'stratz' });
   assert.deepEqual(model.lane.outcome, { value: 'RADIANT_VICTORY', source: 'stratz' });
   assert.deepEqual(model.summary.kda, { kills: 4, deaths: 2, assists: 6, source: 'opendota' });
   assert.deepEqual(model.summary.denies, { value: 1, source: 'opendota' });
@@ -81,6 +82,17 @@ test('builds the pinned canonical evidence schema with provenance', () => {
   assert.deepEqual(model.series.denies, { values: [0, 0, 1], source: 'opendota' });
   assert.deepEqual(model.events.deaths[0], { time: 100, attacker: 8, positionX: 10, positionY: 20, timeDead: 12, source: 'stratz' });
   assert.deepEqual(model.events.teamfights, []);
+});
+
+test('keeps the rank label null when STRATZ is missing or the code is unknown', () => {
+  const withoutStratz = normalize({ match: { start_time: 1785400000 } });
+  assert.deepEqual(withoutStratz.player.rank, { value: null, label: null, source: null });
+
+  const unknownCode = normalize({
+    match: { start_time: 1785400000 },
+    stratz: { status: 'ready', match: { rank: 99, players: [{ steamAccountId: accountId, heroId: 107, isRadiant: true }] } },
+  });
+  assert.deepEqual(unknownCode.player.rank, { value: 99, label: null, source: 'stratz' });
 });
 
 test('preserves material cross-source summary disagreements', () => {
@@ -433,4 +445,104 @@ test('retains ties for a metric while omitting labels for metrics with no values
   assert.deepEqual(phases.map((phase) => phase.extremaWithinMatch), [
     ['goldPerMin:max', 'goldPerMin:min'],
   ]);
+});
+
+function longMatchPlayer() {
+  const minutes = 26;
+  const ramp = (step) => Array.from({ length: minutes }, (_, minute) => minute * step);
+  return openDotaPlayer({
+    gold_t: ramp(400), xp_t: ramp(500), lh_t: ramp(6), dn_t: ramp(1), hero_damage_t: ramp(700),
+  });
+}
+
+function readyBaseline(points) {
+  return { status: 'ready', heroId: 107, position: 'POSITION_2', bracket: 'LEGEND_ANCIENT', weeks: [2953, 2954], points };
+}
+
+const baselinePoint = (minute, matchCount) => ({
+  minute, matchCount, cs: 45, dn: 6, xp: 4000, heroDamage: 4400, networth: 3600, deaths: 1,
+});
+
+test('compares the player against the peer sample only at minutes both series actually reach', () => {
+  const model = normalize({
+    player: longMatchPlayer(),
+    match: { duration: 1500 },
+    stratz: { status: 'ready', match: { rank: 60, players: [] } },
+    valve: { status: 'ready', currentPatch: '7.41e' },
+    baseline: readyBaseline([baselinePoint(10, 90_000), baselinePoint(15, 88_000), baselinePoint(25, 80_000)]),
+  });
+
+  assert.equal(model.baseline.status, 'ready');
+  assert.equal(model.dataQuality.gates.baseline_ready, true);
+  assert.deepEqual(model.baseline.sameHeroPositionRankPatch.weeks, [2953, 2954]);
+  assert.equal(model.baseline.sameHeroPositionRankPatch.statistic, 'mean');
+  assert.equal(model.baseline.sameHeroPositionRankPatch.bracketLabel, 'Legend–Ancient');
+  assert.deepEqual([...new Set(model.baseline.comparisons.map((row) => row.minute))], [10, 15, 25]);
+
+  const lastHits = model.baseline.comparisons.find((row) => row.metric === 'lastHits' && row.minute === 10);
+  assert.deepEqual(lastHits, {
+    metric: 'lastHits', minute: 10, player: 60, baseline: 45, delta: 15, ratio: 1.333,
+    matchCount: 90_000, crossSourceProxy: false, source: 'stratz',
+  });
+});
+
+test('marks the net-worth comparison as a cross-source proxy', () => {
+  const model = normalize({
+    player: longMatchPlayer(),
+    match: { duration: 1500 },
+    stratz: { status: 'ready', match: { rank: 60, players: [] } },
+    baseline: readyBaseline([baselinePoint(10, 90_000)]),
+  });
+
+  const netWorth = model.baseline.comparisons.find((row) => row.metric === 'netWorth');
+  assert.equal(netWorth.crossSourceProxy, true);
+  for (const row of model.baseline.comparisons.filter((entry) => entry.metric !== 'netWorth')) {
+    assert.equal(row.crossSourceProxy, false);
+  }
+});
+
+test('drops a baseline minute whose sample is too thin to compare against', () => {
+  const model = normalize({
+    player: longMatchPlayer(),
+    match: { duration: 1500 },
+    stratz: { status: 'ready', match: { rank: 60, players: [] } },
+    baseline: readyBaseline([baselinePoint(10, 12), baselinePoint(25, 80_000)]),
+  });
+
+  assert.deepEqual([...new Set(model.baseline.comparisons.map((row) => row.minute))], [25]);
+  assert.deepEqual(model.baseline.sameHeroPositionRankPatch.points.map((point) => point.minute), [25]);
+});
+
+test('keeps baseline_ready closed when no minute survives the sample floor', () => {
+  const model = normalize({
+    player: longMatchPlayer(),
+    match: { duration: 1500 },
+    stratz: { status: 'ready', match: { rank: 60, players: [] } },
+    baseline: readyBaseline([baselinePoint(10, 12)]),
+  });
+
+  assert.deepEqual(model.baseline, { status: 'unavailable', reason: 'no_comparable_point', sameHeroPositionRankPatch: null, comparisons: [] });
+  assert.equal(model.dataQuality.gates.baseline_ready, false);
+  assert.equal(model.dataQuality.missing.includes('baseline comparison'), true);
+});
+
+test('passes an unavailable baseline through without inventing a sample', () => {
+  const model = normalize({
+    player: longMatchPlayer(),
+    match: { duration: 1500 },
+    baseline: { status: 'unavailable', reason: 'no_full_week_in_current_patch' },
+  });
+
+  assert.deepEqual(model.baseline, {
+    status: 'unavailable', reason: 'no_full_week_in_current_patch', sameHeroPositionRankPatch: null, comparisons: [],
+  });
+  assert.equal(model.dataQuality.gates.baseline_ready, false);
+});
+
+test('records a baseline request that was never made', () => {
+  const model = normalize({ player: longMatchPlayer(), match: { duration: 1500 } });
+
+  assert.equal(model.baseline.status, 'unavailable');
+  assert.equal(model.baseline.reason, 'not_requested');
+  assert.equal(model.dataQuality.gates.baseline_ready, false);
 });

@@ -19,14 +19,17 @@ Definition of done: `draft_prior` имеет provenance, model version, sample s
 
 Цель — открыть `baseline_ready` и заменить внутриматчевые extrema релевантным нормативным сравнением.
 
-- self-baseline: тот же игрок, герой, позиция, patch и mode;
-- peer baseline: hero + position + bracket + exact patch + mode;
-- strong-player baseline: свежие матчи STRATZ leaderboard на том же hero + position + exact patch;
-- отдельные распределения по стадиям, lane matchup, item components и power-spike timing;
-- sample-size, percentile и confidence для каждого сравнения;
-- запрет смешивания core/support выборок и автоматический fallback к более широкой выборке только с маркировкой слабого ориентира.
+Peer baseline реализован: runtime записывает `model.baseline.sameHeroPositionRankPatch` из STRATZ `heroStats.stats` и открывает `baseline_ready` только при выборке, прошедшей порог размера. Остаётся:
 
-Definition of done: runtime записывает `model.baseline.sameHeroPositionRankPatch`, открывает `baseline_ready` только после schema validation и позволяет задавать измеримые performance targets.
+- self-baseline: тот же игрок, герой, позиция, patch и mode;
+- strong-player baseline: свежие матчи STRATZ leaderboard на том же hero + position + exact patch;
+- отдельные распределения по lane matchup, item components и power-spike timing;
+- percentile вместо отношения к среднему: текущий источник отдаёт только средние, поэтому нужен другой сбор;
+- точный патч вместо приближения неделями и фильтр по mode;
+- сравнение net worth без cross-source proxy: сейчас игрок берётся из OpenDota `gold_t`, а baseline — из STRATZ `networth`;
+- автоматический fallback к более широкой выборке только с маркировкой слабого ориентира.
+
+Definition of done для остатка: каждое сравнение несёт percentile и confidence, а не только отношение к среднему и размер выборки.
 
 ## 3. Сырой `.dem` и глубокие микромеханики
 

@@ -3,6 +3,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createOpenDotaClient } from './lib/opendota.mjs';
 import { createStratzClient } from './lib/stratz.mjs';
 import { createValveClient } from './lib/valve.mjs';
+import { bracketBasicFor, createBaselineClient, fullWeeksWithin, positionEnumFor } from './lib/baseline.mjs';
 import { resolveAccountIdByHero } from './lib/heroes.mjs';
 import { NormalizationError, normalizeEvidence } from './lib/normalize.mjs';
 import { writeArtifacts } from './lib/report.mjs';
@@ -82,7 +83,22 @@ function hasUsableSource(openDota, stratz) {
   return openDota?.status === 'ready' || stratz?.status === 'ready';
 }
 
-export async function runAnalysis(options, { openDotaClient, stratzClient, valveClient, normalize, write } = {}) {
+
+// Baseline собирается вторым проходом: селекторы hero/position/bracket известны
+// только после нормализации. Любой отказ оставляет baseline_ready закрытым и
+// не отменяет уже полученные факты матча.
+async function loadBaseline(model, valve, baselineClient, nowSeconds) {
+  const heroId = model.player?.heroId?.value ?? null;
+  if (!Number.isInteger(heroId)) return { status: 'unavailable', reason: 'hero_unknown' };
+  const position = positionEnumFor(model.player?.position?.value ?? null);
+  if (!position) return { status: 'unavailable', reason: 'position_unknown' };
+  const bracket = bracketBasicFor(model.player?.rank?.value ?? null);
+  if (!bracket) return { status: 'unavailable', reason: 'rank_unknown' };
+  const weeks = fullWeeksWithin(valve?.currentPatchStartTime, nowSeconds);
+  return baselineClient.loadPeerBaseline({ heroId, position, bracket: bracket.id, weeks });
+}
+
+export async function runAnalysis(options, { openDotaClient, stratzClient, valveClient, baselineClient, normalize, write, now = () => Date.now() } = {}) {
   const parseTimeoutMs = options?.parseTimeoutMs ?? DEFAULT_PARSE_TIMEOUT_MS;
   const outputDir = options?.outputDir ?? DEFAULT_OUTPUT_DIR;
   const openDota = await openDotaClient.loadMatch(options.matchId, { parseTimeoutMs });
@@ -132,6 +148,18 @@ export async function runAnalysis(options, { openDotaClient, stratzClient, valve
     if (error instanceof NormalizationError) throw new AnalysisError(error.code);
     throw error;
   }
+  if (baselineClient) {
+    const baseline = await loadBaseline(model, valve, baselineClient, Math.floor(now() / 1_000));
+    model = normalize({
+      matchId: options.matchId,
+      accountId,
+      openDota,
+      stratz,
+      valve,
+      baseline,
+      generatedAt: model.generatedAt,
+    });
+  }
   const artifacts = await write(model, outputDir);
   return { model, artifacts };
 }
@@ -141,6 +169,7 @@ function defaultDependencies() {
     openDotaClient: createOpenDotaClient(),
     stratzClient: createStratzClient({ apiKey: process.env.STRATZ_API_KEY }),
     valveClient: createValveClient(),
+    baselineClient: createBaselineClient({ apiKey: process.env.STRATZ_API_KEY }),
     normalize: normalizeEvidence,
     write: writeArtifacts,
   };
@@ -169,6 +198,7 @@ export async function runCli(argv, { dependencies = defaultDependencies(), stdou
     for (const source of ['opendota', 'valve', 'stratz']) {
       stdout(`${source}: ${model.sources?.[source]?.status ?? 'unavailable'}`);
     }
+    stdout(`baseline: ${model.baseline?.status ?? 'unavailable'}`);
     stdout(`json: ${artifacts.jsonPath}`);
     stdout(`markdown: ${artifacts.markdownPath}`);
     return 0;

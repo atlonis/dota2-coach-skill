@@ -5,7 +5,7 @@
 | Задача | Основной источник | Проверка/ограничение |
 |---|---|---|
 | Факты матча и parse job | OpenDota API | Базовый scoreboard не означает, что replay распарсен |
-| Позиция 1–5, lane outcome и playback | STRATZ GraphQL | Токен; точный `User-Agent: STRATZ_API`; baseline runtime v1 ещё не собирает |
+| Позиция 1–5, lane outcome, playback и peer baseline | STRATZ GraphQL | Токен; точный `User-Agent: STRATZ_API` |
 | Точный текущий подпатч и числа | Valve patch timeline, patch notes и Datafeed | Datafeed не документирован и требует schema validation |
 | Объяснение механик | Liquipedia | Текущие числа сверять с Valve |
 | Сильные игроки и билды | STRATZ hero leaderboard и свежие матчи | Фильтровать по `IMMORTAL`, той же позиции и текущему патчу |
@@ -47,7 +47,7 @@ Content-Type: application/json
 - lane outcomes и итоговые player stats;
 - `playbackData`: ability/item uses, positions, kills/deaths/assists, successful CS, purchases and runes.
 
-`heroStats.stats` и `leaderboard.hero` являются источниками для следующего этапа baseline, но отдельный runtime-запрос к ним в v1 ещё не реализован. До его появления `baseline_ready` остаётся закрытым и токен сам по себе это не меняет.
+`heroStats.stats` запрашивается отдельно и даёт peer baseline: фильтры `heroIds`, `positionIds`, `bracketBasicIds` и `week`, а `groupByTime` возвращает кумулятивную кривую по минутам 0–75 с `matchCount` на каждой минуте. Фильтра по патчу у этого поля нет — патч приближается выбором недель. `leaderboard.hero` для выборки сильных игроков всё ещё не запрашивается.
 
 IMP — закрытая модельная метрика и дополнительный сигнал. Она не доказывает конкретную ошибку. Не называй `predictedOutcomeWeight` или другое недокументированное поле процентом перевеса пика.
 
@@ -63,14 +63,19 @@ IMP — закрытая модельная метрика и дополните
 
 ## Baseline
 
-Автоматический сбор baseline ещё не реализован в runtime v1. Следующий порядок задаёт контракт будущего сборщика; до появления валидного `model.baseline.sameHeroPositionRankPatch` gate `baseline_ready` должен оставаться закрытым.
-
 Порядок сравнения:
 
-1. тот же игрок на том же герое и позиции;
-2. тот же hero + position + bracket + patch + mode;
-3. сильные игроки STRATZ на том же hero + position + patch;
-4. более широкие OpenDota benchmarks как слабый ориентир.
+1. тот же игрок на том же герое и позиции — **не реализовано**;
+2. тот же hero + position + bracket + patch — **реализовано** через STRATZ `heroStats.stats`;
+3. сильные игроки STRATZ на том же hero + position + patch — **не реализовано**;
+4. более широкие OpenDota benchmarks как слабый ориентир — **не реализовано**.
+
+Реализован только второй уровень, и он открывает `baseline_ready`. Что он честно даёт и чего не даёт:
+
+- даёт: среднее по выборке того же героя, позиции и bracket на неделях текущего патча, с размером выборки на каждой сравниваемой минуте;
+- не даёт: перцентиль игрока, точную медаль вместо корзины из четырёх, фильтр по режиму и разделение по lane matchup, item components или power-spike timing.
+
+Одиночный матч сравнивается со средним, поэтому вывод звучит как «выше/ниже среднего выборки в таком-то отношении», а не как место в распределении. Отклонение от среднего локализует расхождение; причина по-прежнему требует событий.
 
 Не копируй pro-build механически. Сравнивай старт, порядок компонентов, тайминги и адаптацию к десяти героям.
 

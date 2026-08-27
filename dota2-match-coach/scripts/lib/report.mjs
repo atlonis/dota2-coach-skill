@@ -75,13 +75,46 @@ function stringArray(values) {
   return Array.isArray(values) ? values.filter((value) => typeof value === 'string') : undefined;
 }
 
+function rankCell(field) {
+  const value = valueOf(field);
+  if (field?.value == null) return value;
+  return field.label ? `${value} — ${field.label}` : `${value} — лейбл неизвестен`;
+}
+
 function projectSourced(field) {
-  const projected = pickScalars(field, ['value', 'source']);
+  const projected = pickScalars(field, ['value', 'label', 'source']);
   if (Array.isArray(field?.candidates)) {
     projected.candidates = field.candidates
       .map((candidate) => pickScalars(candidate, ['value', 'source']))
       .filter((candidate) => Object.hasOwn(candidate, 'value') && Object.hasOwn(candidate, 'source'));
   }
+  return projected;
+}
+
+const BASELINE_POINT_FIELDS = ['minute', 'matchCount', 'networth', 'cs', 'dn', 'xp', 'level', 'kills', 'deaths', 'assists', 'heroDamage'];
+
+function projectBaseline(baseline) {
+  const sample = baseline?.sameHeroPositionRankPatch ?? null;
+  const projected = {
+    status: typeof baseline?.status === 'string' ? baseline.status : 'unavailable',
+    reason: typeof baseline?.reason === 'string' ? baseline.reason : null,
+    sameHeroPositionRankPatch: sample === null ? null : {
+      ...pickNumbers(sample, ['heroId', 'rankCode'], { nullable: true }),
+      ...pickStrings(sample, ['position', 'bracket', 'bracketLabel', 'patch', 'statistic', 'source']),
+      weeks: Array.isArray(sample.weeks) ? sample.weeks.filter(Number.isInteger) : [],
+      points: Array.isArray(sample.points)
+        ? sample.points.map((point) => pickNumbers(point, BASELINE_POINT_FIELDS, { nullable: true }))
+        : [],
+    },
+    comparisons: Array.isArray(baseline?.comparisons)
+      ? baseline.comparisons.map((row) => ({
+        ...pickStrings(row, ['metric', 'source']),
+        ...pickNumbers(row, ['minute', 'player', 'baseline', 'delta', 'ratio', 'matchCount'], { nullable: true }),
+        ...pickBooleans(row, ['crossSourceProxy']),
+      }))
+      : [],
+  };
+  if (typeof baseline?.error?.code === 'string') projected.error = { code: baseline.error.code };
   return projected;
 }
 
@@ -181,6 +214,7 @@ function normalizedArtifactModel(model) {
     series,
     patch,
     phases,
+    baseline: projectBaseline(model.baseline),
     eventInventory: pickBooleans(model.eventInventory, ['timedEvents', 'deaths', 'positions', 'fights', 'runes', 'abilityUses']),
     dataQuality: {
       ...pickStrings(model.dataQuality, ['mode']),
@@ -207,6 +241,50 @@ function normalizedArtifactModel(model) {
     if (!artifact.dataQuality.missing.includes('event timeline')) artifact.dataQuality.missing.push('event timeline');
   }
   return artifact;
+}
+
+const BASELINE_METRIC_LABELS = new Map([
+  ['lastHits', 'last hits'],
+  ['denies', 'denies'],
+  ['xp', 'XP'],
+  ['heroDamage', 'hero damage'],
+  ['netWorth', 'net worth'],
+  ['deaths', 'deaths'],
+]);
+
+function round(value) {
+  return Number.isFinite(value) ? String(Math.round(value * 100) / 100) : 'недостаточно данных';
+}
+
+function baselineRows(baseline) {
+  return (baseline?.comparisons ?? []).map((row) => [
+    BASELINE_METRIC_LABELS.get(row.metric) ?? row.metric,
+    Number.isFinite(row.minute) ? `${row.minute}:00` : 'недостаточно данных',
+    round(row.player),
+    round(row.baseline),
+    round(row.delta),
+    row.ratio == null ? 'недостаточно данных' : round(row.ratio),
+    Number.isFinite(row.matchCount) ? String(row.matchCount) : 'недостаточно данных',
+    row.crossSourceProxy ? 'cross-source proxy' : '—',
+  ].join(' | ')).map((line) => `| ${line} |`);
+}
+
+function baselineSampleRows(baseline) {
+  const sample = baseline?.sameHeroPositionRankPatch;
+  if (!sample) {
+    return [['статус', valueOf({ value: baseline?.status ?? null })], ['причина', valueOf({ value: baseline?.reason ?? null })]];
+  }
+  return [
+    ['статус', valueOf({ value: baseline.status })],
+    ['выборка', 'hero + position + bracket + недели текущего патча'],
+    ['heroId', valueOf({ value: sample.heroId })],
+    ['position', valueOf({ value: sample.position })],
+    ['bracket', `${valueOf({ value: sample.bracket })} (${valueOf({ value: sample.bracketLabel })})`],
+    ['patch', valueOf({ value: sample.patch })],
+    ['недели STRATZ', (sample.weeks ?? []).join(', ') || 'недостаточно данных'],
+    ['статистика', `${valueOf({ value: sample.statistic })} (перцентили этим источником не отдаются)`],
+    ['источник', valueOf({ value: sample.source })],
+  ];
 }
 
 export function renderEvidenceMarkdown(model = {}) {
@@ -240,7 +318,7 @@ export function renderEvidenceMarkdown(model = {}) {
       ['gameMode', `${valueOf(match.gameMode)} (источник: ${sourceOf(match.gameMode)})`],
       ['heroId', `${valueOf(player.heroId)} (источник: ${sourceOf(player.heroId)})`],
       ['position', `${valueOf(player.position)} (источник: ${sourceOf(player.position)})`],
-      ['rank', `${valueOf(player.rank)} (источник: ${sourceOf(player.rank)})`],
+      ['rank (средний bracket матча)', `${rankCell(player.rank)} (источник: ${sourceOf(player.rank)})`],
       ['result', `${valueOf(player.result)} (источник: ${sourceOf(player.result)})`],
       ['K / D / A', `${valueOf(player.kills)} / ${valueOf(player.deaths)} / ${valueOf(player.assists)}`],
     ]),
@@ -260,6 +338,14 @@ export function renderEvidenceMarkdown(model = {}) {
     '| Фаза | Интервал (мин.) | Метрики | Экстремумы внутри матча |',
     '| --- | --- | --- | --- |',
     ...(phases.length > 0 ? phases : ['| — | — | — | — |']),
+    '',
+    '## Baseline: hero + position + bracket + патч',
+    '',
+    table(baselineSampleRows(model.baseline)),
+    '',
+    '| Метрика | Минута | Игрок | Baseline (среднее) | Δ | Отношение | Матчей в выборке | Оговорка |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- |',
+    ...(baselineRows(model.baseline).length > 0 ? baselineRows(model.baseline) : ['| — | — | — | — | — | — | — | — |']),
     '',
     '## Инвентарь событий',
     '',

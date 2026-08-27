@@ -20,9 +20,9 @@ The project targets only the latest exact subpatch. Older matches or matches tha
 - player selection by exact English hero name for reviewing someone else's match;
 - automatic Russian or English user-facing reviews based on the user's language.
 
-Role/rank/patch baselines and deep raw `.dem` analysis are intentionally outside runtime v1. Without a baseline, the skill cannot issue a normative verdict for the role; without `.dem`, it cannot reliably explain every input or missed creep.
+Deep raw `.dem` analysis is intentionally outside runtime v1: without it, the skill cannot reliably explain every input or missed creep. The baseline runtime collects is a peer sample — same hero, position and bracket on the current patch — reported as a mean with its sample size, not as a percentile.
 
-The statistical draft model, strong-player baseline, and deep `.dem` analysis are tracked in [ROADMAP.md](ROADMAP.md).
+The statistical draft model, the self and strong-player baselines, and deep `.dem` analysis are tracked in [ROADMAP.md](ROADMAP.md).
 
 ## Requirements
 
@@ -59,7 +59,7 @@ To review someone else's match, select the player by hero:
 Use $dota2-match-coach to analyze the Earth Spirit player in match 8963363814.
 ```
 
-The skill chooses the platform runtime, gathers data, and checks data gates before starting the review. Set `STRATZ_API_KEY` in the environment of your chosen agent for richer position/lane/playback data. A token alone does not enable the planned automatic baseline. See the [runtime contract](dota2-match-coach/references/runtime.md) for token setup, schema, exit codes, and troubleshooting. Never place the token in prompts, commands, repository files, or Git.
+The skill chooses the platform runtime, gathers data, and checks data gates before starting the review. Set `STRATZ_API_KEY` in the environment of your chosen agent for richer position/lane/playback data. A token is also required for the peer baseline, though it does not guarantee one: the match rank and position must be known and at least one full week must fall inside the current patch. See the [runtime contract](dota2-match-coach/references/runtime.md) for token setup, schema, exit codes, and troubleshooting. Never place the token in prompts, commands, repository files, or Git.
 
 ## Language
 
@@ -82,7 +82,7 @@ The runtime writes `dataQuality.gates`:
 - `phase_aggregates` — observable stage metrics are available;
 - `draft_ready` — five Radiant and five Dire heroes are known;
 - `event_ready` — a usable event timeline is stored;
-- `baseline_ready` — a relevant normative sample is available;
+- `baseline_ready` — a peer sample of the same hero, position and bracket on the current patch is available;
 - `current_patch` — the latest exact subpatch is verified.
 
 A closed gate blocks the corresponding conclusion. For example, without `event_ready` the skill cannot invent the cause of a specific episode, and without `baseline_ready` it cannot label a metric good or bad for the relevant role/rank/patch.
