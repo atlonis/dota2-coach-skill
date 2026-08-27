@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { NormalizationError, buildPhases, dataQualityFor, normalizeEvidence } from '../../scripts/lib/normalize.mjs';
+import { NormalizationError, buildPhases, dataQualityFor, normalizeEvidence } from '../../dota2-match-coach/scripts/lib/normalize.mjs';
 
 const accountId = 56386500;
 const generatedAt = '2026-08-25T00:00:00.000Z';

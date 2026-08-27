@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { rankLabel } from '../../scripts/lib/rank.mjs';
+import { rankLabel } from '../../dota2-match-coach/scripts/lib/rank.mjs';
 
 test('maps a two-digit STRATZ rank code to a medal and star label', () => {
   assert.equal(rankLabel(11), 'Herald 1');

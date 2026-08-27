@@ -92,22 +92,23 @@ Runtime записывает `dataQuality.gates`:
 Из корня репозитория:
 
 ```sh
-node --test dota2-match-coach/test/runtime/*.test.mjs
+node --test test/runtime/*.test.mjs
 ```
 
-Текущий offline-suite содержит 108 тестов и не требует сети. Каждый wrapper запускается только на своей платформе: на macOS и Linux выполняется POSIX-скрипт, на Windows — PowerShell, а неприменимый на текущем хосте тест штатно пропускается. Оба wrapper дополнительно проверяются статически на всех платформах.
+Текущий offline-suite содержит 133 теста и не требует сети. Каждый wrapper запускается только на своей платформе: на macOS и Linux выполняется POSIX-скрипт, на Windows — PowerShell, а неприменимый на текущем хосте тест штатно пропускается. Оба wrapper дополнительно проверяются статически на всех платформах.
 
 ## Структура репозитория
 
 ```text
-dota2-match-coach/
+dota2-match-coach/          устанавливаемый бандл скилла
   SKILL.md                 инструкции скилла
   agents/openai.yaml       OpenAI-совместимые UI-метаданные
-  references/              runtime, source policy и review template
+  references/              runtime, source policy, review template и стек решений
   scripts/                 runtime и платформенные wrappers
-  test/runtime/            offline node:test suite
+test/runtime/              offline node:test suite
 docs/superpowers/          design spec и implementation plan
 RESEARCH.md                исследование источников и решений
+ROADMAP.md                 функции, предусмотренные data gates, но ещё не собираемые runtime
 ```
 
 Локальные `output/`, секреты и процессные `.superpowers/`-артефакты не входят в репозиторий.

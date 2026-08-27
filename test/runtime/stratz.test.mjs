@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createStratzClient } from '../../scripts/lib/stratz.mjs';
+import { createStratzClient } from '../../dota2-match-coach/scripts/lib/stratz.mjs';
 
 test('sends exact STRATZ headers and returns match data', async () => {
   let captured;

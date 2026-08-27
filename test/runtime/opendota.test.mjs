@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createOpenDotaClient, hasReplayData } from '../../scripts/lib/opendota.mjs';
+import { createOpenDotaClient, hasReplayData } from '../../dota2-match-coach/scripts/lib/opendota.mjs';
 
 function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {

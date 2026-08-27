@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveAccountIdByHero } from '../../scripts/lib/heroes.mjs';
+import { resolveAccountIdByHero } from '../../dota2-match-coach/scripts/lib/heroes.mjs';
 
 const constants = { 107: { id: 107, localized_name: 'Earth Spirit' } };
 

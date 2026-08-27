@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { bracketBasicFor, bracketLabelFor, createBaselineClient, fullWeeksWithin, mergeWeeklyCurves, positionEnumFor } from '../../scripts/lib/baseline.mjs';
+import { bracketBasicFor, bracketLabelFor, createBaselineClient, fullWeeksWithin, mergeWeeklyCurves, positionEnumFor } from '../../dota2-match-coach/scripts/lib/baseline.mjs';
 
 const WEEK = 604_800;
 

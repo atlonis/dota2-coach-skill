@@ -92,22 +92,23 @@ A closed gate blocks the corresponding conclusion. For example, without `event_r
 From the repository root:
 
 ```sh
-node --test dota2-match-coach/test/runtime/*.test.mjs
+node --test test/runtime/*.test.mjs
 ```
 
-The offline suite contains 108 tests and needs no network access. Each wrapper runs only on its own platform: the POSIX script on macOS and Linux, and PowerShell on Windows. The test that does not apply to the current host is skipped, while both wrappers are also checked statically on every platform.
+The offline suite contains 133 tests and needs no network access. Each wrapper runs only on its own platform: the POSIX script on macOS and Linux, and PowerShell on Windows. The test that does not apply to the current host is skipped, while both wrappers are also checked statically on every platform.
 
 ## Repository structure
 
 ```text
-dota2-match-coach/
+dota2-match-coach/          the installed skill bundle
   SKILL.md                 skill instructions
   agents/openai.yaml       OpenAI-compatible UI metadata
-  references/              runtime, source policy, and review template
+  references/              runtime, source policy, review template, decision stack
   scripts/                 runtime and platform wrappers
-  test/runtime/            offline node:test suite
+test/runtime/              offline node:test suite
 docs/superpowers/          design spec and implementation plan
 RESEARCH.md                source and design research
+ROADMAP.md                 features the data gates anticipate but the runtime does not collect yet
 ```
 
 Local `output/`, secrets, and process-specific `.superpowers/` artifacts are excluded from the repository.

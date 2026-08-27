@@ -6,7 +6,8 @@ import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const bundleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const bundleRoot = path.join(repositoryRoot, 'dota2-match-coach');
 
 test('an ordinary match-ID request routes to runtime.md and the platform wrapper as the first collection step', async () => {
   const skill = await readFile(path.join(bundleRoot, 'SKILL.md'), 'utf8');
@@ -20,21 +21,22 @@ test('an ordinary match-ID request routes to runtime.md and the platform wrapper
   assert.doesNotMatch(firstStep, /may be available|может быть доступен/i);
 });
 
-test('publishes the renamed skill contract and a repository roadmap', async () => {
+test('publishes the renamed skill contract and keeps the roadmap outside the installed bundle', async () => {
   const skill = await readFile(path.join(bundleRoot, 'SKILL.md'), 'utf8');
   const metadata = await readFile(path.join(bundleRoot, 'agents', 'openai.yaml'), 'utf8');
-  const roadmapPath = path.resolve(bundleRoot, 'references', 'roadmap.md');
 
   assert.match(skill, /^name: dota2-match-coach$/m);
   assert.match(metadata, /\$dota2-match-coach\b/);
-  assert.equal(existsSync(roadmapPath), true);
+  assert.equal(existsSync(path.join(repositoryRoot, 'ROADMAP.md')), true);
+  assert.equal(existsSync(path.join(bundleRoot, 'references', 'roadmap.md')), false);
+  assert.doesNotMatch(skill, /roadmap/i);
 });
 
 test('routes the complete user-facing review to Russian or English without changing evidence identifiers', async () => {
   const skill = await readFile(path.join(bundleRoot, 'SKILL.md'), 'utf8');
   const template = await readFile(path.join(bundleRoot, 'references', 'review-template.md'), 'utf8');
-  const readmePath = path.resolve(bundleRoot, '..', 'README.md');
-  const russianReadmePath = path.resolve(bundleRoot, '..', 'README.ru.md');
+  const readmePath = path.join(repositoryRoot, 'README.md');
+  const russianReadmePath = path.join(repositoryRoot, 'README.ru.md');
   const languageContract = skill.split('### Язык ответа')[1]?.split('\n### ')[0]?.split('\n## ')[0] ?? '';
 
   assert.match(languageContract, /русск.+русск|Russian.+Russian/is);

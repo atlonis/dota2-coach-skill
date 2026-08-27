@@ -101,5 +101,5 @@ Roadmap визуально отделён от уже работающих во�
 - Проверить desktop 16:9 как основной кадр для ролика.
 - Проверить мобильную компоновку без горизонтального скролла.
 - Проверить клавиатурную навигацию, фокус и reduced motion.
-- Сверить все подписи источников, gates и roadmap с `references/source-policy.md`, `references/runtime.md` и `references/roadmap.md`.
+- Сверить все подписи источников, gates и roadmap с `dota2-match-coach/references/source-policy.md`, `dota2-match-coach/references/runtime.md` и `ROADMAP.md`.
 - Убедиться, что на сайте отсутствуют рекламные CTA, установка, личная история и остальные части сценария видео.

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, readFile, readdir, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { renderEvidenceMarkdown, writeArtifacts } from '../../scripts/lib/report.mjs';
+import { renderEvidenceMarkdown, writeArtifacts } from '../../dota2-match-coach/scripts/lib/report.mjs';
 
 function evidenceModel() {
   return {

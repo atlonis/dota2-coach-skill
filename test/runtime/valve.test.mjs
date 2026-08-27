@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createValveClient } from '../../scripts/lib/valve.mjs';
+import { createValveClient } from '../../dota2-match-coach/scripts/lib/valve.mjs';
 
 test('resolves the match patch and exact current subpatch from timestamps', async () => {
   const fetchImpl = async () => new Response(JSON.stringify({

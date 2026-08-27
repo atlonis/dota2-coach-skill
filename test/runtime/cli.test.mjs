@@ -3,18 +3,18 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { parseArgs } from '../../scripts/analyze-match.mjs';
+import { parseArgs } from '../../dota2-match-coach/scripts/analyze-match.mjs';
 import { fileURLToPath } from 'node:url';
-import { runAnalysis } from '../../scripts/analyze-match.mjs';
-import * as cli from '../../scripts/analyze-match.mjs';
-import { NormalizationError } from '../../scripts/lib/normalize.mjs';
+import { runAnalysis } from '../../dota2-match-coach/scripts/analyze-match.mjs';
+import * as cli from '../../dota2-match-coach/scripts/analyze-match.mjs';
+import { NormalizationError } from '../../dota2-match-coach/scripts/lib/normalize.mjs';
 
 const runtimeDirectory = path.dirname(fileURLToPath(import.meta.url));
-const scriptsDirectory = path.resolve(runtimeDirectory, '../../scripts');
+const scriptsDirectory = path.resolve(runtimeDirectory, '../../dota2-match-coach/scripts');
 
 function processResult(command, args) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd: path.resolve(runtimeDirectory, '../../..'), windowsHide: true });
+    const child = spawn(command, args, { cwd: path.resolve(runtimeDirectory, '../..'), windowsHide: true });
     let stdout = '';
     let stderr = '';
     child.stdout.on('data', (chunk) => { stdout += chunk; });
