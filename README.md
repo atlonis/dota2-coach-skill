@@ -1,4 +1,4 @@
-# Dota 2 Match Coach — “Above Context”
+# Dota 2 Match Coach
 
 [English](README.md) | [Русский](README.ru.md)
 

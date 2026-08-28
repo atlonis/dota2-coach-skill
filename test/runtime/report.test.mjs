@@ -7,7 +7,7 @@ import { renderEvidenceMarkdown, writeArtifacts } from '../../dota2-match-coach/
 
 function evidenceModel() {
   return {
-    schemaVersion: '1.1.0',
+    schemaVersion: '1.2.0',
     request: { matchId: '42', accountId: 56386500 },
     generatedAt: '2026-08-25T00:00:00.000Z',
     sources: {
@@ -38,7 +38,7 @@ function evidenceModel() {
     items: { purchases: [{ time: 80, item: 'boots', source: 'opendota' }], finalInventory: [{ value: 50, source: 'opendota' }] },
     events: {
       kills: [], deaths: [{ time: 100, attacker: 8, positionX: 10, positionY: 20, source: 'stratz' }], assists: [], cs: [], purchases: [],
-      runes: [{ time: 101, rune: 'HASTE', action: 'PICKUP', source: 'stratz' }], abilityUses: [], itemUses: [], positions: [], teamfights: [], objectives: [],
+      runes: [{ time: 101, rune: 'HASTE', action: 'PICKUP', source: 'stratz' }], abilityUses: [], itemUses: [], positions: [], repositions: [], teamfights: [], objectives: [],
     },
     series: { gold: { values: [0, 100], source: 'opendota' }, xp: { values: [0, 120], source: 'opendota' }, lh: { values: [0, 1], source: 'opendota' }, denies: { values: [0, 0], source: 'opendota' } },
     patch: { match: { value: '7.40', source: 'valve' }, current: { value: '7.40', source: 'valve' }, isCurrentExactPatch: { value: true, source: 'valve' } },
@@ -184,7 +184,7 @@ test('writeArtifacts persists the canonical schema and consumable event timeline
   const artifacts = await writeArtifacts(evidenceModel(), directory);
   const persisted = JSON.parse(await readFile(artifacts.jsonPath, 'utf8'));
 
-  assert.equal(persisted.schemaVersion, '1.1.0');
+  assert.equal(persisted.schemaVersion, '1.2.0');
   assert.deepEqual(persisted.draft.radiant, [{ value: 107, source: 'opendota' }]);
   assert.deepEqual(persisted.summary.kda, { kills: 8, deaths: 2, assists: 6, source: 'opendota' });
   assert.deepEqual(persisted.items.purchases, [{ time: 80, item: 'boots', source: 'opendota' }]);

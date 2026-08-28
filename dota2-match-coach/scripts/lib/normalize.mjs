@@ -2,7 +2,7 @@ import { rankLabel } from './rank.mjs';
 import { bracketLabelFor, positionEnumFor } from './baseline.mjs';
 import { GAME_MODES, LOBBY_TYPES, resolveVocabularyField } from './vocabulary.mjs';
 
-const SCHEMA_VERSION = '1.1.0';
+const SCHEMA_VERSION = '1.2.0';
 const PHASES = [
   { id: 'lane', start: 0, end: 600 },
   { id: 'transition', start: 600, end: 900 },
@@ -34,6 +34,19 @@ const BASELINE_COMPARISONS = [
 const BASELINE_MINUTES = [10, 15, 25];
 const BASELINE_MAX_MINUTE = 75;
 const BASELINE_MIN_SAMPLE = 200;
+
+// Скачок в ряду позиций сам по себе не доказывает телепорт игрока: так же выглядит
+// вход в портал союзника и перенос чужой способностью. Причина берётся из
+// собственных применений предмета и способности рядом с прибытием, а неопознанный
+// скачок остаётся `unattributed` и телепортом не называется.
+const TELEPORT_ITEM_IDS = new Set([46, 48, 220]);
+const ALLY_WARP_ABILITY_IDS = new Set([842]);
+// Клетки миникарты: пеший максимум около 4.3 клетки в секунду при пределе скорости
+// 550, поэтому порог 6 отделяет перенос от бега, а порог расстояния гасит дрожание
+// координат на коротких интервалах.
+const REPOSITION_MIN_DISTANCE = 15;
+const REPOSITION_MIN_SPEED = 6;
+const REPOSITION_CAUSE_WINDOW = 15;
 
 const EXTREMA_METRICS = SERIES_METRICS.map(([, , rate]) => rate).concat(EVENT_METRICS.map(([metric]) => metric));
 
@@ -293,6 +306,52 @@ function eventTimeline(openDota, stratzPlayer, duration) {
   };
 }
 
+function lastCauseWithin(events, arrival, match) {
+  let found = null;
+  for (const event of events) {
+    if (!finiteNumber(event?.time) || event.time > arrival) continue;
+    if (arrival - event.time > REPOSITION_CAUSE_WINDOW) continue;
+    if (!match(event)) continue;
+    if (!found || event.time > found.time) found = event;
+  }
+  return found;
+}
+
+// Причина ближе к прибытию побеждает: свиток, использованный минутой раньше по
+// другому поводу, не должен перебивать вход в портал союзника, и наоборот.
+function attributeReposition(from, to, itemUses, abilityUses) {
+  const base = { time: to.time, fromX: from.x, fromY: from.y, x: to.x, y: to.y, source: 'stratz' };
+  const warp = lastCauseWithin(abilityUses, to.time, (event) => ALLY_WARP_ABILITY_IDS.has(event.abilityId));
+  const teleport = lastCauseWithin(itemUses, to.time, (event) => TELEPORT_ITEM_IDS.has(event.itemId));
+  if (warp && (!teleport || warp.time >= teleport.time)) {
+    return { ...base, cause: 'ally_warp', causeTime: warp.time, causeAbilityId: warp.abilityId };
+  }
+  if (teleport) return { ...base, cause: 'teleport_item', causeTime: teleport.time, causeItemId: teleport.itemId };
+  return { ...base, cause: 'unattributed' };
+}
+
+// Перемещения игрока, восстановленные из ряда позиций и подписанные причиной.
+// Возрождение после смерти сюда не попадает: между двумя точками ряда лежит смерть.
+function repositionsFor(events) {
+  const positions = (Array.isArray(events?.positions) ? events.positions : [])
+    .filter((point) => finiteNumber(point?.time) && finiteNumber(point?.x) && finiteNumber(point?.y));
+  const deaths = Array.isArray(events?.deaths) ? events.deaths : [];
+  const itemUses = Array.isArray(events?.itemUses) ? events.itemUses : [];
+  const abilityUses = Array.isArray(events?.abilityUses) ? events.abilityUses : [];
+  const repositions = [];
+  for (let index = 1; index < positions.length; index += 1) {
+    const from = positions[index - 1];
+    const to = positions[index];
+    const seconds = to.time - from.time;
+    if (!(seconds > 0)) continue;
+    const distance = Math.hypot(to.x - from.x, to.y - from.y);
+    if (distance < REPOSITION_MIN_DISTANCE || distance / seconds < REPOSITION_MIN_SPEED) continue;
+    if (deaths.some((death) => finiteNumber(death?.time) && death.time > from.time && death.time < to.time)) continue;
+    repositions.push(attributeReposition(from, to, itemUses, abilityUses));
+  }
+  return repositions;
+}
+
 function eventInventory(events) {
   const any = (name) => Array.isArray(events?.[name]) && events[name].length > 0;
   return {
@@ -302,6 +361,7 @@ function eventInventory(events) {
     fights: any('teamfights'),
     runes: any('runes'),
     abilityUses: any('abilityUses'),
+    repositions: any('repositions'),
   };
 }
 
@@ -501,6 +561,7 @@ export function normalizeEvidence({ matchId, accountId, openDota, stratz, valve,
     : { kills: null, deaths: null, assists: null, source: null };
 
   const events = eventTimeline(openDota, stratzPlayer, duration);
+  events.repositions = repositionsFor(events);
   const inventory = finalInventoryFor(openPlayer, stratzPlayer, warnings);
   const player = {
     accountId: sourced(accountId, openPlayer ? 'opendota' : 'stratz'),

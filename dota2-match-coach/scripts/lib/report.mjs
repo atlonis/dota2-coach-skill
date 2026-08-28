@@ -177,6 +177,7 @@ function normalizedArtifactModel(model) {
     abilityUses: ['time', 'abilityId', 'source'],
     itemUses: ['time', 'itemId', 'source'],
     positions: ['time', 'x', 'y', 'source'],
+    repositions: ['time', 'fromX', 'fromY', 'x', 'y', 'cause', 'causeTime', 'causeItemId', 'causeAbilityId', 'source'],
     teamfights: ['start', 'end', 'source'],
     objectives: ['time', 'type', 'source'],
   };
@@ -222,7 +223,7 @@ function normalizedArtifactModel(model) {
     patch,
     phases,
     baseline: projectBaseline(model.baseline),
-    eventInventory: pickBooleans(model.eventInventory, ['timedEvents', 'deaths', 'positions', 'fights', 'runes', 'abilityUses']),
+    eventInventory: pickBooleans(model.eventInventory, ['timedEvents', 'deaths', 'positions', 'fights', 'runes', 'abilityUses', 'repositions']),
     dataQuality: {
       ...pickStrings(model.dataQuality, ['mode']),
       ...(model.dataQuality?.gates ? { gates: pickBooleans(model.dataQuality.gates, ['scoreboard', 'phase_aggregates', 'draft_ready', 'event_ready', 'baseline_ready', 'current_patch']) } : {}),
@@ -233,7 +234,7 @@ function normalizedArtifactModel(model) {
   if (stringArray(model.warnings) !== undefined) artifact.warnings = stringArray(model.warnings);
   const duration = artifact.match.durationSeconds?.value;
   const inMatch = (time) => Number.isFinite(duration) && Number.isFinite(time) && time >= 0 && time <= duration;
-  for (const name of ['kills', 'deaths', 'assists', 'cs', 'purchases', 'runes', 'abilityUses', 'itemUses', 'positions', 'objectives']) {
+  for (const name of ['kills', 'deaths', 'assists', 'cs', 'purchases', 'runes', 'abilityUses', 'itemUses', 'positions', 'repositions', 'objectives']) {
     artifact.events[name] = artifact.events[name].filter((event) => inMatch(event.time));
   }
   artifact.items.purchases = artifact.items.purchases.filter((purchase) => inMatch(purchase.time));
@@ -274,6 +275,26 @@ function baselineRows(baseline) {
     Number.isFinite(row.matchCount) ? String(row.matchCount) : 'недостаточно данных',
     row.crossSourceProxy ? 'cross-source proxy' : '—',
   ].join(' | ')).map((line) => `| ${line} |`);
+}
+
+const REPOSITION_CAUSES = new Map([
+  ['teleport_item', 'телепорт предметом игрока'],
+  ['ally_warp', 'вход в перенос союзника'],
+  ['unattributed', 'причина не установлена'],
+]);
+
+function clock(seconds) {
+  if (!Number.isFinite(seconds)) return '—';
+  return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
+}
+
+function repositionRows(repositions = []) {
+  return repositions.map((move) => {
+    const basis = move.causeItemId != null ? `предмет ${move.causeItemId}`
+      : move.causeAbilityId != null ? `способность ${move.causeAbilityId}`
+        : '—';
+    return `| ${clock(move.time)} | ${valueOf(move.fromX)},${valueOf(move.fromY)} | ${valueOf(move.x)},${valueOf(move.y)} | ${REPOSITION_CAUSES.get(move.cause) ?? valueOf(move.cause)} | ${basis} | ${clock(move.causeTime)} |`;
+  });
 }
 
 function baselineSampleRows(baseline) {
@@ -356,6 +377,14 @@ export function renderEvidenceMarkdown(model = {}) {
     '| Метрика | Минута | Игрок | Baseline (среднее) | Δ | Отношение | Матчей в выборке | Оговорка |',
     '| --- | --- | --- | --- | --- | --- | --- | --- |',
     ...(baselineRows(model.baseline).length > 0 ? baselineRows(model.baseline) : ['| — | — | — | — | — | — | — | — |']),
+    '',
+    '## Перемещения: скачки позиции и их причина',
+    '',
+    'Скачок в ряду позиций телепортом игрока сам по себе не является. Причина берётся из его собственных применений предмета и способности рядом с прибытием; перенос союзной способностью, наложенной на игрока, остаётся без причины.',
+    '',
+    '| Прибытие | Откуда | Куда | Причина | Основание | Время причины |',
+    '| --- | --- | --- | --- | --- | --- |',
+    ...(repositionRows(model.events?.repositions).length > 0 ? repositionRows(model.events?.repositions) : ['| — | — | — | — | — | — |']),
     '',
     '## Инвентарь событий',
     '',

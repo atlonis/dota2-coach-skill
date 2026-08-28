@@ -66,7 +66,7 @@ test('builds the pinned canonical evidence schema with provenance', () => {
     },
   });
 
-  assert.equal(model.schemaVersion, '1.1.0');
+  assert.equal(model.schemaVersion, '1.2.0');
   assert.deepEqual(model.match.startTime, { value: 1785400000, source: 'opendota' });
   assert.deepEqual(model.match.lobbyType, { value: 7, label: 'Ranked', source: 'opendota' });
   assert.deepEqual(model.match.gameMode, {
@@ -604,4 +604,59 @@ test('records a baseline request that was never made', () => {
   assert.equal(model.baseline.status, 'unavailable');
   assert.equal(model.baseline.reason, 'not_requested');
   assert.equal(model.dataQuality.gates.baseline_ready, false);
+});
+
+function withPlayback(playbackData, duration = 3000) {
+  return normalize({
+    match: { duration },
+    stratz: { status: 'ready', match: { players: [{ steamAccountId: accountId, heroId: 107, playbackData }] } },
+  });
+}
+
+test('names the ally warp behind a position jump instead of calling it the player teleport', () => {
+  const model = withPlayback({
+    abilityUsedEvents: [{ time: 1225, abilityId: 842 }],
+    itemUsedEvents: [{ time: 1185, itemId: 46 }],
+    playerUpdatePositionEvents: [{ time: 1226, x: 130, y: 102 }, { time: 1230, x: 96, y: 146 }],
+  });
+
+  assert.deepEqual(model.events.repositions, [{
+    time: 1230, fromX: 130, fromY: 102, x: 96, y: 146,
+    cause: 'ally_warp', causeTime: 1225, causeAbilityId: 842, source: 'stratz',
+  }]);
+  assert.equal(model.eventInventory.repositions, true);
+});
+
+test('attributes a jump to the teleport item and prefers the cause closest to the arrival', () => {
+  const model = withPlayback({
+    abilityUsedEvents: [{ time: 2300, abilityId: 842 }],
+    itemUsedEvents: [{ time: 2316, itemId: 46 }],
+    playerUpdatePositionEvents: [{ time: 2315, x: 60, y: 60 }, { time: 2320, x: 174, y: 144 }],
+  });
+
+  assert.deepEqual(model.events.repositions.map(({ cause, causeTime, causeItemId }) => ({ cause, causeTime, causeItemId })), [
+    { cause: 'teleport_item', causeTime: 2316, causeItemId: 46 },
+  ]);
+});
+
+test('leaves a jump without a matching own cast unattributed', () => {
+  const model = withPlayback({
+    abilityUsedEvents: [{ time: 400, abilityId: 5471 }],
+    itemUsedEvents: [{ time: 400, itemId: 44 }],
+    playerUpdatePositionEvents: [{ time: 800, x: 60, y: 60 }, { time: 804, x: 150, y: 150 }],
+  });
+
+  assert.deepEqual(model.events.repositions.map((move) => move.cause), ['unattributed']);
+});
+
+test('keeps walking and respawn out of the reposition list', () => {
+  const model = withPlayback({
+    deathEvents: [{ time: 1000, attacker: 8, timeDead: 40 }],
+    playerUpdatePositionEvents: [
+      { time: 100, x: 60, y: 60 }, { time: 105, x: 78, y: 74 },
+      { time: 998, x: 120, y: 120 }, { time: 1045, x: 180, y: 180 },
+    ],
+  });
+
+  assert.deepEqual(model.events.repositions, []);
 });
