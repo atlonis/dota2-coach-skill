@@ -11,7 +11,7 @@ const bundleRoot = path.join(repositoryRoot, 'dota2-match-coach');
 
 test('an ordinary match-ID request routes to runtime.md and the platform wrapper as the first collection step', async () => {
   const skill = await readFile(path.join(bundleRoot, 'SKILL.md'), 'utf8');
-  const process = skill.split('## Обязательный процесс')[1]?.split('\n## ')[0] ?? '';
+  const process = skill.split('## Required process')[1]?.split('\n## ')[0] ?? '';
   const firstStep = process.match(/^1\. .+$/m)?.[0] ?? '';
 
   assert.match(firstStep, /match.?id/i);
@@ -37,7 +37,7 @@ test('routes the complete user-facing review to Russian or English without chang
   const template = await readFile(path.join(bundleRoot, 'references', 'review-template.md'), 'utf8');
   const readmePath = path.join(repositoryRoot, 'README.md');
   const russianReadmePath = path.join(repositoryRoot, 'README.ru.md');
-  const languageContract = skill.split('### Язык ответа')[1]?.split('\n### ')[0]?.split('\n## ')[0] ?? '';
+  const languageContract = skill.split('### Response language')[1]?.split('\n### ')[0]?.split('\n## ')[0] ?? '';
 
   assert.match(languageContract, /русск.+русск|Russian.+Russian/is);
   assert.match(languageContract, /английск.+английск|English.+English/is);

@@ -1,39 +1,39 @@
-# Политика источников
+# Source policy
 
-## Быстрый маршрут
+## Quick route
 
-| Задача | Основной источник | Проверка/ограничение |
+| Task | Primary source | Check and limit |
 |---|---|---|
-| Факты матча и parse job | OpenDota API | Базовый scoreboard не означает, что replay распарсен |
-| Позиция 1–5, lane outcome, playback и peer baseline | STRATZ GraphQL | Токен; точный `User-Agent: STRATZ_API` |
-| Точный текущий подпатч и числа | Valve patch timeline, patch notes и Datafeed | Datafeed не документирован и требует schema validation |
-| Объяснение механик | Liquipedia | Текущие числа сверять с Valve |
-| Сильные игроки и билды | STRATZ hero leaderboard и свежие матчи | Фильтровать по `IMMORTAL`, той же позиции и текущему патчу |
-| Дополнительная проверка игрока | OpenDota hero ranking и player matches | Hero ranking не разделён по позиции |
+| Match facts and the parse job | OpenDota API | A basic scoreboard does not mean the replay is parsed |
+| Position 1-5, lane outcome, playback and the peer baseline | STRATZ GraphQL | Token; exact `User-Agent: STRATZ_API` |
+| The exact current sub-patch and its numbers | Valve patch timeline, patch notes and Datafeed | Datafeed is undocumented and needs schema validation |
+| Explaining mechanics | Liquipedia | Verify current numbers against Valve |
+| Strong players and builds | STRATZ hero leaderboard and recent matches | Filter by `IMMORTAL`, the same position and the current patch |
+| An extra check on the player | OpenDota hero ranking and player matches | Hero ranking is not split by position |
 
-Не использовать Dota2ProTracker, старый Dota 2 Fandom и `GetMatchDetails` как runtime-источники.
+Do not use Dota2ProTracker, the old Dota 2 Fandom or `GetMatchDetails` as runtime sources.
 
-## Parse-first
+## Parse first
 
-1. Загрузить `GET https://api.opendota.com/api/matches/{match_id}`.
-2. Проверить не только `players`, но и `version`, replay URL и нужные replay-derived массивы: `gold_t`, `xp_t`, `lh_t`, покупки, события и teamfights.
-3. Если их нет, отправить `POST https://api.opendota.com/api/request/{match_id}`.
-4. Дождаться terminal state job и повторно загрузить матч.
-5. Если replay недоступен, сохранить уже полученный базовый scoreboard как пригодный OpenDota evidence, записать parse state/error отдельно, включить degraded mode и перечислить недоступные выводы.
+1. Fetch `GET https://api.opendota.com/api/matches/{match_id}`.
+2. Check not only `players` but also `version`, the replay URL and the replay-derived arrays you need: `gold_t`, `xp_t`, `lh_t`, purchases, events and teamfights.
+3. If they are missing, send `POST https://api.opendota.com/api/request/{match_id}`.
+4. Wait for the job to reach a terminal state and fetch the match again.
+5. If the replay is unavailable, keep the basic scoreboard already received as usable OpenDota evidence, record the parse state and error separately, switch to degraded mode and list the conclusions that are now unavailable.
 
-STRATZ может вернуть только базовые данные, если его replay ещё не распарсен. Не считать отсутствие playback нулевым количеством действий.
+STRATZ may return only basic data while its own replay is not parsed. Never read missing playback as zero actions.
 
-## Выбор игрока
+## Selecting the player
 
-При наличии `account_id` выбирай игрока по нему. Если пользователь разбирает чужой матч и указал только героя, разреши точное английское имя через OpenDota `constants/heroes`, затем найди единственного участника с соответствующим `hero_id`/`heroId`. Не угадывай сокращения вроде `ES`: они неоднозначны. При двух совпадениях, скрытом account ID или конфликте между героем и явно данным `account_id` остановись с безопасной диагностикой и запроси уточнение.
+With an `account_id`, select the player by it. When the user reviews someone else's match and named only a hero, resolve the exact English name through OpenDota `constants/heroes`, then find the single participant with the matching `hero_id` or `heroId`. Do not guess abbreviations such as `ES`: they are ambiguous. With two matches, a hidden account ID, or a conflict between the hero and an explicitly given `account_id`, stop with a safe diagnostic and ask for clarification.
 
-## Точный патч
+## The exact patch
 
-OpenDota patch ID может обозначать только семейство вроде `7.41`. Определи буквенный подпатч по `start_time` и последней записи Valve patch timeline, опубликованной не позже начала матча. Первая версия поддерживает только последний текущий подпатч: старый точный патч возвращает `unsupported_patch`, недоступный/непроверенный timeline — `patch_unverified`; оба пути завершаются ненулевым кодом без success-артефакта.
+An OpenDota patch ID may denote only a family such as `7.41`. Determine the lettered sub-patch from `start_time` and the last Valve patch timeline entry published no later than the start of the match. The first version supports only the latest current sub-patch: an older exact patch returns `unsupported_patch`, an unavailable or unverified timeline returns `patch_unverified`; both paths exit with a non-zero code and no success artifact.
 
 ## STRATZ
 
-Запросы идут на `https://api.stratz.com/graphql` с:
+Requests go to `https://api.stratz.com/graphql` with:
 
 ```text
 Authorization: Bearer <STRATZ_API_KEY>
@@ -41,56 +41,56 @@ User-Agent: STRATZ_API
 Content-Type: application/json
 ```
 
-Не выводи и не сохраняй токен. Текущий runtime запрашивает:
+Never print or store the token. The current runtime requests:
 
 - `match.players`: hero, position, lane, role, IMP;
-- lane outcomes и итоговые player stats;
-- `playbackData`: ability/item uses, positions, kills/deaths/assists, successful CS, purchases and runes.
+- lane outcomes and final player stats;
+- `playbackData`: ability and item uses, positions, kills, deaths, assists, successful CS, purchases and runes.
 
-`heroStats.stats` запрашивается отдельно и даёт peer baseline: фильтры `heroIds`, `positionIds`, `bracketBasicIds` и `week`, а `groupByTime` возвращает кумулятивную кривую по минутам 0–75 с `matchCount` на каждой минуте. Фильтра по патчу у этого поля нет — патч приближается выбором недель. `leaderboard.hero` для выборки сильных игроков всё ещё не запрашивается.
+`heroStats.stats` is requested separately and gives the peer baseline: the `heroIds`, `positionIds`, `bracketBasicIds` and `week` filters, while `groupByTime` returns a cumulative curve over minutes 0-75 with a `matchCount` at each minute. This field has no patch filter — the patch is approximated by selecting weeks. `leaderboard.hero` for a sample of strong players is still not requested.
 
-IMP — закрытая модельная метрика и дополнительный сигнал. Она не доказывает конкретную ошибку. Не называй `predictedOutcomeWeight` или другое недокументированное поле процентом перевеса пика.
+IMP is a closed model metric and an auxiliary signal. It does not prove a specific mistake. Never call `predictedOutcomeWeight` or any other undocumented field a draft edge percentage.
 
-## Контекст пика
+## Draft context
 
-Оцени три независимых сигнала на разных основаниях:
+Assess three independent signals on different foundations:
 
-1. `lane_expectation`: выборка того же matchup, точного патча, позиций и близкого bracket; без выборки — `insufficient_data`. Механики объясняют, но не заменяют статистическую опору.
-2. `team_fit`: полный пик плюс проверенные текущие механики. Пройди capability checklist: initiation, control, save, frontline, physical/magical damage, tower/objective pressure, wave clear, scaling и способы продолжить драку. Это качественная тренерская интерпретация, а не вероятность победы.
-3. `draft_prior`: только документированная модель с известным выходным полем, релевантной выборкой и интерпретацией. Без неё — `insufficient_data`.
+1. `lane_expectation`: a sample of the same matchup, the exact patch, the positions and a close bracket; without a sample it is `insufficient_data`. Mechanics explain but do not replace a statistical footing.
+2. `team_fit`: the full draft plus verified current mechanics. Walk the capability checklist: initiation, control, save, frontline, physical and magical damage, tower and objective pressure, wave clear, scaling and ways to continue a fight. This is a qualitative coaching interpretation, not a win probability.
+3. `draft_prior`: only a documented model with a known output field, a relevant sample and an interpretation. Without one it is `insufficient_data`.
 
-Показывай `favorable`, `even`, `unfavorable` или `insufficient_data`, основание, размер выборки и уверенность. Не смешивай ожидаемый matchup с фактическим lane outcome и не превращай `team_fit` в недокументированный процент перевеса.
+Show `favorable`, `even`, `unfavorable` or `insufficient_data`, what it stands on, the sample size and the confidence. Never mix the expected matchup with the actual lane outcome, and never turn `team_fit` into an undocumented edge percentage.
 
 ## Baseline
 
-Порядок сравнения:
+Order of comparison:
 
-1. тот же игрок на том же герое и позиции — **не реализовано**;
-2. тот же hero + position + bracket + patch — **реализовано** через STRATZ `heroStats.stats`;
-3. сильные игроки STRATZ на том же hero + position + patch — **не реализовано**;
-4. более широкие OpenDota benchmarks как слабый ориентир — **не реализовано**.
+1. the same player on the same hero and position — **not implemented**;
+2. the same hero + position + bracket + patch — **implemented** through STRATZ `heroStats.stats`;
+3. strong STRATZ players on the same hero + position + patch — **not implemented**;
+4. broader OpenDota benchmarks as a weak reference — **not implemented**.
 
-Реализован только второй уровень, и он открывает `baseline_ready`. Что он честно даёт и чего не даёт:
+Only the second level is implemented, and it opens `baseline_ready`. What it honestly gives and does not give:
 
-- даёт: среднее по выборке того же героя, позиции и bracket на неделях текущего патча, с размером выборки на каждой сравниваемой минуте;
-- не даёт: перцентиль игрока, корзину уже четырёх, фильтр по режиму и разделение по lane matchup, item components или power-spike timing;
-- корзину выбирает по медали игрока (`rank_tier` OpenDota и `steamAccount.seasonRank` STRATZ); средний bracket матча остаётся запасным основанием и называется в артефакте явно.
-- не сравнивает net worth: минутный ряд игрока для этого сопоставим только с накопленным золотом OpenDota, а не с `networth`, и такое сравнение завышает игрока.
+- gives: the mean over a sample of the same hero, position and bracket across the weeks of the current patch, with the sample size at every compared minute;
+- does not give: the player's percentile, a bucket finer than four, a game-mode filter, or a split by lane matchup, item components or power-spike timing;
+- chooses the bucket by the player's own medal (OpenDota `rank_tier` and STRATZ `steamAccount.seasonRank`); the match average bracket stays the fallback and is named explicitly in the artifact;
+- does not compare net worth: the player's per-minute row is comparable only with OpenDota accumulated gold, not with `networth`, and such a comparison inflates the player.
 
-Одиночный матч сравнивается со средним, поэтому вывод звучит как «выше/ниже среднего выборки в таком-то отношении», а не как место в распределении. Отклонение от среднего локализует расхождение; причина по-прежнему требует событий.
+A single match is compared against a mean, so the conclusion reads as "above or below the sample mean by this ratio", not as a place in a distribution. A deviation from the mean localizes a divergence; the cause still requires events.
 
-Не копируй pro-build механически. Сравнивай старт, порядок компонентов, тайминги и адаптацию к десяти героям.
+Do not copy a pro build mechanically. Compare the starting items, the order of components, the timings and the adaptation to the ten heroes on the map.
 
-## Доступные микросигналы
+## Available micro signals
 
-Runtime v1 может анализировать подтверждённые применения способностей, успешные добивания способностью, позиции, предметы и руны. Он пока не получает полный ряд mana/health windows. Success-only события не показывают всех упущенных возможностей. Без сырого `.dem` не утверждай, почему был пропущен конкретный крип или нажат/не нажат конкретный input.
+Runtime v1 can analyse confirmed ability uses, successful last hits by ability, positions, items and runes. It does not yet receive a full row of mana and health windows. Success-only events do not show every missed opportunity. Without a raw `.dem`, never claim why a specific creep was missed or why a specific input was or was not pressed.
 
-## Иерархия доверия
+## Trust hierarchy
 
-1. Текущие числа и изменения: Valve.
-2. Факты эпизода: распарсенный replay, затем OpenDota/STRATZ.
-3. Механики: Liquipedia с cross-check.
-4. Ожидания: релевантная статистическая выборка.
-5. Стратегия: маркированная тренерская интерпретация.
+1. Current numbers and changes: Valve.
+2. Facts of an episode: the parsed replay, then OpenDota and STRATZ.
+3. Mechanics: Liquipedia with a cross-check.
+4. Expectations: a relevant statistical sample.
+5. Strategy: a labelled coaching interpretation.
 
-При конфликте назови расхождение и снизь уверенность.
+On a conflict, name the divergence and lower the confidence.

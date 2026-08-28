@@ -1,174 +1,136 @@
-# Контракт тренерского разбора
+# Review contract
 
-Шаблон адаптирован из [Dota 2 Replay Review Template](https://bsjdota.com/blog/dota-2-replay-review-template/): match details, draft, laning, midgame, late game, key moments и action plan. Здесь к нему добавлены role-aware baselines, явная доказательность и гибридные границы стадий.
+The template is adapted from the [Dota 2 Replay Review Template](https://bsjdota.com/blog/dota-2-replay-review-template/): match details, draft, laning, midgame, late game, key moments and an action plan. Role-aware baselines, explicit evidence and hybrid stage boundaries are added on top of it.
 
-## Язык ответа / Response language
+The order is inverted on purpose. The player gets the verdict, the decisive episode and the exercise first; the evidence that earns them comes after. A reader who stops after the first screen must already have something to act on.
 
-Сохраняй структуру контракта, но локализуй все пользовательские заголовки и объяснения на язык, выбранный по `SKILL.md`. Для английского ответа используй естественные эквиваленты: `Паспорт матча` → `Match overview`, `Пик, роль и матчап` → `Draft, role, and matchup`, `Стадии: три таблицы` → `Game stages`, `Переломный момент` → `Turning point`, `Общие наблюдения` → `Overall findings`, `План действий` → `Action plan`. Названия героев, предметов и источников оставляй без перевода. Схемные идентификаторы в разборе не появляются вовсе — см. следующий раздел.
+## Response language
 
-## Разбор читает игрок, а не отладчик
+Keep the contract structure and localize every user-facing heading and explanation into the language selected by `SKILL.md`. Russian equivalents: `Bottom line` to «Итог», `Turning point` to «Переломный момент», `Stages` to «Стадии», `Draft and role` to «Пик и роль», `Data limits` to «Ограничения данных». Hero names, item names and source names are never translated. Schema identifiers never appear at all — see the next section.
 
-Разбор — текст для человека. Имена полей, ключей, гейтов и enum-значений в него не попадают: они принадлежат артефакту и разделу «Откуда данные». Дисциплина доказательности от этого не меняется — гейт по-прежнему решает, что можно сказать; меняется только то, как это сказано.
+## The review is read by a player, not a debugger
 
-| Запрещено в тексте разбора | Как писать вместо этого |
+The review is text for a human. Field names, keys, gate names and enum values belong to the artifact and to the optional provenance block, not to the review. This changes how a finding is written, never what may be claimed: the gates still decide that.
+
+| Never in the review | Write the meaning instead |
 | --- | --- |
-| `lane_expectation` | «Ожидание по линии» |
-| `team_fit` | «Как герой ложится в состав» |
-| `draft_prior` | «Статистический перевес пика» |
-| `insufficient_data` | «недостаточно данных» |
-| `draft_ready`, `event_ready`, `baseline_ready` и прочие гейты | молча соблюдай их; при закрытом гейте пиши, чего именно не хватает |
-| `position_est`, `lane_role`, `rank_tier`, `seasonRank`, `gold_t` и любые поля источников | «оценка позиции OpenDota», «медаль игрока», «ряд золота» — смысл, а не путь к полю |
-| `POSITION_4`, `OFF_LANE`, `CRUSADER_ARCHON`, `player_medal` | «позиция 4», «оффлейн», «корзина Crusader–Archon», «по медали игрока» |
-| `bracketSource`, `crossSourceProxy`, `matchCount`, `schemaVersion` | «основание выборки», «сравнение разных измерений», «размер выборки»; версию схемы не показывай |
-| `mode: "full"`, `degraded` | «данные собраны полностью» / «часть данных недоступна, отчёт неполный» |
-| `teleport_item`, `ally_warp`, `unattributed` | «телепорт свитком/ботинками», «вошёл в перенос союзника (Dark Rift Underlord)», «способ входа не установлен» |
+| `lane_expectation` | lane expectation / «ожидание по линии» |
+| `team_fit` | how the hero fits the draft / «как герой ложится в состав» |
+| `draft_prior` | statistical draft edge / «статистический перевес пика» |
+| `insufficient_data` | insufficient data / «недостаточно данных» |
+| `draft_ready`, `event_ready`, `baseline_ready` and other gates | obey them silently; when a gate is closed, name what is missing |
+| `position_est`, `lane_role`, `rank_tier`, `seasonRank`, `gold_t` and any source field | "OpenDota estimates the position as 4", "the player's own medal", "the gold row" — the meaning, not the path |
+| `POSITION_4`, `OFF_LANE`, `CRUSADER_ARCHON`, `player_medal` | "position 4", "offlane", "the Crusader-Archon bracket", "by the player's own medal" |
+| `bracketSource`, `crossSourceProxy`, `matchCount`, `schemaVersion` | "what the bracket was chosen from", "a comparison across two different measurements", "sample size"; never show the schema version |
+| `teleport_item`, `ally_warp`, `unattributed` | "teleported with a scroll or boots" / «телепорт свитком или ботинками», "stepped into an ally's warp, Underlord's Dark Rift" / «вошёл в перенос союзника», "how the player got there is not established" / «способ входа не установлен» |
+| `mode: "full"`, `degraded` | "all data was collected" / "part of the data is unavailable, the report is incomplete" |
 
-Провенанс остаётся обязательным, но человеческий: пиши «по данным STRATZ», «OpenDota оценивает позицию как 4», «подтверждено Valve». Точные поля и пути называй только в двух случаях: пользователь спрашивает про данные или отладку, либо ты выносишь их в финальный блок «Откуда данные». Этот блок необязателен и всегда идёт последним.
+Provenance stays mandatory but human: "according to STRATZ", "OpenDota estimates the position as 4", "confirmed by Valve". Name exact fields and paths in only two cases: the user asks about the data or about debugging, or you put them into the final "Where the data comes from" block. That block is optional and always comes last.
 
-Ошибки runtime показывай по смыслу: «STRATZ не ответил», «реплей ещё не распарсен» — а не кодом. Код называй, только если пользователь будет чинить это сам.
+Runtime failures are reported by meaning — "STRATZ did not answer", "the replay is not parsed yet" — not by code. Name the code only when the user is going to fix it themselves.
 
-Служебных фраз в отчёте нет. Не отчитывайся о том, что данные собраны, не анонсируйте, о чём будет разбор, не пересказывай собственный метод и не напоминай, что победа не отменяет анализ, — это рабочие принципы, а не текст для читателя. Каждое предложение отчёта должно нести факт, вывод или действие.
+The report carries no status lines. Do not report that the data was collected, do not announce what the review will cover, do not retell your own method, and do not remind the reader that a win does not cancel analysis. Those are working principles, not text for the reader. Every sentence must carry a fact, a conclusion or an action.
 
-## Aggregate-only ветка
+## Aggregate-only branch
 
-Используй эту сокращённую форму, если есть фазовые агрегаты, но нет полного пика, role/rank/patch baseline или event timeline. Не пытайся заполнить недоступные поля полной формы.
+Use this short form when phase aggregates exist but the full draft, the role/rank/patch baseline or the event timeline do not. Do not try to fill the unavailable slots of the full form.
 
-1. **Паспорт:** доступные факты и отсутствующие источники.
-2. **Контекст:** задача героя, ожидание по линии, вписанность в состав и оценка билда — недостаточно данных.
-3. **Четыре стадии:** одна таблица; факты и место стадии среди четырёх по каждой метрике; без нормативного вердикта.
-4. **Переломное окно:** диапазон, в котором изменились метрики; без названной причины.
-5. **Кандидат в паттерн:** только наблюдаемая форма метрик.
-6. **Следующие данные:** конкретные event types, необходимые для диагноза.
-7. **Упражнение:** разметить решения в найденном окне; без числовой игровой нормы.
+1. **Bottom line:** the available facts, the window that deserves further work, and a process exercise. No cause and no in-game recommendation.
+2. **Context:** hero task, lane expectation, draft fit and build assessment are all insufficient data — one sentence, not a section.
+3. **Stages:** one table, facts and each stage's rank per metric, without a normative verdict.
+4. **Missing data:** the concrete event types a diagnosis would need.
 
-Обязательная итоговая формула: `это окно — приоритет для дальнейшего разбора из-за наблюдаемого расхождения метрик; это не диагноз поведения`. Не используй здесь даже тренерские сокращения вроде `недоиграл`, `потерял темп`, `не конвертировал линию`, `восстановил влияние`, `боевое присутствие` или `давление`: они незаметно превращают агрегаты в оценку действий.
+In this branch there is no exact hero task, no item or skill build assessment, no normative words `good / bad / timely / late`, no causal story and no in-game recommendation such as rotating, smoking, pressuring, farming or taking an objective. Those slots open only when the matching gate opens.
 
-Таблица этой ветки имеет ровно четыре поля помимо названия стадии — «Задачи», «Вердикта» и «Альтернативы» в ней нет:
+Metrics here may only be localized: `the 10-25 window is the priority for further work, because the combination of [metrics] changed inside it; this is localization, not a diagnosis`. The words `underplayed`, `lost tempo`, `failed to convert`, `impact`, `presence`, `pressure` and `combat efficiency` already assign game meaning to aggregates and do not replace a diagnosis. State a positive finding the same way: `25-32 held the highest GPM, XPM and damage per minute among the phases`, not `the player restored their impact`.
 
-| Стадия | Факты | Место метрик среди фаз | Неизвестно | Нужные данные |
+Before writing `max`, `min`, `above` or `below`, write out the metric for all four phases and check the comparison. Never carry the rank of one metric over to the whole phase.
+
+The table of this branch has exactly four fields besides the stage name — it has no `Task`, `Verdict` or `Alternative`:
+
+| Stage | Facts | Rank among the phases | Unknown | Data needed |
 |---|---|---|---|---|
-| Линия 0–10 | | | | |
+| Laning 0-10 | | | | |
 
-Сначала составь сравнительные ряды по каждой метрике, например `XPM: 472 → 269 → 473 → 801`, и только затем ставь метки max/min. Эти ряды можно не показывать пользователю, но арифметическая проверка обязательна.
+Build the comparison rows for every metric first, for example `XPM: 472 -> 269 -> 473 -> 801`, and only then attach the max and min labels. The rows need not be shown to the user, but the arithmetic check is mandatory.
 
-Допустимая строка aggregate-only:
+An acceptable aggregate-only row:
 
-| Стадия | Факты | Место метрик среди фаз | Неизвестно | Нужные данные |
+| Stage | Facts | Rank among the phases | Unknown | Data needed |
 |---|---|---|---|---|
-| Мидгейм 15–25 | 7.4 LH/min; 348 hero damage/min; `0/3/4`, три смерти | LH/min — максимум среди четырёх фаз, hero damage/min — минимум | где находился игрок, какие драки и цели были доступны, почему он умер и был ли такой trade-off правильным для пика | position/rune/fight/death events, полный пик и baseline Earth Spirit position 2 |
+| Midgame 15-25 | 7.4 LH/min; 348 hero damage/min; `0/3/4`, three deaths | LH/min is the highest of the four phases, hero damage/min the lowest | where the player was, which fights and objectives were available, why they died and whether that trade-off was right for this draft | position, rune, fight and death events, the full draft and an Earth Spirit position 2 baseline |
 
-Оценка относительно роли в этой ветке — `недостаточно данных` для всех четырёх стадий.
+The verdict against the role is insufficient data for all four stages in this branch.
 
-Полную форму ниже используй по мере открытия ворот данными.
+The full form below applies as the gates open.
 
-## 1. Паспорт матча
+## Full form
 
-- Match ID, результат, длительность, режим, точный подпатч.
-- Игрок, герой, позиция, линия и bracket.
-- Ограничения данных — **только когда они есть**: недостающий источник, нераспарсенный реплей, закрытый гейт, нехватка выборки. Полнота данных не новость: если собралось всё, паспорт про сбор молчит.
+### 1. Bottom line
 
-## 2. Пик, роль и матчап
+Four compact blocks, nothing else, before any table:
 
-Пиши связным текстом, а не списком полей. Порядок: составы обеих команд, матчап линии, задача героя в этом пике, затем три оценки с уверенностью.
+- **Match line:** match ID, result, duration, hero, position, lane, exact patch and bracket — one line, not a table.
+- **Main finding:** the single most consequential thing the evidence supports, with its number and timecode.
+- **Pattern:** one candidate or confirmed pattern. One match yields a pattern candidate; it becomes confirmed only after several matches or several comparable episodes.
+- **Exercise:** the observed condition, the concrete action, the measurable criterion, and the moment of the short self-check after the game. A numeric in-game target requires a baseline and is taken from one specific comparison row, naming the metric, the minute and the sample size. Without a baseline the exercise measures the process of observation or decision instead of an invented KDA, rotation or objective norm.
 
-- **Задача героя в этом составе:** 3–4 конкретные обязанности, выведенные из пика; без полного пика — «недостаточно данных».
-- **Ожидание по линии:** нужна выборка того же матчапа, патча, позиций и близкого bracket. Нет выборки — так и напиши: «сказать нечего, выборки этого матчапа нет».
-- **Как герой ложится в состав:** качественная оценка по capability checklist полного пика — благоприятно / нейтрально / неблагоприятно, с фактами и пробелами. Не выдавай её за вероятность победы.
-- **Статистический перевес пика:** только по документированной модели с известным выходным полем и релевантной выборкой. Нет модели — «недостаточно данных», и это одна строка, а не абзац.
-- Фактический исход линии показывай отдельно от ожидания.
-- Ключевые power spikes и угрозы — только подтверждённые текущим патчем.
+The exercise lives here and is not repeated at the end of the review.
 
-Три оценки не обязаны занимать три абзаца: если две из них «недостаточно данных», сверни их в одно предложение и не расписывай отсутствие данных подробнее, чем сами данные.
+### 2. Turning point
 
-## 3. Стадии: три таблицы
+With an event timeline, pick one episode with a timecode where the player's or the team's efficiency changed. Show the sequence `before -> action -> result -> available alternative`. Without an event timeline, name only the turning window between phases and the data needed to find the episode. Do not call an episode the cause of the whole match without a sufficient counterfactual.
 
-Обязательные стадии: линия, переход, мидгейм, завершение. По умолчанию используй `0–10`, `10–15`, `15–25`, `25+`; сдвигай границы по окончанию линии, ключевому предмету, первой большой драке или objective и объясняй сдвиг.
+If the episode contains a jump in the position row, take the method of entry from the cause recorded in the artifact, not from the jump itself. Stepping into an ally's warp is an entry together with the team and cannot be blamed as a solo initiative; when the cause is not established, do not name the method of entry at all, and assess what happened after the arrival instead.
 
-Стадии выводятся таблицами, а не карточками: четыре карточки по девять полей заставляют читателя держать сравнение в голове, а таблица показывает его глазами. Формат перечисленных ниже слотов не меняет ни одного правила доказательности — закрытая воротами ячейка остаётся `недостаточно данных`.
+### 3. Stages: one table
 
-### 3.1. Факты по стадиям
+Mandatory stages: laning, transition, midgame, closing. Default boundaries are `0-10`, `10-15`, `15-25`, `25+`; move them for the end of the lane, a key item, the first big fight or an objective, and say that you moved them.
 
-Строки — метрики, столбцы — стадии, чтобы сравнение внутри матча читалось по строке.
+A stage is expanded into a full row only when it earns attention: any compared metric at its checkpoint deviates from the sample mean by at least 15 per cent, or the stage contains a death, a kill, an objective or a recorded reposition, or the stage holds the match extreme for a metric. Stages that meet none of these collapse into a single line under the table — "laning and transition stayed within the sample mean" — carrying their numbers and taking no row.
 
-| | Линия 0–10 | Переход 10–15 | Мидгейм 15–25 | Завершение 25+ |
+| Stage | Key facts | Against the sample | Verdict and confidence | Alternative |
 |---|---|---|---|---|
-| GPM | | | | |
-| XPM | | | | |
-| LH/min | | | | |
-| Hero dmg/min | | | | |
-| K / D / A | | | | |
-| Ключевое событие | | | | |
+| Midgame 15-25 | | | | |
 
-Строку добавляй только под метрику, которая реально есть в артефакте. Экстремум помечай прямо в ячейке (`max`, `min`) и только после того, как выписал всю строку и проверил сравнение.
+- **Key facts:** the numbers of the stage plus the confirmed micro or macro behind them — ability, item, resource, movement, farm, fight or objective. Only what the events actually confirm.
+- **Against the sample:** the ratio to the sample mean at this stage's checkpoint together with the sample size, for example `hero damage x0.55 (n=35101)`. This is a **mean**, never a percentile: write "below the sample mean by this ratio", never "you are in the bottom 30 per cent". Compare only on the metrics and minutes that actually have a comparison row. Values are cumulative, so the cell reads as the state at the checkpoint. Without a baseline the cell holds the stage's rank inside this match only.
+- **Verdict and confidence:** `strong / mixed / weak / insufficient data`, followed by high, medium or low confidence.
+- **Alternative:** one concrete, more reliable principle of action at the same level of detail as the evidence, never presented as a guaranteed counterfactual.
 
-### 3.2. Сравнение с выборкой
+Keep cells short: a long evidence quote goes into a footnote line under the table, not inside a cell. Never fill a slot artificially — an unconfirmed micro or macro leaves insufficient data in the cell.
 
-Строки — минуты из `baseline.comparisons`, столбцы — метрики. Показывай значение игрока, среднее выборки и отношение; `n` — размер выборки на этой минуте.
+### 4. Draft and role
 
-| Чекпойнт | XP | Hero dmg | LH | Смерти | n |
-|---|---|---|---|---|---|
-| 10:00 | игрок / среднее = ×  | | | | |
+Compact prose, and only what the full draft supports.
 
-Значения накопительные, поэтому вердикт стадии читается как состояние на чекпойнте. Столбец добавляй только под метрику, для которой строка в `baseline.comparisons` существует. Self-baseline runtime пока не собирает.
+- Both line-ups on one line each, then the lane matchup.
+- **The hero's task in this draft:** three or four concrete duties derived from the picks. Without the full draft this is insufficient data.
+- The three assessments in one line each, never in three paragraphs. Lane expectation needs a sample of the same matchup, patch, positions and a close bracket, and without it the honest answer is that there is nothing to say because no sample of this matchup exists. Draft fit is a qualitative coaching judgement from the capability checklist of the full draft — favourable, neutral or unfavourable, with facts and gaps, never a win probability. The statistical draft edge requires a documented model with a known output field and a relevant sample, and without one it is insufficient data.
+- Show the actual lane outcome separately from the expectation.
+- Power spikes and threats only when confirmed by the current patch.
+- The situational fit of the item and skill build against this draft.
 
-### 3.3. Задача, вердикт и действие
+### 5. Data limits
 
-| Стадия | Задача | Внутри матча | Относительно выборки | Микро | Макро | Альтернатива | Уверенность |
-|---|---|---|---|---|---|---|---|
-| Линия 0–10 | | | | | | | |
-| Переход 10–15 | | | | | | | |
-| Мидгейм 15–25 | | | | | | | |
-| Завершение 25+ | | | | | | | |
+Only when limits exist: a missing source, an unparsed replay, a closed gate, a thin sample, a bracket chosen from the match average rather than from the player's own medal. Complete data is not news — when everything was collected, this section does not exist.
 
-- **Задача:** что герой должен обеспечивать на этой стадии в этом пике; требуется полный пик и актуальные механики.
-- **Внутри матча:** `лучший / смешанный / худший наблюдаемый отрезок` по доступным метрикам.
-- **Относительно выборки:** `сильная / смешанная / слабая / недостаточно данных`; требуется baseline. Формулируй как отношение к среднему выборки, а не как перцентиль.
-- **Микро:** только подтверждённое исполнение способностей, ресурсов или предметов.
-- **Макро:** только подтверждённые перемещения, фарм, драки и objectives.
-- **Альтернатива:** конкретный более надёжный принцип действия на той же детализации, что evidence.
-- **Уверенность:** высокая, средняя или низкая.
+## Correct boundary of a conclusion
 
-Ячейки держи короткими: длинная цитата доказательства идёт строкой-сноской под таблицей, а не внутрь ячейки. Не заполняй слот искусственно — если микро или макро не подтверждены, в ячейке стоит `недостаточно данных`. Столбцы «Задача» и «Альтернатива» в aggregate-only ветке отсутствуют, а не заполняются общим знанием о герое.
+Match `8963363814`, Earth Spirit position 2:
 
-## 4. Переломный момент
+> **Fact:** the lane is recorded as a Radiant victory by STRATZ. At `10-15` the numbers fell to 338 GPM, 269 XPM and `1/2/0`; at `15-25` the player had 7.4 LH/min, 348 hero damage/min and `0/3/4`. Vessel appeared at 17:44.<br>
+> **Interpretation:** `10-25` is the priority window for further work: it contains three deaths, the lowest hero damage per minute among the phases and the highest LH/min. This localizes a divergence between metrics; it is not a diagnosis of behaviour, and without a role, rank and patch baseline the stretch cannot be called objectively weak for an Earth Spirit mid.<br>
+> **Not yet proven:** that the player chose farm over pressure, lost runes, stood passively in mid, let TA farm freely or should have smoked more often. Choosing between those causes needs routes, rune events, the specific deaths and both teams' states.<br>
+> **Pattern candidate:** in one game the economic and the combat metrics diverged after the lane; one match is not enough to call it a recurring habit or to explain the player's actions.
+> **Next analysis step:** work through the events around the deaths and compare them with the item timings, without judging the timings yet. Without the full draft, a baseline and events, the aggregate-only branch applies. The safe exercise is to record, after every death in `10-25`, the goal of the action, the visible information and the exit plan; assign a numeric target once a baseline exists.
 
-При наличии event timeline выбери один эпизод с таймкодом, где изменилась эффективность игрока или его команды. Покажи последовательность `до → действие → результат → доступная альтернатива`. Без event timeline назови только переломное окно между фазами и данные, которые нужны для поиска эпизода. Не называй эпизод причиной исхода всего матча без достаточного контрфактуала.
+## Common failures of form
 
-Если в эпизоде есть скачок позиции, способ входа бери из подписи причины в артефакте, а не из самого скачка. Вход в перенос союзника — это вход вместе с командой, и упрекать за него в одиночной инициативе нельзя; при неустановленной причине способ входа не называй вовсе и оценивай то, что произошло после прибытия.
-
-## 5. Общие наблюдения
-
-- Одна подтверждённая сильная сторона.
-- Один кандидат в паттерн с наибольшим сочетанием влияния и доказательности. Назови его повторяющимся только после подтверждения в нескольких матчах или сопоставимых эпизодах.
-- Ситуативность item/skill build относительно пика.
-- Микро- и макрогипотезы отдельным блоком, если для них нужны дополнительные события.
-
-## 6. Action plan
-
-Дай одно упражнение на 3–5 следующих игр:
-
-- наблюдаемое условие;
-- конкретное действие;
-- измеримый критерий выполнения;
-- момент короткой самопроверки после игры.
-
-Числовой performance target требует baseline и берётся из конкретной строки `baseline.comparisons` — с метрикой, минутой и размером выборки. Если baseline нет, упражнение измеряет процесс: например, после каждой смерти в найденном окне записать цель действия, доступную информацию, план выхода и фактический результат.
-
-## Пример правильной границы вывода
-
-Матч `8963363814`, Earth Spirit position 2:
-
-> **Факт:** линия отмечена STRATZ как `RADIANT_VICTORY`. На `10–15` показатели снизились до 338 GPM, 269 XPM и `1/2/0`; на `15–25` игрок имел 7.4 LH/min, 348 hero damage/min и `0/3/4`. Vessel появился в 17:44.<br>
-> **Интерпретация:** `10–25` — приоритетное окно для дальнейшего разбора: внутри него наблюдались три смерти, минимальный среди фаз hero damage/min и максимальный LH/min. Это локализация расхождения метрик, а не диагноз поведения; без role/rank/patch baseline нельзя назвать отрезок объективно слабым для Earth Spirit mid.<br>
-> **Пока не доказано:** что игрок выбрал фарм вместо давления, потерял руны, пассивно стоял в миде, позволил TA свободно фармить или обязан был чаще смокать. Для выбора между этими причинами нужны маршруты, rune events, конкретные смерти и состояние команд.<br>
-> **Кандидат в паттерн:** в одной игре после линии разошлись экономические и combat-метрики; одного матча недостаточно, чтобы назвать это повторяющейся привычкой или объяснить действия игрока.
-> **Следующий шаг анализа:** разобрать события вокруг смертей и сравнить их с таймингами предметов; сами тайминги пока не оценивать. Без полного пика, baseline и событий применяется aggregate-only ветка. Безопасное упражнение — после каждой смерти на `10–25` фиксировать цель действия, видимую информацию и план выхода; числовую норму назначить после получения baseline.
-
-## Частые ошибки формы
-
-- Начинать с универсального совета вместо паспорта и задачи героя.
-- Повторять scoreboard без сравнения и интерпретации.
-- Давать одинаковый совет для всех четырёх стадий.
-- Перечислять десять ошибок вместо одного паттерна и упражнения.
-- Прятать ограничение данных в конце после уверенного недоказанного вывода.
-- Ставить числовую цель по смертям, ротациям или объектам без baseline.
+- Opening with generic advice instead of the verdict and the exercise.
+- Repeating the scoreboard without comparison and interpretation.
+- Giving the same advice for all four stages.
+- Listing ten mistakes instead of one pattern and one exercise.
+- Expanding a stage that deviates from nothing and contains no event.
+- Hiding a data limit at the end, after a confident unproven conclusion.
+- Setting a numeric target for deaths, rotations or objectives without a baseline.

@@ -1,12 +1,12 @@
-# Runtime для анализа матча
+# Match analysis runtime
 
-Этот runtime собирает воспроизводимый **инвентарь доказательств** по матчу до написания тренерского разбора. Требуются Node.js 18+ и сетевой доступ; `npm install` и сторонние пакеты не нужны.
+This runtime collects a reproducible **evidence inventory** for a match before the coaching review is written. It needs Node.js 18+ and network access; `npm install` and third-party packages are not required.
 
-## Подготовка STRATZ
+## Preparing STRATZ
 
-`STRATZ_API_KEY` открывает дополнительный источник STRATZ. Не вставляйте токен в чат, Markdown, командную историю, артефакты или репозиторий. Устанавливайте его только в текущую сессию либо через менеджер секретов/CI.
+`STRATZ_API_KEY` opens STRATZ as an additional source. Never paste the token into chat, Markdown, shell history, artifacts or the repository. Set it only for the current session, or through a secret manager or CI.
 
-Windows PowerShell (ввод скрыт):
+Windows PowerShell (input hidden):
 
 ```powershell
 $secureToken = Read-Host -AsSecureString 'STRATZ_API_KEY'
@@ -14,7 +14,7 @@ $env:STRATZ_API_KEY = [System.Net.NetworkCredential]::new('', $secureToken).Pass
 Remove-Variable secureToken
 ```
 
-macOS/Linux Bash (ввод скрыт; запускайте этот setup-фрагмент в Bash):
+macOS and Linux Bash (input hidden; run this setup snippet in Bash):
 
 ```sh
 read -r -s -p 'STRATZ_API_KEY: ' runtime_token; printf '\n'
@@ -22,15 +22,15 @@ export STRATZ_API_KEY="$runtime_token"
 unset runtime_token
 ```
 
-Сам `scripts/analyze-match.sh` остаётся переносимым wrapper для `/bin/sh`; Bash требуется только для приведённого выше скрытого ввода токена.
+`scripts/analyze-match.sh` itself stays a portable `/bin/sh` wrapper; Bash is needed only for the hidden token input above.
 
-Без переменной runtime не делает запрос к STRATZ и записывает `sources.stratz.status: "unavailable"` с причиной `"missing_token"`. Это не делает доступные данные OpenDota недействительными. Финальный ответ должен предложить подключить STRATZ для position/lane/playback enrichment, назвать конкретно недоступные данные и продолжить разрешённый OpenDota-разбор в degraded mode. Токен не следует просить вставить в чат.
+Without the variable the runtime makes no STRATZ request and records `sources.stratz.status: "unavailable"` with the reason `"missing_token"`. That does not invalidate the available OpenDota data. The final answer must offer to connect STRATZ for position, lane and playback enrichment, name exactly which data is unavailable, and continue the permitted OpenDota review in degraded mode. Never ask for the token in chat.
 
-Runtime собирает peer baseline вторым запросом к STRATZ `heroStats.stats`. Leaderboard сильных игроков и self-baseline по-прежнему не собираются, поэтому токен сам по себе `baseline_ready` не гарантирует.
+The runtime collects the peer baseline with a second request to STRATZ `heroStats.stats`. The leaderboard of strong players and the self-baseline are still not collected, so the token alone does not guarantee `baseline_ready`.
 
-## Запуск
+## Running it
 
-Нужен положительный целый `match_id` и селектор игрока: положительный целый `account_id` либо точное английское имя героя. Запускайте из корня skill bundle. Если указаны оба селектора, они должны соответствовать одному игроку.
+A positive integer `match_id` and a player selector are required: a positive integer `account_id`, or the exact English hero name. Run it from the root of the skill bundle. If both selectors are given, they must point at the same player.
 
 Windows PowerShell wrapper:
 
@@ -38,47 +38,47 @@ Windows PowerShell wrapper:
 .\scripts\analyze-match.ps1 -MatchId 8963363814 -AccountId 56386500 --parse-timeout-ms 120000 --output-dir .\output
 ```
 
-Windows, чужой матч по герою:
+Windows, someone else's match by hero:
 
 ```powershell
 .\scripts\analyze-match.ps1 -MatchId 8963363814 -Hero 'Earth Spirit' --parse-timeout-ms 120000 --output-dir .\output
 ```
 
-macOS/Linux POSIX wrapper:
+macOS and Linux POSIX wrapper:
 
 ```sh
 ./scripts/analyze-match.sh 8963363814 56386500 --parse-timeout-ms 120000 --output-dir ./output
 ```
 
-macOS/Linux, чужой матч по герою:
+macOS and Linux, someone else's match by hero:
 
 ```sh
 ./scripts/analyze-match.sh 8963363814 'Earth Spirit' --parse-timeout-ms 120000 --output-dir ./output
 ```
 
-Прямой вызов Node (любая платформа с Node.js 18+):
+Direct Node call (any platform with Node.js 18+):
 
 ```sh
 node scripts/analyze-match.mjs --match-id 8963363814 --account-id 56386500 --parse-timeout-ms 120000 --output-dir ./output
 ```
 
-Вместо `--account-id` можно передать `--hero 'Earth Spirit'`.
+`--hero 'Earth Spirit'` may be passed instead of `--account-id`.
 
-Аргументы:
+Arguments:
 
-| Аргумент | Обязателен | По умолчанию | Значение |
+| Argument | Required | Default | Meaning |
 | --- | --- | --- | --- |
-| `--match-id` / `-MatchId` / первый аргумент shell wrapper | да | — | ID матча Dota 2 |
-| `--account-id` / `-AccountId` / числовой второй аргумент shell wrapper | один из двух | — | Steam account ID анализируемого игрока |
-| `--hero` / `-Hero` / текстовый второй аргумент shell wrapper | один из двух | — | Точное английское имя героя; применяется для чужих матчей без известного account ID |
-| `--parse-timeout-ms` | нет | `120000` | общий лимит ожидания parse job OpenDota в миллисекундах |
-| `--output-dir` | нет | `<skill-root>/output` | каталог для нормализованных артефактов |
+| `--match-id` / `-MatchId` / first argument of the shell wrapper | yes | — | Dota 2 match ID |
+| `--account-id` / `-AccountId` / numeric second argument of the shell wrapper | one of the two | — | Steam account ID of the analysed player |
+| `--hero` / `-Hero` / textual second argument of the shell wrapper | one of the two | — | Exact English hero name; used for someone else's match with no known account ID |
+| `--parse-timeout-ms` | no | `120000` | Total wait limit for the OpenDota parse job, in milliseconds |
+| `--output-dir` | no | `<skill-root>/output` | Directory for the normalized artifacts |
 
-При успехе stdout показывает статусы `opendota`, `valve`, `stratz`, затем пути `json` и `markdown`. При каталоге по умолчанию это `output/<match_id>.json` и `output/<match_id>.md`.
+On success stdout shows the `opendota`, `valve` and `stratz` statuses, then the `json` and `markdown` paths. With the default directory those are `output/<match_id>.json` and `output/<match_id>.md`.
 
-## Артефакты и их смысл
+## The artifacts and what they mean
 
-JSON — нормализованная evidence model, а Markdown — её детерминированное, удобное для чтения представление. Верхний уровень JSON:
+The JSON is the normalized evidence model; the Markdown is its deterministic, readable rendering. Top level of the JSON:
 
 ```text
 schemaVersion, generatedAt, request, sources, match, player, draft, lane,
@@ -86,87 +86,87 @@ summary, items, events, series, patch, phases, baseline, eventInventory,
 dataQuality, warnings
 ```
 
-`draft.radiant` и `draft.dire` хранят стороны отдельно; `draft_ready` открывается только при пяти различных героях с каждой стороны. `events` содержит компактный allowlisted таймлайн выбранного игрока из STRATZ, валидированные `teamfights` OpenDota с `source` у каждой записи и производный `repositions` — см. ниже. Булевый `eventInventory` сам по себе не открывает `event_ready`: в записываемом артефакте должны остаться пригодные события с таймкодами. `summary`, `items`, `series` и `phases` содержат итоговые метрики, финальный инвентарь/покупки, исходные ряды и фазовые дельты/экстремумы. Материальные расхождения источников сохраняются как `candidates` с provenance и предупреждением.
+`draft.radiant` and `draft.dire` hold the sides separately; `draft_ready` opens only with five distinct heroes on each side. `events` holds a compact allowlisted timeline of the selected player from STRATZ, validated OpenDota `teamfights` with a `source` on every record, and the derived `repositions` described below. The boolean `eventInventory` does not open `event_ready` by itself: usable events with timecodes must survive into the written artifact. `summary`, `items`, `series` and `phases` hold the final metrics, the final inventory and purchases, the source rows and the phase deltas and extremes. Material disagreements between sources are kept as `candidates` with provenance and a warning.
 
-### Перемещения
+### Repositions
 
-`events.repositions` — производный ряд: скачки в ряду позиций игрока, каждый подписан причиной. Скачком считается интервал, где пройденное расстояние не меньше 15 клеток миникарты, а скорость не меньше 6 клеток в секунду: пеший максимум при пределе скорости 550 — около 4.3 клетки в секунду, поэтому бег в ряд не попадает. Возрождение отбрасывается: между двумя точками такого интервала лежит смерть.
+`events.repositions` is a derived row: jumps in the player's position row, each labelled with its cause. A jump is an interval where the distance travelled is at least 15 minimap cells and the speed is at least 6 cells per second: on foot, at the 550 movement speed cap, the maximum is about 4.3 cells per second, so running never enters the row. Respawns are discarded, because a death lies between the two points of such an interval.
 
-`cause` принимает три значения. `teleport_item` — рядом с прибытием игрок применил свиток телепорта или Boots of Travel, id лежит в `causeItemId`. `ally_warp` — игрок сам вошёл в перенос союзника, например в Dark Rift Underlord, id способности лежит в `causeAbilityId`. `unattributed` — своего применения рядом нет.
+`cause` takes three values. `teleport_item` means the player used a town portal scroll or Boots of Travel near the arrival, and the id is in `causeItemId`. `ally_warp` means the player stepped into an ally's warp themselves, for example Underlord's Dark Rift, and the ability id is in `causeAbilityId`. `unattributed` means there is no cast of the player's own nearby.
 
-Ограничения, которые нужно называть в ответе:
+Limits that must be named in the answer:
 
-- Причина ищется только среди **собственных** применений игрока в пределах 15 секунд до прибытия. Перенос, наложенный на игрока чужой способностью — Relocate Io, телепорт Chen, — остаётся `unattributed`, потому что игрок при этом ничего не применяет.
-- Применение Boots of Travel источник отдаёт не всегда, поэтому часть настоящих телепортов тоже попадает в `unattributed`.
-- `unattributed` означает «способ входа неизвестен», а не «игрок телепортировался». Называть такой скачок телепортом нельзя, как и строить на нём оценку решения о входе.
-- `ally_warp` — вход вместе с командной инициацией. Претензия «зашёл один телепортом» к такому входу не применяется.
+- The cause is searched only among the player's **own** casts within 15 seconds before the arrival. A relocation applied to the player by someone else's ability — Io's Relocate, Chen's teleport — stays `unattributed`, because the player casts nothing at that moment.
+- The source does not always emit a Boots of Travel use, so some genuine teleports also land in `unattributed`.
+- `unattributed` means "the method of entry is unknown", not "the player teleported". Such a jump may not be called a teleport, and no assessment of the decision to enter may be built on it.
+- `ally_warp` is an entry together with the team's initiation. The complaint "went in alone by teleport" does not apply to it.
 
-Ранг хранится в двух разных полях, и путать их нельзя. `player.rank` — медаль самого игрока: OpenDota `rank_tier` и STRATZ `steamAccount.seasonRank`. `match.averageRank` — средний bracket матча из STRATZ `match.rank`. В смешанном лобби они расходятся на несколько корзин: в матче 8963443105 игрок был `42` (Archon 2) при среднем `60` (Ancient).
+Rank is stored in two different fields and they must not be confused. `player.rank` is the player's own medal: OpenDota `rank_tier` and STRATZ `steamAccount.seasonRank`. `match.averageRank` is the match average bracket from STRATZ `match.rank`. In a mixed lobby they diverge by several buckets: in match 8963443105 the player was `42` (Archon 2) with an average of `60` (Ancient).
 
-Оба поля хранят сырой двузначный код и человекочитаемый `label`: десятки — медаль (`Herald`…`Immortal`), единицы — звезда. `60` → `Ancient`, `42` → `Archon 2`, `80` → `Immortal`. Неизвестный код оставляет `label: null` и в Markdown печатается как `лейбл неизвестен`; выдумывать медаль по незнакомому коду нельзя.
+Both fields hold the raw two-digit code and a human-readable `label`: tens are the medal (`Herald` to `Immortal`), units are the star. `60` is `Ancient`, `42` is `Archon 2`, `80` is `Immortal`. An unknown code leaves `label: null` and prints in Markdown as an unknown label; never invent a medal for an unfamiliar code.
 
-Медаль игрока — снимок профиля на момент сбора, а не ранг на момент матча: этого ни один источник не отдаёт. Если OpenDota и STRATZ дают разные коды, runtime не выбирает победителя: `player.rank.value` остаётся `null` с `candidates`, а bracket выбирается по среднему bracket матча. Сам по себе ранг baseline не является.
+The player's medal is a snapshot of the profile at collection time, not the rank at the time of the match: no source gives that. When OpenDota and STRATZ give different codes, the runtime picks no winner: `player.rank.value` stays `null` with `candidates`, and the bracket falls back to the match average bracket. Rank by itself is not a baseline.
 
 ### Baseline
 
-`baseline` — нормативная выборка того же героя, позиции и bracket на текущем патче. Она собирается вторым запросом к STRATZ `heroStats.stats` уже после нормализации, потому что селекторы известны только оттуда. Отказ baseline никогда не отменяет остальные факты матча.
+`baseline` is a normative sample of the same hero, position and bracket on the current patch. It is collected with a second request to STRATZ `heroStats.stats` after normalization, because the selectors are known only from there. A baseline refusal never cancels the other facts of the match.
 
-`baseline.sameHeroPositionRankPatch` описывает выборку: `heroId`, `position`, `bracket` с человекочитаемым `bracketLabel` и `bracketSource`, `rankCode`, `patch`, список `weeks` и `points` — кумулятивные средние на выбранных минутах с собственным `matchCount` у каждой. `baseline.comparisons` содержит готовые строки сравнения: `metric`, `minute`, `player`, `baseline`, `delta`, `ratio`, `matchCount` и `crossSourceProxy`.
+`baseline.sameHeroPositionRankPatch` describes the sample: `heroId`, `position`, `bracket` with a human-readable `bracketLabel` and `bracketSource`, `rankCode`, `patch`, the list of `weeks`, and `points` — cumulative means at the selected minutes, each with its own `matchCount`. `baseline.comparisons` holds ready comparison rows: `metric`, `minute`, `player`, `baseline`, `delta`, `ratio`, `matchCount` and `crossSourceProxy`.
 
-Ограничения, которые нужно называть в ответе:
+Limits that must be named in the answer:
 
-- `statistic` всегда `mean`. Источник не отдаёт перцентили, поэтому «ты в нижних 30%» сказать нельзя — только отношение к среднему.
-- Bracket грубый, четыре корзины: `HERALD_GUARDIAN`, `CRUSADER_ARCHON`, `LEGEND_ANCIENT`, `DIVINE_IMMORTAL`.
-- Патч фильтруется неделями. Берутся только недели, целиком лежащие внутри текущего патча, максимум шесть последних; неделя, пересекающая границу патча, отбрасывается целиком.
-- Минута попадает в выборку только при `matchCount` не меньше 200, а `matchCount` естественно падает к поздним минутам: сравнение на 50-й минуте обусловлено тем, что матч до неё дожил.
-- Сравнения net worth здесь нет. OpenDota `gold_t` — накопленное золото, а не net worth: в матче 8963443105 последняя точка ряда равна 12 772 при `net_worth` 11 150, и прокси систематически завышал игрока против baseline `networth`. Сопоставимого минутного ряда net worth не отдаёт ни один источник runtime, поэтому строка убрана. Флаг `crossSourceProxy` остаётся в схеме для будущих рядов и сейчас не выставлен ни одной строкой; итоговый `summary.netWorth` берётся из `net_worth`, а не из `total_gold`.
+- `statistic` is always `mean`. The source gives no percentiles, so "you are in the bottom 30 per cent" cannot be said — only a ratio to the mean.
+- The bracket is coarse, four buckets: `HERALD_GUARDIAN`, `CRUSADER_ARCHON`, `LEGEND_ANCIENT`, `DIVINE_IMMORTAL`.
+- The patch is filtered by weeks. Only weeks lying entirely inside the current patch are taken, at most the last six; a week crossing the patch boundary is discarded whole.
+- A minute enters the sample only with a `matchCount` of at least 200, and `matchCount` naturally falls towards later minutes: a comparison at minute 50 is conditioned on the match having lived that long.
+- There is no net worth comparison here. OpenDota `gold_t` is accumulated gold, not net worth: in match 8963443105 the last point of the row is 12772 while `net_worth` is 11150, and the proxy systematically inflated the player against the `networth` baseline. No runtime source gives a comparable per-minute net worth row, so the row was removed. The `crossSourceProxy` flag stays in the schema for future rows and is currently set by none; the final `summary.netWorth` is read from `net_worth`, not from `total_gold`.
 
-`bracketSource` называет основание корзины: `player_medal` — по медали самого игрока, `match_average` — по среднему bracket матча, когда медаль неизвестна или источники по ней разошлись. `rankCode` рядом хранит код, по которому корзина реально выбрана. Строку `match_average` в разборе обязательно сопровождай оговоркой: выборка может лежать выше или ниже уровня самого игрока.
+`bracketSource` names what the bucket stands on: `player_medal` is the player's own medal, `match_average` is the match average bracket, used when the medal is unknown or the sources disagree about it. `rankCode` next to it holds the code the bucket was actually chosen by. A `match_average` row must always carry a caveat in the review: the sample may sit above or below the player's own level.
 
-Возможные `baseline.reason` при закрытом гейте: `not_requested`, `missing_token`, `hero_unknown`, `position_unknown`, `rank_unknown`, `no_full_week_in_current_patch`, `empty_sample`, `no_comparable_point`. При `status: "failed"` причина заменяется безопасным `error.code`.
+Possible `baseline.reason` values with the gate closed: `not_requested`, `missing_token`, `hero_unknown`, `position_unknown`, `rank_unknown`, `no_full_week_in_current_patch`, `empty_sample`, `no_comparable_point`. With `status: "failed"` the reason is replaced by a safe `error.code`.
 
-`match.gameMode` и `match.lobbyType` приходят разными словарями: OpenDota отдаёт числа Valve, STRATZ — строки своих enum. Runtime сводит их к числовому id Valve и печатает человекочитаемый `label` (`22` и `ALL_PICK_RANKED` — один режим `All Draft`, `0` и `UNRANKED` — один тип лобби). Таблицы покрывают game mode 0–24 и lobby type 0–9, где словари совпадают. Значение вне таблицы не объявляется конфликтом источников: поле остаётся `null` с `candidates`, а предупреждение звучит как `outside the known vocabulary`. Настоящее расхождение режимов по-прежнему даёт предупреждение `conflict`.
+`match.gameMode` and `match.lobbyType` arrive in different vocabularies: OpenDota gives Valve numbers, STRATZ gives strings from its own enums. The runtime reduces them to the numeric Valve id and prints a human-readable `label` (`22` and `ALL_PICK_RANKED` are the same `All Draft` mode, `0` and `UNRANKED` the same lobby type). The tables cover game mode 0-24 and lobby type 0-9, where the vocabularies agree. A value outside the table is not declared a source conflict: the field stays `null` with `candidates`, and the warning reads `outside the known vocabulary`. A genuine mode disagreement still produces a `conflict` warning.
 
-`sources` содержит `opendota`, `stratz` и `valve`. Каждый источник имеет `status` (`ready`, `unavailable`, `failed` или `not_found`) и, если применимо, безопасные `reason`, `error.code` и `parse` (`requested`, `state`). Для OpenDota parse state может быть `not_requested`, `requested`, `completed`, `timeout`, `unavailable`, `failed` или `error`.
+`sources` holds `opendota`, `stratz` and `valve`. Each source has a `status` (`ready`, `unavailable`, `failed` or `not_found`) and, where applicable, safe `reason`, `error.code` and `parse` (`requested`, `state`). For OpenDota the parse state may be `not_requested`, `requested`, `completed`, `timeout`, `unavailable`, `failed` or `error`.
 
-Перед интерпретацией обязательно прочитайте и зафиксируйте `sources` и `dataQuality.gates`. Гейты имеют точные имена:
+Read and record `sources` and `dataQuality.gates` before any interpretation. The gates have exact names:
 
-| Gate | Разрешает |
+| Gate | Permits |
 | --- | --- |
-| `scoreboard` | факты результата/паспорта |
-| `phase_aggregates` | сравнение наблюдаемых фаз внутри матча |
-| `draft_ready` | полный пик и контекст пика |
-| `event_ready` | таймлайн событий и анализ конкретного эпизода |
-| `baseline_ready` | нормативное сравнение с выборкой hero + position + bracket на текущем патче |
-| `current_patch` | анализ в области поддерживаемого точного текущего подпатча |
+| `scoreboard` | facts of the result and the match line |
+| `phase_aggregates` | comparison of the observed phases inside the match |
+| `draft_ready` | the full draft and the draft context |
+| `event_ready` | the event timeline and analysis of a specific episode |
+| `baseline_ready` | normative comparison against the hero + position + bracket sample on the current patch |
+| `current_patch` | analysis within the supported exact current sub-patch |
 
-`dataQuality.mode: "degraded"`, `missing` или закрытый gate ограничивают выводы по [review template](review-template.md); не заполняйте закрытые слоты догадками.
+`dataQuality.mode: "degraded"`, `missing`, or a closed gate limit the conclusions per the [review contract](review-template.md); never fill closed slots with guesses.
 
-Evidence Markdown — это **не** финальный тренерский ответ. Он перечисляет факты, статусы, метрики, гейты и недостающие данные. Финальный ответ пишется отдельно по `SKILL.md` и [review template](review-template.md): только после проверки артефакта, только с выводами, разрешёнными гейтами, и с явной уверенностью/альтернативами, где это требуется.
+The evidence Markdown is **not** the final coaching answer. It lists facts, statuses, metrics, gates and missing data. The final answer is written separately, following `SKILL.md` and the [review contract](review-template.md): only after checking the artifact, only with conclusions the gates permit, and with explicit confidence and alternatives where they are required.
 
-## Ошибки и безопасное восстановление
+## Errors and safe recovery
 
-| Наблюдение | Значение | Безопасное действие |
+| Observation | Meaning | Safe action |
 | --- | --- | --- |
-| `parse.state: "timeout"` или `error.code: "parse_timeout"` | OpenDota не завершил parse до лимита | Сохраните degraded status; позже запустите тот же запрос повторно или увеличьте `--parse-timeout-ms`. Не выдумывайте replay-derived события. |
-| `parse.state: "unavailable"`/неуспешный parse | Parse job не выдана или завершилась без нужных рядов | Используйте только фактически открытые гейты; не подменяйте отсутствие событий нулями. |
-| `sources.stratz` = `unavailable/missing_token` | Токен не задан | Анализируйте доступный OpenDota evidence в degraded mode; не утверждайте STRATZ enrichment. |
-| `error.code: "auth"` (HTTP 401/403) | Токен отсутствует, неверен или не имеет доступа | Проверьте secret manager/переменную в текущей сессии и права токена; не печатайте его для диагностики. |
-| `error.code: "invalid_response"` и HTML/Cloudflare | API вернул не JSON, часто challenge/proxy-страницу | Не парсите HTML и не обходите challenge; повторите позднее из разрешённой сети или используйте доступные источники. |
-| `error.code: "rate_limited"` (HTTP 429) | Временный лимит источника | Подождите и запустите запрос позднее. Не делайте агрессивный параллельный retry. |
-| `error.code: "network"`, `"timeout"` или `"http"` | Временная сеть/серверная ошибка | Сохраните статус источника, повторите позже и оставьте соответствующие гейты закрытыми. STRATZ периодически отдаёт `503` на тяжёлый match-запрос при неисчерпанной квоте, поэтому один такой отказ — не признак неверного токена. |
-| `error: patch_unverified` | Valve timeline недоступен или точный патч не подтверждён | Runtime завершился с кодом `4` и не записал success-артефакт; повторите после восстановления timeline. |
-| `error: unsupported_patch` | Матч относится не к последнему точному подпатчу | Runtime завершился с кодом `4` и не записал success-артефакт; этот матч вне области первой версии. |
+| `parse.state: "timeout"` or `error.code: "parse_timeout"` | OpenDota did not finish the parse before the limit | Keep the degraded status; rerun the same request later or raise `--parse-timeout-ms`. Never invent replay-derived events. |
+| `parse.state: "unavailable"` or a failed parse | The parse job was not issued or finished without the needed rows | Use only the gates actually open; never substitute zeros for missing events. |
+| `sources.stratz` = `unavailable/missing_token` | The token is not set | Analyse the available OpenDota evidence in degraded mode; never claim STRATZ enrichment. |
+| `error.code: "auth"` (HTTP 401/403) | The token is missing, wrong or lacks access | Check the secret manager or the variable in the current session and the token's rights; never print it for diagnosis. |
+| `error.code: "invalid_response"` with HTML or Cloudflare | The API returned something other than JSON, often a challenge or proxy page | Do not parse the HTML and do not bypass the challenge; retry later from a permitted network or use the available sources. |
+| `error.code: "rate_limited"` (HTTP 429) | A temporary source limit | Wait and run the request later. Do not retry aggressively in parallel. |
+| `error.code: "network"`, `"timeout"` or `"http"` | A temporary network or server error | Keep the source status, retry later and leave the corresponding gates closed. STRATZ periodically returns `503` on a heavy match request with quota left, so one such refusal is not a sign of a wrong token. |
+| `error: patch_unverified` | The Valve timeline is unavailable or the exact patch is not confirmed | The runtime exited with code `4` and wrote no success artifact; retry once the timeline is back. |
+| `error: unsupported_patch` | The match does not belong to the latest exact sub-patch | The runtime exited with code `4` and wrote no success artifact; this match is out of scope for the first version. |
 
-Exit codes процесса:
+Process exit codes:
 
-| Код | Значение |
+| Code | Meaning |
 | --- | --- |
-| `0` | Нормализованный evidence-артефакт записан |
-| `2` | Некорректные аргументы, игрок не найден или неоднозначен |
-| `3` | Матч не найден |
-| `4` | Иная runtime/data error, включая отсутствие пригодного источника, неподтверждённый или старый точный патч |
+| `0` | The normalized evidence artifact was written |
+| `2` | Invalid arguments, or the player was not found or is ambiguous |
+| `3` | The match was not found |
+| `4` | Another runtime or data error, including no usable source and an unverified or old exact patch |
 
-В артефакты намеренно попадают только нормализованные JSON и Markdown. Runtime не сохраняет raw API responses, HTTP-заголовки или токены; не добавляйте такие данные вручную при отладке.
+Only normalized JSON and Markdown reach the artifacts, deliberately. The runtime stores no raw API responses, HTTP headers or tokens; never add such data by hand while debugging.
 
-Безопасные ошибки селектора игрока: `hero_not_found`, `hero_ambiguous`, `hero_account_unavailable`, `hero_lookup_unavailable` и `selector_conflict`; все возвращают exit code `2` без вывода сырых ответов.
+Safe player-selector errors: `hero_not_found`, `hero_ambiguous`, `hero_account_unavailable`, `hero_lookup_unavailable` and `selector_conflict`; all return exit code `2` without printing raw responses.

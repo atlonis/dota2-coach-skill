@@ -1,218 +1,218 @@
-# Стек решений: слои механик Dota 2
+# Decision stack: the layers of Dota 2 mechanics
 
-Справочник для тренерских разборов: как разложить механики игры по слоям и к какому слою отнести найденную проблему.
+A reference for coaching reviews: how to split the game's mechanics into layers, and which layer a given finding belongs to.
 
-## Почему стек, а не пирамида
+## Why a stack and not a pyramid
 
-Пирамида врёт дважды:
+A pyramid lies twice:
 
-- намекает на порядок изучения («не трогай верх, пока не освоил низ») — а в доте драфт и тайминги учат раньше орб-волка;
-- намекает, что основание важнее — на деле **рычаг растёт кверху**: идеальные ластхиты не спасают проигранный драфт, а хороший драфт вытягивает кривые ластхиты.
+- it implies an order of learning ("do not touch the top until you own the bottom") — yet in Dota, drafting and timings are learned before orb walking;
+- it implies the base matters most — while in fact **the leverage grows upward**: perfect last hits do not save a lost draft, and a good draft carries crooked last hits.
 
-Механики упорядочивает не важность, а две почти коллинеарные оси, которые вместе дают один линейный стек:
+Mechanics are ordered not by importance but by two nearly collinear axes that together give one linear stack:
 
-| Ось | От | До |
+| Axis | From | To |
 |---|---|---|
-| Горизонт решения — насколько долго решение тебя связывает | 0,1 сек | 45 мин |
-| Охват — что решение затрагивает | один юнит | вся карта, весь матч |
+| Decision horizon — how long the decision binds you | 0.1 s | 45 min |
+| Reach — what the decision touches | one unit | the whole map, the whole match |
 
-## Обзор слоёв
+## Overview of the layers
 
-| Слой | Название | Горизонт | Рычаг на исход | Чем закрывается в runtime |
+| Layer | Name | Horizon | Leverage on the outcome | What the runtime covers it with |
 |---|---|---|---|---|
-| L0 | Движок | вне времени | 2/5, но множитель для всех слоёв выше | справочник (Liquipedia), не из матча |
-| L1 | Микро | 0,1–3 сек | 3/5 | `lh_t`, `dn_t` в фазе `lane` |
-| L2 | Файт | 3–30 сек | 4/5 | `killEvents`/`deathEvents`, `hero_damage_t`, teamfights |
-| L3 | Лейн и экономика | 1–10 мин | 4/5 | `gold_t`, `xp_t` в фазах `lane` и `transition` |
-| L4 | Карта | 5–20 мин | 5/5 | слабее всего: вардов и вижна в нормализованных сериях нет |
-| L5 | Тайминги матча | 10–45 мин | 4/5 | покупки, фазы `midgame` и `closing` |
-| L6 | Драфт и мета | весь матч | 5/5 | `draft` из STRATZ `pickBans`, патч |
+| L0 | Engine | outside time | 2/5, but a multiplier for every layer above | reference material (Liquipedia), not from the match |
+| L1 | Micro | 0.1-3 s | 3/5 | `lh_t`, `dn_t` in the `lane` phase |
+| L2 | Fight | 3-30 s | 4/5 | `killEvents` and `deathEvents`, `hero_damage_t`, teamfights |
+| L3 | Lane and economy | 1-10 min | 4/5 | `gold_t`, `xp_t` in the `lane` and `transition` phases |
+| L4 | Map | 5-20 min | 5/5 | the weakest: wards and vision are absent from the normalized rows |
+| L5 | Match timings | 10-45 min | 4/5 | purchases, the `midgame` and `closing` phases |
+| L6 | Draft and meta | the whole match | 5/5 | `draft` from STRATZ `pickBans`, the patch |
 
-Рычаг — редакторская оценка, не измеренная величина. Она отвечает на вопрос «насколько дорого стоит ошибка на этом слое», а не «насколько сложно его освоить».
-
----
-
-## L0 — Движок
-
-Не «навык», а константы, из которых выводится всё остальное. Этим слоем объясняются решения на всех верхних.
-
-| | |
-|---|---|
-| **Что решаешь** | Ничего не решаешь — знаешь. Слой даёт единицы измерения: сколько стоит секунда, сколько стоит очко брони, что физически возможно. |
-| **Горизонт** | вне времени |
-| **Рычаг** | Низкий напрямую, но это множитель для всех слоёв выше: без него верхние решения принимаются на ощущениях. |
-| **Типичная ошибка** | Спорить с игрой вместо счёта: броня против магического бурста, кайт героем без turn rate, «мне не повезло» там, где сработала формула. |
-| **Метрика** | Можешь ли без подсказки назвать свой EHP, порог деная и время своей анимации атаки. |
-| **Как тренировать** | Демо-режим и калькулятор. Пять минут «посчитать урон руками» дают больше, чем час игры. |
-| **Данные** | Справочник. Статические таблицы, из матча ничего не нужно. |
-
-Опорные факты (сверено по русской Liquipedia):
-
-- Броня не даёт процент напрямую: `снижение = 0,06·Б / (1 + 0,06·|Б|)` — отдача убывает, но EHP растёт линейно.
-- Источники сопротивления магии складываются **мультипликативно**, поэтому 100 % не набрать в принципе.
-- Поворот: юнит начинает действие, только если цель в конусе `11,5°`; разворот на 180° занимает `0,15–0,19 с` у большинства героев.
-- Порог деная: `50 %` HP у крипов, `25 %` у героев, `10 %` у башен.
-- Заденяенный крип отдаёт врагу в радиусе `1500` только `40 %` опыта, золота — ноль.
-- Обзор общий на команду, включая крипов и постройки; сквозь деревья и возвышенность не видит никто, кроме летающих юнитов.
-
-## L1 — Микро
-
-Всё, что делается руками с одним героем в пределах пары секунд.
-
-| | |
-|---|---|
-| **Что решаешь** | Ластхит и деним, отмена анимаций, орб-волк, аггро крипов, блок волны, ручной каст предметов, микропозиция в бою. |
-| **Горизонт** | 0,1–3 сек |
-| **Рычаг** | Средний и сильно зависит от роли: у кора конвертируется в золото напрямую, у саппорта почти не конвертируется. |
-| **Типичная ошибка** | Залипание в бэксвинг вместо отмены; случайная атака, стягивающая аггро крипов в момент, когда волна и так идёт на тебя. |
-| **Метрика** | Ластхиты и денаи на 10-й минуте против бенчмарка своего героя и роли, а не абстрактных «80 из 80». |
-| **Как тренировать** | Ластхит-тренажёр 10 минут в день, потом те же 10 минут против бота, который денаит. |
-| **Данные** | `lhPerMin` и `deniesPerMin` в фазе `lane`; сравнение с оппонентом по лейну. |
-
-- Единственный слой, который полноценно тренируется вне матчей. Поэтому его удобно чинить первым — но не потому, что он «база».
-- Цена ошибки здесь — 40–60 золота. На L6 цена одной ошибки — весь матч.
-
-## L2 — Файт
-
-Размен ресурсов в столкновении: кто первым нажал, кого выбрали, кто успел выйти.
-
-| | |
-|---|---|
-| **Что решаешь** | Порядок каста, фокус, инициация и размен кулдаунов, трекинг вражеских БКБ и ультимейтов, момент выхода из боя. |
-| **Горизонт** | 3–30 сек |
-| **Рычаг** | Высокий: один хорошо разменянный файт даёт объект, один плохой — отдаёт хайграунд. |
-| **Типичная ошибка** | Контроль в БКБ и слив ульты в первую попавшуюся цель; вход в файт, из которого не продуман выход. |
-| **Метрика** | Доля файтов, где ключевая способность попала в ≥2 цели, и доля смертей в первые 3 секунды боя. |
-| **Как тренировать** | Реплей с паузой на моменте инициации: вслух назвать, какие кулдауны у врага есть прямо сейчас. |
-| **Данные** | `deathEvents` по фазам, `heroDamagePerMin`, teamfights из OpenDota. Вражеские кулдауны в данных не восстанавливаются. |
-
-- Первый слой, где решение принимается за команду, а не за себя: отсюда начинается коммуникация.
-- Большинство «проигранных файтов» проиграны до боя — на L4, вижном и позицией.
-
-## L3 — Лейн и экономика
-
-Как ресурс лейна и леса превращается в золото и опыт — твои и союзника.
-
-| | |
-|---|---|
-| **Что решаешь** | Распределение ресурса лейна между кором и саппортом, пул и стак лагеря, контроль рун, маршрут курьера, менеджмент волны и точка равновесия. |
-| **Горизонт** | 1–10 мин |
-| **Рычаг** | Высокий в первые 15 минут: определяет, во сколько случатся спайки на L5. |
-| **Типичная ошибка** | Толкать волну без причины и без вижна; стакать лагерь, который некому фармить; забирать опыт у своего кора. |
-| **Метрика** | GPM/XPM и нетворс на 10-й минуте относительно оппонента по лейну, а не относительно всей команды. |
-| **Как тренировать** | Одна игра, где единственная задача — держать волну у своей башни и предсказывать, где она встанет. |
-| **Данные** | `goldPerMin` и `xpPerMin` в фазах `lane` и `transition`, lane outcome из STRATZ. Самый обеспеченный данными слой. |
-
-- Руны богатства появляются на всех точках в `0:00`, дальше — каждые 3 минуты в лесах обеих команд.
-- Лейнинг — не «фарм», а торг: ты меняешь позицию и HP на процент от общего ресурса лейна.
-
-## L4 — Карта
-
-Информация и пространство: кто что видит и кто где может оказаться в следующие тридцать секунд.
-
-| | |
-|---|---|
-| **Что решаешь** | Расстановка и снятие вардов, смоуки, роумы, аванпосты, сплитпуш, размен объектов, где команда физически находится. |
-| **Горизонт** | 5–20 мин |
-| **Рычаг** | Максимальный из исполняемых в матче: вижн решает исход файта до его начала. |
-| **Типичная ошибка** | Варды по привычке в стандартные точки, которые враг снимает по памяти; сбор впятером без цели — самый дорогой способ ничего не делать. |
-| **Метрика** | Время жизни варда и доля вражеских ганков, случившихся в засвеченной зоне. |
-| **Как тренировать** | Реплей глазами врага: где ты был предсказуем и какой один вард стоил бы жизни. |
-| **Данные** | Слабое место. В нормализованных сериях вардов и вижна нет; выводы держатся на местах смертей, фазах и ролях. Заявления по L4 помечать как эвристику. |
-
-- Аванпост захватывается быстрее, если стоят несколько героев: время делится на их количество.
-- Обзор дают и союзные крипы, и постройки — бесплатный вижн, который почти никто не считает.
-
-## L5 — Тайминги матча
-
-Матч состоит из окон, в которые ты сильнее врага. Слой про то, чтобы окно заметить и потратить.
-
-| | |
-|---|---|
-| **Что решаешь** | Спайки предметов и уровней, Рошан и аегис, глиф, экономика выкупа, окно на хайграунд, момент заканчивать матч. |
-| **Горизонт** | 10–45 мин |
-| **Рычаг** | Высокий: сильнейший спайк, потраченный на фарм леса, эквивалентен его отсутствию. |
-| **Типичная ошибка** | Собрать предмет и продолжить фармить; выкуп ради одного файта, после которого нечем защищать базу. |
-| **Метрика** | Сколько минут прошло между спайком и следующим действием команды по объекту. |
-| **Как тренировать** | Проговаривать вслух: «через 40 секунд у меня БКБ — что мы за него берём». |
-| **Данные** | Времена покупок, фазы `midgame` и `closing`, объекты из OpenDota. Тайминги считаются надёжно. |
-
-- Рошан: `6000` HP, `30` брони, `55 %` сопротивления магии — без физического урона его не убить.
-- Аегис — не награда за файт, а таймер: он либо тратится, либо сгорает.
-
-## L6 — Драфт и мета
-
-Единственный слой, который связывает на все сорок пять минут и переписывает цену всех решений ниже.
-
-| | |
-|---|---|
-| **Что решаешь** | Пики и контрпики, синергии, распределение ролей, win condition команды, отыгрыш текущего патча. |
-| **Горизонт** | весь матч |
-| **Рычаг** | Максимальный. Драфт не выигрывает матч, но задаёт, какой сценарий на L4–L5 вообще выигрышный. |
-| **Типичная ошибка** | Взять комфортного героя в состав, где его роль уже занята; взять контрпик и играть так, будто контрпика не было. |
-| **Метрика** | Можешь ли в конце драфта одним предложением сказать, как эта пятёрка выигрывает и к какой минуте. |
-| **Как тренировать** | Разбор чужих драфтов без игры: назвать win condition обеих сторон до первой минуты. |
-| **Данные** | `draft` из STRATZ `pickBans` или составы из OpenDota, плюс текущий патч и винрейты. |
-
-- Именно потому, что драфт учат раньше орб-волка, это стек, а не пирамида: порядок изучения не совпадает с порядком слоёв.
-- Патч меняет L6 мгновенно, L0 — почти никогда. Чем выше слой, тем быстрее он устаревает.
+Leverage is an editorial estimate, not a measured quantity. It answers "how expensive is a mistake on this layer", not "how hard is this layer to learn".
 
 ---
 
-## Сквозное — не слой
+## L0 — Engine
 
-Ментал и тилт, коммуникация, дисциплина исполнения. Они бьют по всем слоям сразу: тильт не «портит L2», он одновременно ломает ластхит, порядок каста, вижн и решение о выкупе. Поэтому этажом их ставить нельзя — только полосой сбоку.
+Not a "skill" but the constants everything else is derived from. This layer explains decisions on all the layers above.
 
-- **Ментал** — частота ошибок растёт на всех слоях, но первым отваливается верх: игрок перестаёт смотреть на карту и остаётся в микро.
-- **Коммуникация** — единственный способ синхронизировать L2 и L4 с четырьмя другими игроками.
-- **Дисциплина** — разрыв между «знаю правильное решение» и «выполнил его». Виден только на реплее.
+| | |
+|---|---|
+| **What you decide** | Nothing — you know. The layer gives the units of measurement: what a second costs, what a point of armour costs, what is physically possible. |
+| **Horizon** | outside time |
+| **Leverage** | Low directly, but a multiplier for every layer above: without it the upper decisions are made on feel. |
+| **Typical mistake** | Arguing with the game instead of the arithmetic: armour against magical burst, kiting on a hero without turn rate, "I got unlucky" where a formula did its work. |
+| **Metric** | Whether you can name your EHP, the deny threshold and your attack animation time without a prompt. |
+| **How to train** | Demo mode and a calculator. Five minutes of counting damage by hand beats an hour of playing. |
+| **Data** | Reference material. Static tables; nothing is needed from the match. |
 
-## Таймлайн матча
+Anchor facts (verified against the Russian Liquipedia):
 
-Доминирование слоя — насколько он определяет исход в этот момент. Шкала: `···` фон, `▪▪▪` заметно, `███` решает.
+- Armour does not give a percentage directly: `reduction = 0.06*A / (1 + 0.06*|A|)` — the returns diminish, but EHP grows linearly.
+- Sources of magic resistance stack **multiplicatively**, so 100 per cent is unreachable in principle.
+- Turning: a unit starts an action only when the target is within an `11.5°` cone; a 180° turn takes `0.15-0.19 s` on most heroes.
+- Deny threshold: `50 %` HP on creeps, `25 %` on heroes, `10 %` on towers.
+- A denied creep gives an enemy within `1500` range only `40 %` of the experience and no gold at all.
+- Vision is shared across the team, including creeps and buildings; nobody sees through trees or up a cliff except flying units.
 
-| Слой | 0–10 мин | 10–25 мин | 25–50 мин |
+## L1 — Micro
+
+Everything done by hand with a single hero within a couple of seconds.
+
+| | |
+|---|---|
+| **What you decide** | Last hits and denies, animation cancels, orb walking, creep aggro, wave blocking, manual item casts, micro-positioning in a fight. |
+| **Horizon** | 0.1-3 s |
+| **Leverage** | Medium and strongly role-dependent: on a core it converts into gold directly, on a support it barely converts at all. |
+| **Typical mistake** | Sitting through the backswing instead of cancelling it; a stray attack pulling creep aggro at the moment the wave is already coming to you. |
+| **Metric** | Last hits and denies at minute 10 against the benchmark for your hero and role, not against an abstract "80 out of 80". |
+| **How to train** | Ten minutes a day in the last-hit trainer, then the same ten minutes against a bot that denies. |
+| **Data** | `lhPerMin` and `deniesPerMin` in the `lane` phase; comparison with the lane opponent. |
+
+- The only layer that trains fully outside matches. That makes it convenient to fix first — but not because it is "the base".
+- A mistake here costs 40-60 gold. On L6 one mistake costs the whole match.
+
+## L2 — Fight
+
+The exchange of resources in a collision: who pressed first, who got focused, who got out.
+
+| | |
+|---|---|
+| **What you decide** | Cast order, focus, initiation and the cooldown trade, tracking enemy BKBs and ultimates, the moment to leave the fight. |
+| **Horizon** | 3-30 s |
+| **Leverage** | High: one well-traded fight buys an objective, one bad one gives away the high ground. |
+| **Typical mistake** | Control into a BKB and an ultimate dumped on the first target available; entering a fight with no exit planned. |
+| **Metric** | The share of fights where the key ability hit two or more targets, and the share of deaths within the first 3 seconds of the fight. |
+| **How to train** | Replay paused at the moment of initiation: say out loud which cooldowns the enemy has right now. |
+| **Data** | `deathEvents` by phase, `heroDamagePerMin`, teamfights from OpenDota. Enemy cooldowns cannot be reconstructed from the data. |
+
+- The first layer where a decision is made for the team rather than for yourself: communication starts here.
+- Most "lost fights" were lost before the fight — on L4, on vision and on position.
+
+## L3 — Lane and economy
+
+How the resource of the lane and the jungle turns into gold and experience, yours and your ally's.
+
+| | |
+|---|---|
+| **What you decide** | Splitting the lane resource between core and support, pulling and stacking camps, rune control, courier routing, wave management and the equilibrium point. |
+| **Horizon** | 1-10 min |
+| **Leverage** | High in the first 15 minutes: it sets when the L5 spikes happen. |
+| **Typical mistake** | Pushing the wave with no reason and no vision; stacking a camp nobody will farm; taking experience from your own core. |
+| **Metric** | GPM, XPM and net worth at minute 10 relative to the lane opponent, not relative to the whole team. |
+| **How to train** | One game whose only task is to hold the wave near your own tower and predict where it will settle. |
+| **Data** | `goldPerMin` and `xpPerMin` in the `lane` and `transition` phases, lane outcome from STRATZ. The best-covered layer. |
+
+- Bounty runes appear at every point at `0:00`, then every 3 minutes in both teams' jungles.
+- Laning is not "farming" but bargaining: you trade position and HP for a share of the lane's total resource.
+
+## L4 — Map
+
+Information and space: who sees what, and who can be where in the next thirty seconds.
+
+| | |
+|---|---|
+| **What you decide** | Placing and removing wards, smokes, roams, outposts, split pushing, trading objectives, where the team physically is. |
+| **Horizon** | 5-20 min |
+| **Leverage** | The highest of those executed inside the match: vision decides a fight before it starts. |
+| **Typical mistake** | Wards placed out of habit in standard spots the enemy dewards from memory; grouping as five with no goal — the most expensive way to do nothing. |
+| **Metric** | Ward lifetime and the share of enemy ganks that happened inside a lit zone. |
+| **How to train** | Watch the replay through the enemy's eyes: where were you predictable, and which single ward would have been worth a life. |
+| **Data** | A weak spot. Wards and vision are absent from the normalized rows; conclusions rest on death locations, phases and roles. Mark L4 claims as heuristics. |
+
+- An outpost is captured faster with several heroes present: the time is divided by their number.
+- Allied creeps and buildings also give vision — free vision almost nobody counts.
+
+## L5 — Match timings
+
+A match is made of windows in which you are stronger than the enemy. This layer is about noticing a window and spending it.
+
+| | |
+|---|---|
+| **What you decide** | Item and level spikes, Roshan and the aegis, the glyph, buyback economy, the high-ground window, the moment to end the match. |
+| **Horizon** | 10-45 min |
+| **Leverage** | High: the strongest spike spent farming the jungle is equivalent to no spike at all. |
+| **Typical mistake** | Finishing an item and continuing to farm; a buyback for one fight after which there is nothing left to defend the base with. |
+| **Metric** | How many minutes passed between a spike and the team's next action on an objective. |
+| **How to train** | Say it out loud: "in 40 seconds I have BKB — what are we taking with it". |
+| **Data** | Purchase times, the `midgame` and `closing` phases, objectives from OpenDota. Timings are computed reliably. |
+
+- Roshan: `6000` HP, `30` armour, `55 %` magic resistance — he cannot be killed without physical damage.
+- The aegis is not a reward for a fight but a timer: it is either spent or wasted.
+
+## L6 — Draft and meta
+
+The only layer that binds for all forty-five minutes and rewrites the price of every decision below.
+
+| | |
+|---|---|
+| **What you decide** | Picks and counter-picks, synergies, role distribution, the team's win condition, playing the current patch. |
+| **Horizon** | the whole match |
+| **Leverage** | The highest. A draft does not win the match, but it sets which scenario on L4 and L5 can win at all. |
+| **Typical mistake** | Taking a comfort hero into a draft where that role is already filled; taking a counter-pick and then playing as if there were no counter-pick. |
+| **Metric** | Whether at the end of the draft you can say in one sentence how this five wins and by which minute. |
+| **How to train** | Reviewing other people's drafts without playing: name the win condition of both sides before minute one. |
+| **Data** | `draft` from STRATZ `pickBans` or the line-ups from OpenDota, plus the current patch and win rates. |
+
+- Precisely because drafting is learned before orb walking, this is a stack and not a pyramid: the order of learning does not match the order of layers.
+- A patch changes L6 instantly and L0 almost never. The higher the layer, the faster it goes stale.
+
+---
+
+## Cross-cutting — not a layer
+
+Mental state and tilt, communication, execution discipline. They hit every layer at once: tilt does not "spoil L2", it simultaneously breaks last hitting, cast order, vision and the buyback decision. So they cannot be placed as a floor — only as a band alongside.
+
+- **Mental state** — the error rate rises on every layer, but the top falls off first: the player stops looking at the map and stays in micro.
+- **Communication** — the only way to synchronize L2 and L4 with four other players.
+- **Discipline** — the gap between "I know the right decision" and "I executed it". Visible only on the replay.
+
+## Match timeline
+
+Layer dominance is how much it determines the outcome at that moment. Scale: `...` background, `▪▪▪` noticeable, `███` decisive.
+
+| Layer | 0-10 min | 10-25 min | 25-50 min |
 |---|---|---|---|
-| L0 Движок | `···` | `···` | `···` |
-| L1 Микро | `███` | `▪▪▪` | `···` |
-| L2 Файт | `▪▪▪` | `███` | `███` |
-| L3 Лейн | `███` | `▪▪▪` | `···` |
-| L4 Карта | `▪▪▪` | `███` | `███` |
-| L5 Тайминги | `···` | `▪▪▪` | `███` |
-| L6 Драфт | `▪▪▪` | `▪▪▪` | `▪▪▪` |
+| L0 Engine | `...` | `...` | `...` |
+| L1 Micro | `███` | `▪▪▪` | `...` |
+| L2 Fight | `▪▪▪` | `███` | `███` |
+| L3 Lane | `███` | `▪▪▪` | `...` |
+| L4 Map | `▪▪▪` | `███` | `███` |
+| L5 Timings | `...` | `▪▪▪` | `███` |
+| L6 Draft | `▪▪▪` | `▪▪▪` | `▪▪▪` |
 
-Два наблюдения, ради которых таймлайн и нужен:
+Two observations the timeline exists for:
 
-- **L6 не заканчивается на нулевой минуте.** Win condition из драфта ровным фоном тянется через весь матч и решает, какие действия на L4–L5 вообще имеют смысл.
-- **L1 не исчезает, а перестаёт быть узким местом.** Цена одного ластхита падает, цена одного варда растёт.
+- **L6 does not end at minute zero.** The win condition from the draft runs as an even background through the whole match and decides which actions on L4 and L5 make sense at all.
+- **L1 does not disappear, it stops being the bottleneck.** The price of one last hit falls, the price of one ward rises.
 
-Границы фаз совпадают с `PHASES` в `scripts/lib/normalize.mjs`: `lane` 0–10 мин, `transition` 10–15, `midgame` 15–25, `closing` 25+.
+The phase boundaries match `PHASES` in `scripts/lib/normalize.mjs`: `lane` 0-10 min, `transition` 10-15, `midgame` 15-25, `closing` 25+.
 
-## Как использовать в разборе
+## How to use this in a review
 
-1. Отнести найденную проблему к слою — это сразу задаёт горизонт, метрику и формат тренировки.
-2. Проверить, не является ли проблема симптомом слоя выше. Смерти на L2 в 60 % случаев объясняются L4; провал L3 в 15 минут объясняется L6.
-3. Не выдавать вывод по L4 за измеренный факт: этот слой в текущем runtime данными не закрыт.
-4. Приоритет рекомендаций — по рычагу, а не по слою снизу вверх. Один вывод по L4 или L6 стоит трёх по L1.
+1. Assign the finding to a layer — that immediately sets the horizon, the metric and the training format.
+2. Check whether the problem is a symptom of a layer above. Deaths on L2 are explained by L4 in about 60 per cent of cases; an L3 failure at minute 15 is explained by L6.
+3. Never present an L4 conclusion as a measured fact: this layer is not covered by data in the current runtime.
+4. Prioritize recommendations by leverage, not bottom-up by layer. One L4 or L6 conclusion is worth three on L1.
 
-## Источники и оговорки
+## Sources and caveats
 
-Числа L0 и опорные факты сверены по русской Liquipedia через её API:
+The L0 numbers and anchor facts were verified against the Russian Liquipedia through its API:
 
-- [Броня](https://liquipedia.net/dota2gameru/%D0%91%D1%80%D0%BE%D0%BD%D1%8F)
-- [Сопротивление магии](https://liquipedia.net/dota2gameru/%D0%A1%D0%BE%D0%BF%D1%80%D0%BE%D1%82%D0%B8%D0%B2%D0%BB%D0%B5%D0%BD%D0%B8%D0%B5_%D0%BC%D0%B0%D0%B3%D0%B8%D0%B8)
-- [Скорость поворота](https://liquipedia.net/dota2gameru/%D0%A1%D0%BA%D0%BE%D1%80%D0%BE%D1%81%D1%82%D1%8C_%D0%BF%D0%BE%D0%B2%D0%BE%D1%80%D0%BE%D1%82%D0%B0)
-- [Добивание](https://liquipedia.net/dota2gameru/%D0%94%D0%BE%D0%B1%D0%B8%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5)
-- [Обзор](https://liquipedia.net/dota2gameru/%D0%9E%D0%B1%D0%B7%D0%BE%D1%80)
-- [Руны](https://liquipedia.net/dota2gameru/%D0%A0%D1%83%D0%BD%D1%8B)
-- [Рошан](https://liquipedia.net/dota2gameru/%D0%A0%D0%BE%D1%88%D0%B0%D0%BD)
-- [Аванпост](https://liquipedia.net/dota2gameru/%D0%90%D0%B2%D0%B0%D0%BD%D0%BF%D0%BE%D1%81%D1%82)
-- Полный указатель: [Механика](https://liquipedia.net/dota2gameru/%D0%9C%D0%B5%D1%85%D0%B0%D0%BD%D0%B8%D0%BA%D0%B0)
+- [Armour](https://liquipedia.net/dota2gameru/%D0%91%D1%80%D0%BE%D0%BD%D1%8F)
+- [Magic resistance](https://liquipedia.net/dota2gameru/%D0%A1%D0%BE%D0%BF%D1%80%D0%BE%D1%82%D0%B8%D0%B2%D0%BB%D0%B5%D0%BD%D0%B8%D0%B5_%D0%BC%D0%B0%D0%B3%D0%B8%D0%B8)
+- [Turn rate](https://liquipedia.net/dota2gameru/%D0%A1%D0%BA%D0%BE%D1%80%D0%BE%D1%81%D1%82%D1%8C_%D0%BF%D0%BE%D0%B2%D0%BE%D1%80%D0%BE%D1%82%D0%B0)
+- [Denying](https://liquipedia.net/dota2gameru/%D0%94%D0%BE%D0%B1%D0%B8%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5)
+- [Vision](https://liquipedia.net/dota2gameru/%D0%9E%D0%B1%D0%B7%D0%BE%D1%80)
+- [Runes](https://liquipedia.net/dota2gameru/%D0%A0%D1%83%D0%BD%D1%8B)
+- [Roshan](https://liquipedia.net/dota2gameru/%D0%A0%D0%BE%D1%88%D0%B0%D0%BD)
+- [Outpost](https://liquipedia.net/dota2gameru/%D0%90%D0%B2%D0%B0%D0%BD%D0%BF%D0%BE%D1%81%D1%82)
+- Full index: [Mechanics](https://liquipedia.net/dota2gameru/%D0%9C%D0%B5%D1%85%D0%B0%D0%BD%D0%B8%D0%BA%D0%B0)
 
-Оговорки:
+Caveats:
 
-- Формулы патчами почти не меняются, конкретные значения — меняются. Согласно `source-policy.md`, текущие числа сверяются с Valve, Liquipedia остаётся источником объяснения механик.
-- Оценки рычага, типичные ошибки, метрики и таймлайн — редакторские, в вики их нет.
-- Не сверены и потому в документ не включены: формула выкупа, штраф к точности при атаке снизу вверх, длительность дня и ночи, перезарядка глифа. Liquipedia включает rate-limit с CAPTCHA при частых запросах; добирать эти числа нужно отдельным заходом и малым числом запросов, с gzip и собственным `User-Agent` по их API terms of use.
+- Formulas barely change between patches; specific values do. Per `source-policy.md`, current numbers are verified against Valve, and Liquipedia stays the source for explaining mechanics.
+- The leverage estimates, typical mistakes, metrics and the timeline are editorial; they are not in the wiki.
+- Not verified and therefore not included: the buyback formula, the accuracy penalty when attacking uphill, day and night duration, and the glyph cooldown. Liquipedia applies a rate limit with a CAPTCHA on frequent requests; those numbers should be collected in a separate pass with few requests, with gzip and an own `User-Agent`, per their API terms of use.
 
-Дата сборки: 27 августа 2026 года.
+Compiled on 27 August 2026.

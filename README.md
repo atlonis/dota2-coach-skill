@@ -14,6 +14,7 @@ The project targets only the latest exact subpatch. Older matches or matches tha
 - Radiant/Dire draft, lane outcome, final metrics, purchases, and inventory;
 - four game stages, time series, and within-match extrema;
 - allowlisted event timeline and teamfights bounded by match duration;
+- position jumps labelled with their cause, so an ally warp is never read as a solo teleport;
 - explicit source conflicts with alternatives and provenance preserved;
 - deterministic JSON/Markdown artifacts and safe CLI errors;
 - dependency-free PowerShell and POSIX wrappers;
@@ -65,7 +66,7 @@ The skill chooses the platform runtime, gathers data, and checks data gates befo
 
 The complete user-facing review follows the user's language: a Russian request produces Russian output and an English request produces English output. An explicit language instruction overrides detection; mixed-language conversations follow the last substantive user message.
 
-Headings, stage reviews, data limitations, STRATZ notices, and the action plan are localized. Hero and item names, APIs, JSON/schema keys, data gates, and error codes remain unchanged.
+Headings, the stage table, data limits, STRATZ notices, and the exercise are localized. Hero and item names, APIs, JSON/schema keys, data gates, and error codes remain unchanged.
 
 ## Update and remove
 
