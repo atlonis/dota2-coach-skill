@@ -18,13 +18,13 @@ const SERIES_METRICS = [
   ['heroDamage', 'hero_damage_t', 'heroDamagePerMin'],
 ];
 const EVENT_METRICS = [['kills', 'killEvents'], ['deaths', 'deathEvents'], ['assists', 'assistEvents']];
-// Сопоставимые ряды: слева минутный ряд игрока, справа метрика выборки STRATZ.
-// Ряда net worth здесь нет намеренно. OpenDota `gold_t` — накопленное золото, а не
-// net worth: в матче 8963443105 последняя точка ряда равна 12 772 при `net_worth`
-// 11 150, то есть прокси систематически завышал игрока против baseline `networth`.
-// Сопоставимого минутного ряда net worth ни один источник runtime не отдаёт, поэтому
-// строка убрана, а не оставлена с оговоркой. Флаг `crossSourceProxy` остаётся в схеме
-// для будущих рядов и сейчас не выставлен ни одной строкой.
+// Comparable rows: the player's per-minute row on the left, the STRATZ sample metric
+// on the right. Net worth is deliberately absent. OpenDota `gold_t` is accumulated
+// gold, not net worth: in match 8963443105 the last point of the row is 12772 while
+// `net_worth` is 11150, so the proxy systematically inflated the player against the
+// `networth` baseline. No runtime source gives a comparable per-minute net worth row,
+// so the row was removed rather than kept with a caveat. The `crossSourceProxy` flag
+// stays in the schema for future rows and is currently set by none.
 const BASELINE_COMPARISONS = [
   { metric: 'lastHits', playerSeries: 'lh_t', baselineMetric: 'cs', crossSourceProxy: false },
   { metric: 'denies', playerSeries: 'dn_t', baselineMetric: 'dn', crossSourceProxy: false },
@@ -35,15 +35,15 @@ const BASELINE_MINUTES = [10, 15, 25];
 const BASELINE_MAX_MINUTE = 75;
 const BASELINE_MIN_SAMPLE = 200;
 
-// Скачок в ряду позиций сам по себе не доказывает телепорт игрока: так же выглядит
-// вход в портал союзника и перенос чужой способностью. Причина берётся из
-// собственных применений предмета и способности рядом с прибытием, а неопознанный
-// скачок остаётся `unattributed` и телепортом не называется.
+// A jump in the position row does not by itself prove the player teleported:
+// stepping into an ally's warp and being moved by someone else's ability look the
+// same. The cause is read from the player's own item and ability uses near the
+// arrival; an unrecognized jump stays `unattributed` and is never called a teleport.
 const TELEPORT_ITEM_IDS = new Set([46, 48, 220]);
 const ALLY_WARP_ABILITY_IDS = new Set([842]);
-// Клетки миникарты: пеший максимум около 4.3 клетки в секунду при пределе скорости
-// 550, поэтому порог 6 отделяет перенос от бега, а порог расстояния гасит дрожание
-// координат на коротких интервалах.
+// Minimap cells: on foot the maximum is about 4.3 cells per second at the 550
+// movement speed cap, so the speed threshold of 6 separates a relocation from
+// running, and the distance threshold damps coordinate jitter over short intervals.
 const REPOSITION_MIN_DISTANCE = 15;
 const REPOSITION_MIN_SPEED = 6;
 const REPOSITION_CAUSE_WINDOW = 15;
@@ -68,10 +68,10 @@ function rankField(code) {
   return field;
 }
 
-// Медаль самого игрока: OpenDota `rank_tier` и STRATZ `seasonRank` — оба снимка
-// профиля, а не ранг на момент матча. Расхождение между ними не разрешается в
-// пользу одного источника: код остаётся неизвестным, и baseline падает на средний
-// bracket матча, который заведомо шире.
+// The player's own medal: OpenDota `rank_tier` and STRATZ `seasonRank` are both
+// profile snapshots, not the rank at the time of the match. A disagreement between
+// them is not resolved in favour of one source: the code stays unknown and the
+// baseline falls back to the match average bracket, which is knowingly wider.
 function playerRankFor(openPlayer, stratzPlayer, warnings) {
   const field = resolvedField('Player rank', [
     { value: openPlayer?.rank_tier, source: 'opendota' },
@@ -317,8 +317,8 @@ function lastCauseWithin(events, arrival, match) {
   return found;
 }
 
-// Причина ближе к прибытию побеждает: свиток, использованный минутой раньше по
-// другому поводу, не должен перебивать вход в портал союзника, и наоборот.
+// The cause closest to the arrival wins: a scroll used a minute earlier for another
+// purpose must not override stepping into an ally's warp, and vice versa.
 function attributeReposition(from, to, itemUses, abilityUses) {
   const base = { time: to.time, fromX: from.x, fromY: from.y, x: to.x, y: to.y, source: 'stratz' };
   const warp = lastCauseWithin(abilityUses, to.time, (event) => ALLY_WARP_ABILITY_IDS.has(event.abilityId));
@@ -330,8 +330,8 @@ function attributeReposition(from, to, itemUses, abilityUses) {
   return { ...base, cause: 'unattributed' };
 }
 
-// Перемещения игрока, восстановленные из ряда позиций и подписанные причиной.
-// Возрождение после смерти сюда не попадает: между двумя точками ряда лежит смерть.
+// The player's relocations, reconstructed from the position row and labelled with
+// their cause. A respawn never lands here: a death lies between the two points.
 function repositionsFor(events) {
   const positions = (Array.isArray(events?.positions) ? events.positions : [])
     .filter((point) => finiteNumber(point?.time) && finiteNumber(point?.x) && finiteNumber(point?.y));
@@ -528,7 +528,7 @@ export function normalizeEvidence({ matchId, accountId, openDota, stratz, valve,
     { value: openValue, source: 'opendota' },
     { value: stratzValue, source: 'stratz' },
   ], warnings);
-  // Режим и тип лобби приходят разными словарями, поэтому идут не через `field`.
+  // Mode and lobby type arrive in different vocabularies, so they bypass `field`.
   const vocabulary = (label, table, openValue, stratzValue) => {
     const resolved = resolveVocabularyField(label, table, { opendota: openValue, stratz: stratzValue });
     warnings.push(...resolved.warnings);

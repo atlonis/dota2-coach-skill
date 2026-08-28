@@ -54,7 +54,7 @@ function evidenceModel() {
       },
       comparisons: [
         { metric: 'lastHits', minute: 10, player: 60, baseline: 45.5, delta: 14.5, ratio: 1.319, matchCount: 1200, crossSourceProxy: false, source: 'stratz' },
-        { metric: 'netWorth', minute: 10, player: 3200, baseline: 3600, delta: -400, ratio: 0.889, matchCount: 1200, crossSourceProxy: true, source: 'stratz' }, // проверка колонки: сравнения этот флаг сейчас не выставляют
+        { metric: 'netWorth', minute: 10, player: 3200, baseline: 3600, delta: -400, ratio: 0.889, matchCount: 1200, crossSourceProxy: true, source: 'stratz' }, // column check: no comparison sets this flag today
       ],
     },
     eventInventory: { timedEvents: false, deaths: false, positions: false, fights: false, runes: false, abilityUses: false },
@@ -78,29 +78,29 @@ test('aggregate-only report localizes metrics without inventing a cause', () => 
     dataQuality: model.dataQuality,
   });
 
-  assert.match(markdown, /приоритет.*разбор/i);
-  assert.match(markdown, /не диагноз/i);
-  assert.doesNotMatch(markdown, /фармил вместо|потерял темп|обязан был ротировать/i);
+  assert.match(markdown, /priorities rest on recorded facts/i);
+  assert.match(markdown, /not a diagnosis/i);
+  assert.doesNotMatch(markdown, /farmed instead of|lost tempo|should have rotated/i);
 });
 
 test('separates the player medal from the average bracket of the match', () => {
   const markdown = renderEvidenceMarkdown(evidenceModel());
 
-  assert.match(markdown, /| rank (медаль игрока) | 42 — Archon 2 (источник: stratz) |/);
-  assert.match(markdown, /| rank (средний bracket матча) | 60 — Ancient (источник: stratz) |/);
+  assert.match(markdown, /| rank (player medal) | 42 — Archon 2 (source: stratz) |/);
+  assert.match(markdown, /| rank (match average bracket) | 60 — Ancient (source: stratz) |/);
 });
 
 test('names the rank code the baseline bracket was selected by', () => {
   const markdown = renderEvidenceMarkdown(evidenceModel());
 
-  assert.match(markdown, /| основание bracket | player_medal (код 42) |/);
+  assert.match(markdown, /| bracket chosen from | player_medal (code 42) |/);
 });
 
 test('renders the game mode and lobby type with their labels', () => {
   const markdown = renderEvidenceMarkdown(evidenceModel());
 
-  assert.match(markdown, /| gameMode | 22 — All Draft (источник: opendota) |/);
-  assert.match(markdown, /| lobbyType | 0 — Unranked (источник: opendota) |/);
+  assert.match(markdown, /| gameMode | 22 — All Draft (source: opendota) |/);
+  assert.match(markdown, /| lobbyType | 0 — Unranked (source: opendota) |/);
 });
 
 test('shows both candidates when a mode vocabulary could not be compared', () => {
@@ -112,23 +112,23 @@ test('shows both candidates when a mode vocabulary could not be compared', () =>
     candidates: [{ value: 99, source: 'opendota' }, { value: 'BRAND_NEW_MODE', source: 'stratz' }],
   };
 
-  assert.match(renderEvidenceMarkdown(current), /| gameMode | — (кандидаты: 99 (opendota), BRAND_NEW_MODE (stratz))/);
+  assert.match(renderEvidenceMarkdown(current), /| gameMode | — (candidates: 99 (opendota), BRAND_NEW_MODE (stratz))/);
 });
 
 test('renders an unknown rank code without inventing a label', () => {
   const model = evidenceModel();
   model.player.rank = { value: 99, label: null, source: 'stratz' };
 
-  assert.match(renderEvidenceMarkdown(model), /| 99 — лейбл неизвестен (источник: stratz) |/);
+  assert.match(renderEvidenceMarkdown(model), /| 99 — label unknown (source: stratz) |/);
 });
 
 test('renderer uses every fixed evidence section for a full model', () => {
   const markdown = renderEvidenceMarkdown(evidenceModel());
 
-  for (const heading of ['Запрос', 'Статусы источников', 'Паспорт матча и игрока', 'Драфт и линия', 'Фазы: факты', 'Инвентарь событий', 'Гейты данных', 'Отсутствующие данные и предупреждения']) {
+  for (const heading of ['Request', 'Source statuses', 'Match and player line', 'Draft and lane', 'Phases: facts', 'Event inventory', 'Data gates', 'Missing data and warnings']) {
     assert.match(markdown, new RegExp(`## ${heading}`));
   }
-  assert.match(markdown, /Это инвентарь доказательств, а не финальный тренерский разбор/);
+  assert.match(markdown, /This is an evidence inventory, not the final coaching review/);
 });
 
 test('renderer is deterministic for the same normalized model', () => {

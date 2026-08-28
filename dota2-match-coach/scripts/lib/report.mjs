@@ -19,7 +19,7 @@ function list(values) {
 }
 
 function table(rows) {
-  return ['| Поле | Значение |', '| --- | --- |', ...rows.map(([name, value]) => `| ${name} | ${value} |`)].join('\n');
+  return ['| Field | Value |', '| --- | --- |', ...rows.map(([name, value]) => `| ${name} | ${value} |`)].join('\n');
 }
 
 function sourceRows(sources = {}) {
@@ -75,14 +75,15 @@ function stringArray(values) {
   return Array.isArray(values) ? values.filter((value) => typeof value === 'string') : undefined;
 }
 
-// Поле с человекочитаемым лейблом: rank, game mode, lobby type. Нерешённое поле
-// печатает кандидатов, чтобы несравнимый словарь не выглядел отсутствием данных.
-function labelledCell(field, unknown = 'лейбл неизвестен') {
+// A field with a human-readable label: rank, game mode, lobby type. An unresolved
+// field prints its candidates, so an incomparable vocabulary does not look like
+// missing data.
+function labelledCell(field, unknown = 'label unknown') {
   const value = valueOf(field);
   if (field?.value == null) {
     const candidates = Array.isArray(field?.candidates) ? field.candidates : [];
     return candidates.length > 0
-      ? `${value} (кандидаты: ${candidates.map((candidate) => `${valueOf(candidate)} (${sourceOf(candidate)})`).join(', ')})`
+      ? `${value} (candidates: ${candidates.map((candidate) => `${valueOf(candidate)} (${sourceOf(candidate)})`).join(', ')})`
       : value;
   }
   return field.label ? `${value} — ${field.label}` : `${value} — ${unknown}`;
@@ -261,26 +262,26 @@ const BASELINE_METRIC_LABELS = new Map([
 ]);
 
 function round(value) {
-  return Number.isFinite(value) ? String(Math.round(value * 100) / 100) : 'недостаточно данных';
+  return Number.isFinite(value) ? String(Math.round(value * 100) / 100) : 'insufficient data';
 }
 
 function baselineRows(baseline) {
   return (baseline?.comparisons ?? []).map((row) => [
     BASELINE_METRIC_LABELS.get(row.metric) ?? row.metric,
-    Number.isFinite(row.minute) ? `${row.minute}:00` : 'недостаточно данных',
+    Number.isFinite(row.minute) ? `${row.minute}:00` : 'insufficient data',
     round(row.player),
     round(row.baseline),
     round(row.delta),
-    row.ratio == null ? 'недостаточно данных' : round(row.ratio),
-    Number.isFinite(row.matchCount) ? String(row.matchCount) : 'недостаточно данных',
+    row.ratio == null ? 'insufficient data' : round(row.ratio),
+    Number.isFinite(row.matchCount) ? String(row.matchCount) : 'insufficient data',
     row.crossSourceProxy ? 'cross-source proxy' : '—',
   ].join(' | ')).map((line) => `| ${line} |`);
 }
 
 const REPOSITION_CAUSES = new Map([
-  ['teleport_item', 'телепорт предметом игрока'],
-  ['ally_warp', 'вход в перенос союзника'],
-  ['unattributed', 'причина не установлена'],
+  ['teleport_item', 'teleport item used by the player'],
+  ['ally_warp', 'stepped into an ally warp'],
+  ['unattributed', 'cause not established'],
 ]);
 
 function clock(seconds) {
@@ -290,8 +291,8 @@ function clock(seconds) {
 
 function repositionRows(repositions = []) {
   return repositions.map((move) => {
-    const basis = move.causeItemId != null ? `предмет ${move.causeItemId}`
-      : move.causeAbilityId != null ? `способность ${move.causeAbilityId}`
+    const basis = move.causeItemId != null ? `item ${move.causeItemId}`
+      : move.causeAbilityId != null ? `ability ${move.causeAbilityId}`
         : '—';
     return `| ${clock(move.time)} | ${valueOf(move.fromX)},${valueOf(move.fromY)} | ${valueOf(move.x)},${valueOf(move.y)} | ${REPOSITION_CAUSES.get(move.cause) ?? valueOf(move.cause)} | ${basis} | ${clock(move.causeTime)} |`;
   });
@@ -300,19 +301,19 @@ function repositionRows(repositions = []) {
 function baselineSampleRows(baseline) {
   const sample = baseline?.sameHeroPositionRankPatch;
   if (!sample) {
-    return [['статус', valueOf({ value: baseline?.status ?? null })], ['причина', valueOf({ value: baseline?.reason ?? null })]];
+    return [['status', valueOf({ value: baseline?.status ?? null })], ['reason', valueOf({ value: baseline?.reason ?? null })]];
   }
   return [
-    ['статус', valueOf({ value: baseline.status })],
-    ['выборка', 'hero + position + bracket + недели текущего патча'],
+    ['status', valueOf({ value: baseline.status })],
+    ['sample', 'hero + position + bracket + weeks of the current patch'],
     ['heroId', valueOf({ value: sample.heroId })],
     ['position', valueOf({ value: sample.position })],
     ['bracket', `${valueOf({ value: sample.bracket })} (${valueOf({ value: sample.bracketLabel })})`],
-    ['основание bracket', `${valueOf({ value: sample.bracketSource })} (код ${valueOf({ value: sample.rankCode })})`],
+    ['bracket chosen from', `${valueOf({ value: sample.bracketSource })} (code ${valueOf({ value: sample.rankCode })})`],
     ['patch', valueOf({ value: sample.patch })],
-    ['недели STRATZ', (sample.weeks ?? []).join(', ') || 'недостаточно данных'],
-    ['статистика', `${valueOf({ value: sample.statistic })} (перцентили этим источником не отдаются)`],
-    ['источник', valueOf({ value: sample.source })],
+    ['STRATZ weeks', (sample.weeks ?? []).join(', ') || 'insufficient data'],
+    ['statistic', `${valueOf({ value: sample.statistic })} (this source gives no percentiles)`],
+    ['source', valueOf({ value: sample.source })],
   ];
 }
 
@@ -327,74 +328,74 @@ export function renderEvidenceMarkdown(model = {}) {
   const phases = phaseRows(model.phases);
 
   return [
-    '# Инвентарь доказательств матча',
+    '# Match evidence inventory',
     '',
-    'Это инвентарь доказательств, а не финальный тренерский разбор.',
-    'Приоритеты для разбора основаны на зафиксированных фактах: агрегированные метрики — не диагноз и не устанавливают причину.',
+    'This is an evidence inventory, not the final coaching review.',
+    'Its priorities rest on recorded facts: aggregate metrics are not a diagnosis and establish no cause.',
     '',
-    '## Запрос',
+    '## Request',
     '',
     table([['matchId', valueOf(request.matchId)], ['accountId', valueOf(request.accountId)], ['generatedAt', valueOf(model.generatedAt)]]),
     '',
-    '## Статусы источников',
+    '## Source statuses',
     '',
     table(sourceRows(model.sources)),
     '',
-    '## Паспорт матча и игрока',
+    '## Match and player line',
     '',
     table([
-      ['durationSeconds', `${valueOf(match.durationSeconds)} (источник: ${sourceOf(match.durationSeconds)})`],
-      ['gameMode', `${labelledCell(match.gameMode)} (источник: ${sourceOf(match.gameMode)})`],
-      ['lobbyType', `${labelledCell(match.lobbyType)} (источник: ${sourceOf(match.lobbyType)})`],
-      ['heroId', `${valueOf(player.heroId)} (источник: ${sourceOf(player.heroId)})`],
-      ['position', `${valueOf(player.position)} (источник: ${sourceOf(player.position)})`],
-      ['rank (медаль игрока)', `${labelledCell(player.rank)} (источник: ${sourceOf(player.rank)})`],
-      ['rank (средний bracket матча)', `${labelledCell(match.averageRank)} (источник: ${sourceOf(match.averageRank)})`],
-      ['result', `${valueOf(player.result)} (источник: ${sourceOf(player.result)})`],
+      ['durationSeconds', `${valueOf(match.durationSeconds)} (source: ${sourceOf(match.durationSeconds)})`],
+      ['gameMode', `${labelledCell(match.gameMode)} (source: ${sourceOf(match.gameMode)})`],
+      ['lobbyType', `${labelledCell(match.lobbyType)} (source: ${sourceOf(match.lobbyType)})`],
+      ['heroId', `${valueOf(player.heroId)} (source: ${sourceOf(player.heroId)})`],
+      ['position', `${valueOf(player.position)} (source: ${sourceOf(player.position)})`],
+      ['rank (player medal)', `${labelledCell(player.rank)} (source: ${sourceOf(player.rank)})`],
+      ['rank (match average bracket)', `${labelledCell(match.averageRank)} (source: ${sourceOf(match.averageRank)})`],
+      ['result', `${valueOf(player.result)} (source: ${sourceOf(player.result)})`],
       ['K / D / A', `${valueOf(player.kills)} / ${valueOf(player.deaths)} / ${valueOf(player.assists)}`],
     ]),
     '',
-    '## Драфт и линия',
+    '## Draft and lane',
     '',
     table([
-      ['lane', `${valueOf(player.lane)} (источник: ${sourceOf(player.lane)})`],
-      ['lane outcome', `${valueOf(model.lane?.outcome)} (источник: ${sourceOf(model.lane?.outcome)})`],
+      ['lane', `${valueOf(player.lane)} (source: ${sourceOf(player.lane)})`],
+      ['lane outcome', `${valueOf(model.lane?.outcome)} (source: ${sourceOf(model.lane?.outcome)})`],
       ['draft complete', String(Boolean(draft.complete))],
       ['Radiant', list((draft.radiant ?? []).map((pick) => `${valueOf(pick)} (${sourceOf(pick)})`))],
       ['Dire', list((draft.dire ?? []).map((pick) => `${valueOf(pick)} (${sourceOf(pick)})`))],
     ]),
     '',
-    '## Фазы: факты',
+    '## Phases: facts',
     '',
-    '| Фаза | Интервал (мин.) | Метрики | Экстремумы внутри матча |',
+    '| Phase | Interval (min) | Metrics | Extremes within the match |',
     '| --- | --- | --- | --- |',
     ...(phases.length > 0 ? phases : ['| — | — | — | — |']),
     '',
-    '## Baseline: hero + position + bracket + патч',
+    '## Baseline: hero + position + bracket + patch',
     '',
     table(baselineSampleRows(model.baseline)),
     '',
-    '| Метрика | Минута | Игрок | Baseline (среднее) | Δ | Отношение | Матчей в выборке | Оговорка |',
+    '| Metric | Minute | Player | Baseline (mean) | Delta | Ratio | Matches in sample | Caveat |',
     '| --- | --- | --- | --- | --- | --- | --- | --- |',
     ...(baselineRows(model.baseline).length > 0 ? baselineRows(model.baseline) : ['| — | — | — | — | — | — | — | — |']),
     '',
-    '## Перемещения: скачки позиции и их причина',
+    '## Relocations: position jumps and their cause',
     '',
-    'Скачок в ряду позиций телепортом игрока сам по себе не является. Причина берётся из его собственных применений предмета и способности рядом с прибытием; перенос союзной способностью, наложенной на игрока, остаётся без причины.',
+    'A jump in the position row is not a teleport by the player in itself. The cause is read from the player own item and ability uses near the arrival; a relocation applied to the player by an ally ability stays without a cause.',
     '',
-    '| Прибытие | Откуда | Куда | Причина | Основание | Время причины |',
+    '| Arrival | From | To | Cause | Basis | Cause time |',
     '| --- | --- | --- | --- | --- | --- |',
     ...(repositionRows(model.events?.repositions).length > 0 ? repositionRows(model.events?.repositions) : ['| — | — | — | — | — | — |']),
     '',
-    '## Инвентарь событий',
+    '## Event inventory',
     '',
     table(Object.keys(inventory).sort().map((name) => [name, String(Boolean(inventory[name]))])),
     '',
-    '## Гейты данных',
+    '## Data gates',
     '',
     table([['mode', valueOf(quality.mode)], ...Object.keys(gates).sort().map((name) => [name, String(Boolean(gates[name]))])]),
     '',
-    '## Отсутствующие данные и предупреждения',
+    '## Missing data and warnings',
     '',
     table([['missing', list(quality.missing)], ['warnings', list(quality.warnings ?? model.warnings)]]),
     '',

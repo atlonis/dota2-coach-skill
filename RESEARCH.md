@@ -1,260 +1,260 @@
-# Исследование источников для скилла Dota 2 Match Coach
+# Source research for the Dota 2 Match Coach skill
 
-Дата проверки: 25 августа 2026 года.
+Verified on: 25 August 2026.
 
-Статус: исследование зафиксировано; на его основе собрана первая версия `dota2-match-coach`.
+Status: the research is recorded; the first version of `dota2-match-coach` was built on it.
 
-## Что мы строим
+## What we are building
 
-Dota 2 Match Coach — персональный постматчевый тренер по Dota 2. Он должен превращать данные матча в короткий разбор:
+Dota 2 Match Coach is a personal post-match Dota 2 coach. It must turn match data into a short review:
 
-1. что было главной проблемой;
-2. где она проявилась;
-3. почему она важна именно для этого героя, роли, рейтинга и патча;
-4. что тренировать в следующих играх.
+1. what the main problem was;
+2. where it showed up;
+3. why it matters for this specific hero, role, rating and patch;
+4. what to train in the next games.
 
-Ключевое разделение:
+The key separation:
 
-> Данные матча ≠ правила игры ≠ сравнительный baseline ≠ тренерский вывод.
+> Match data is not the rules of the game, is not a comparative baseline, and is not a coaching conclusion.
 
-Ни один источник не закрывает все четыре слоя.
+No single source covers all four layers.
 
-## Зафиксированные продуктовые решения
+## Product decisions on record
 
-- Формат ответа гибридный: четыре стадии матча плюс динамический переломный момент и один главный тренировочный паттерн.
-- Структура адаптируется из BSJ Replay Review Template: паспорт матча, пик, линия, mid/late game, ключевые моменты и action plan.
-- Dota2ProTracker исключён из runtime-цепочки. STRATZ выбран будущим источником ролевых эталонов, сильных игроков и свежих билдов; их отдельный автоматический сбор вынесен в roadmap. OpenDota используется как дополнительная проверка.
-- Глубокая реконструкция сырого `.dem` отложена. В первой версии микромеханики ограничены тем, что доказуемо из OpenDota/STRATZ playback; будущий модуль шире анализа пропущенных крипов.
+- The answer format is hybrid: four match stages plus a dynamic turning point and one main training pattern.
+- The structure is adapted from the BSJ Replay Review Template: match line, draft, laning, mid and late game, key moments and an action plan.
+- Dota2ProTracker is excluded from the runtime chain. STRATZ was chosen as the future source of role benchmarks, strong players and recent builds; collecting those separately and automatically is deferred to the roadmap. OpenDota is used as an additional check.
+- Deep reconstruction of a raw `.dem` is deferred. In the first version, micro-mechanics are limited to what is provable from OpenDota and STRATZ playback; the future module is broader than analysing missed creeps.
 
-## Рекомендуемая карта источников
+## Recommended source map
 
-| Слой | Источник | Что даёт | Ограничения | Роль в MVP |
+| Layer | Source | What it gives | Limits | Role in the MVP |
 |---|---|---|---|---|
-| Данные матча | [OpenDota API](https://api.opendota.com/api) | Результат, игроков, покупки, ability build, поминутные gold/XP/LH/denies, wards, actions, damage, teamfights, lane/role estimates, rank и replay URL | Не каждый матч распарсен; часть игроков анонимна; replay может исчезнуть; часть полей является оценкой | Основной источник |
-| Точные данные эпизода | [OpenDota replay parser](https://github.com/odota/parser) поверх [Clarity](https://github.com/skadistats/clarity) | Combat log, сущности, позиции, эффекты, события и другие replay-данные | Нужен `.dem`; replay ограниченно хранится Valve; данные всё равно не раскрывают намерения и коммуникацию команды | Отложено до отдельного глубокого режима |
-| Текущие правила | [Valve Dota 2 Datafeed](https://www.dota2.com/datafeed/herodata?language=english&hero_id=107) | Текущие характеристики героев, способностей, талантов и предметов в структурированном JSON | Это first-party backend сайта, но не документированный и не версионированный Valve API; схему надо валидировать | Обязательный источник для матчей текущего подпатча |
-| Версия матча | [Valve patch timeline](https://www.dota2.com/datafeed/patchnoteslist?language=english) и [официальные patch notes](https://www.dota2.com/patches/7.41e) | Полная временная шкала, включая буквенные патчи (`7.41a`–`7.41e`), и официальные изменения | Patch notes описывают дельту, а не всегда полное состояние механики | Обязательный источник |
-| Объяснение механик | [Liquipedia Dota 2 Wiki: Mechanics](https://liquipedia.net/dota2/Mechanics) | Человекочитаемые объяснения механик, взаимодействий, героев, предметов и changelog | Community-maintained; возможны задержки и ошибки. Старый Fandom не является равноценным зеркалом | Второй источник для объяснения и cross-check |
-| Сравнение по рейтингу | [OpenDota `/benchmarks`](https://api.opendota.com/api) | Перцентили по герою и rank bracket 1–8 для GPM, XPM, LH/min, KDA, damage и других метрик | Нет фильтра по роли и конкретному патчу; Immortal-выборка иногда пустая; итоговые метрики теряют контекст матча | Осторожный baseline в MVP |
-| Ролевой и высокорейтинговый meta-baseline | [STRATZ](https://stratz.com/welcome) | GraphQL, позиция 1–5, hero leaderboard, role/rank stats, свежие матчи сильных игроков, playback, lane/item анализ и IMP | Нужны токен и обязательный точный заголовок `User-Agent: STRATZ_API`; схема сложнее; закрытые метрики не являются доказательством | Основной источник ролевого контекста и playback в MVP |
-| Альтернативная parse-аналитика | [Imprint Esports API](https://docs.api.imprint.gg/match-endpoints) | Parse-level match object, position 1–5, time series, item/ability timelines и Imprint analytics | Новый сервис; нужен API key и индивидуально согласуемый тариф | Перспективный кандидат после MVP |
-| Человеческая проверка | Разбор сильного игрока/тренера | Проверяет, нашёл ли скилл реальную причину, а не правдоподобный шаблон | Не автоматизируется | Обязателен для оценки качества |
+| Match data | [OpenDota API](https://api.opendota.com/api) | Result, players, purchases, ability build, per-minute gold, XP, LH and denies, wards, actions, damage, teamfights, lane and role estimates, rank and the replay URL | Not every match is parsed; some players are anonymous; a replay can disappear; some fields are estimates | Primary source |
+| Exact episode data | [OpenDota replay parser](https://github.com/odota/parser) on top of [Clarity](https://github.com/skadistats/clarity) | Combat log, entities, positions, effects, events and other replay data | Needs the `.dem`; Valve stores replays for a limited time; the data still does not reveal intent or team communication | Deferred to a separate deep mode |
+| Current rules | [Valve Dota 2 Datafeed](https://www.dota2.com/datafeed/herodata?language=english&hero_id=107) | Current stats of heroes, abilities, talents and items in structured JSON | A first-party site backend, but not a documented or versioned Valve API; the schema must be validated | Mandatory source for matches on the current sub-patch |
+| Match version | [Valve patch timeline](https://www.dota2.com/datafeed/patchnoteslist?language=english) and the [official patch notes](https://www.dota2.com/patches/7.41e) | The full timeline, including lettered patches (`7.41a` to `7.41e`), and the official changes | Patch notes describe a delta, not always the full state of a mechanic | Mandatory source |
+| Explaining mechanics | [Liquipedia Dota 2 Wiki: Mechanics](https://liquipedia.net/dota2/Mechanics) | Human-readable explanations of mechanics, interactions, heroes, items and changelogs | Community-maintained; delays and errors are possible. The old Fandom is not an equivalent mirror | Second source for explanation and cross-checking |
+| Comparison by rating | [OpenDota `/benchmarks`](https://api.opendota.com/api) | Percentiles by hero and rank bracket 1-8 for GPM, XPM, LH/min, KDA, damage and other metrics | No filter by role or specific patch; the Immortal sample is sometimes empty; final metrics lose match context | A cautious baseline in the MVP |
+| Role and high-rating meta baseline | [STRATZ](https://stratz.com/welcome) | GraphQL, position 1-5, hero leaderboard, role and rank stats, recent matches of strong players, playback, lane and item analysis, and IMP | Needs a token and the exact mandatory `User-Agent: STRATZ_API` header; the schema is more complex; closed metrics are not evidence | Primary source of role context and playback in the MVP |
+| Alternative parse analytics | [Imprint Esports API](https://docs.api.imprint.gg/match-endpoints) | A parse-level match object, position 1-5, time series, item and ability timelines and Imprint analytics | A new service; needs an API key and an individually negotiated plan | A promising candidate after the MVP |
+| Human verification | A review by a strong player or coach | Checks whether the skill found a real cause rather than a plausible template | Cannot be automated | Mandatory for quality assessment |
 
-## Что удалось проверить на живых ответах
+## What was verified against live responses
 
 ### OpenDota
 
-- Текущий OpenAPI имеет версию `31.1.0` и прямо заявляет advanced match data из replay.
-- На распарсенном свежем матче API вернул десять игроков, replay URL, teamfights, покупки, kills, wards, `gold_t`, `xp_t`, `lh_t`, `dn_t`, `lane_pos`, damage, actions и `position_est`.
-- `position_est` — именно **оценка** позиции 1–5 по раннему farm priority и lane data, а не гарантированная роль.
-- `/benchmarks` принимает героя и bracket от Herald до Immortal. В параметрах нет роли и патча.
-- На момент проверки анонимный доступ показывал лимит около 60 запросов в минуту и 3000 в день. Это наблюдение, а не контракт: лимиты надо читать из response headers и обрабатывать динамически.
-- Можно отправить матч на parse через `POST /request/{match_id}` и затем проверять состояние job. Наличие базового массива `players` не означает, что replay распарсен: нужны `version` и replay-derived поля/таймлайны.
+- The current OpenAPI is version `31.1.0` and explicitly advertises advanced match data from replays.
+- On a parsed recent match the API returned ten players, the replay URL, teamfights, purchases, kills, wards, `gold_t`, `xp_t`, `lh_t`, `dn_t`, `lane_pos`, damage, actions and `position_est`.
+- `position_est` is exactly an **estimate** of position 1-5 from early farm priority and lane data, not a guaranteed role.
+- `/benchmarks` accepts a hero and a bracket from Herald to Immortal. Its parameters include neither role nor patch.
+- At the time of the check, anonymous access showed a limit of about 60 requests per minute and 3000 per day. That is an observation, not a contract: limits must be read from the response headers and handled dynamically.
+- A match can be sent for parsing through `POST /request/{match_id}`, after which the job state can be polled. The presence of a basic `players` array does not mean the replay is parsed: `version` and the replay-derived fields and timelines are needed.
 
-### Контрольные матчи пользователя
+### The user's control matches
 
-Идентификатор игрока: `account_id: 56386500`. В обоих матчах он найден на Earth Spirit.
+Player identifier: `account_id: 56386500`. He was found on Earth Spirit in both matches.
 
-| Оценка пользователя | Match ID | Режим | Результат и итоговые данные | Состояние OpenDota |
+| The user's assessment | Match ID | Mode | Result and final data | OpenDota state |
 |---|---:|---|---|---|
-| Плохой | `8963363814` | Обычный public matchmaking, All Draft | Победа; 32:17; 4/8/16; 193 LH; 485 GPM; 515 XPM; 14 642 NW | Parse запрошен и завершён: `version: 22`, replay URL, position 2/mid, 33 точки gold/XP/LH, 9 teamfights и полные логи покупок/событий |
-| Не хороший, но более-менее | `8963443105` | Обычный public matchmaking, All Draft | Победа; 38:49; 12/8/22; 247 LH; 586 GPM; 823 XPM; 18 385 NW | Parse запрошен и завершён: `version: 22`, replay URL, position 2/mid, 39 точек gold/XP/LH, 14 teamfights и полные логи покупок/событий |
+| Bad | `8963363814` | Ordinary public matchmaking, All Draft | Win; 32:17; 4/8/16; 193 LH; 485 GPM; 515 XPM; 14642 NW | Parse requested and completed: `version: 22`, replay URL, position 2 mid, 33 gold, XP and LH points, 9 teamfights, and full purchase and event logs |
+| Not good, but passable | `8963443105` | Ordinary public matchmaking, All Draft | Win; 38:49; 12/8/22; 247 LH; 586 GPM; 823 XPM; 18385 NW | Parse requested and completed: `version: 22`, replay URL, position 2 mid, 39 gold, XP and LH points, 14 teamfights, and full purchase and event logs |
 
-Оба матча начались 24 августа 2026 года и по официальной временной шкале Valve относятся к `7.41e`. Набор особенно полезен для проверки: оба матча выиграны, но пользователь различает качество собственной игры. Значит, будущий тренер не сможет использовать победу/поражение как замену анализу.
+Both matches started on 24 August 2026 and belong to `7.41e` by Valve's official timeline. The pair is especially useful as a check: both matches were won, yet the user distinguishes the quality of his own play. So the future coach cannot use a win or a loss as a substitute for analysis.
 
-До запроса parse OpenDota показывал предупреждение `The replay for this match has not yet been parsed` и только scoreboard. Для обоих матчей были отправлены заявки; jobs завершились успешно, после чего появились replay-derived данные. Значит, parse-first — обязательная часть runtime, а не ручная оговорка. Теперь можно доказательно сравнивать отрезки фарма, lane outcome и эпизоды драк; второй матч нельзя объявлять хорошим только потому, что его итоговые цифры выше.
+Before the parse request, OpenDota showed the warning `The replay for this match has not yet been parsed` and only a scoreboard. Requests were submitted for both matches; the jobs completed successfully, after which the replay-derived data appeared. So parse-first is a mandatory part of the runtime, not a manual caveat. Farm stretches, lane outcome and fight episodes can now be compared with evidence; the second match cannot be declared good merely because its final numbers are higher.
 
-### Первый ручной эталон ответа v0
+### The first manual reference answer, v0
 
-Объект разбора — плохой матч `8963363814`; матч `8963443105` используется только как self-baseline. Итоговый формат v0: паспорт матча, контекст пика и роли, четыре стадии, переломный момент, одна сильная сторона, один главный паттерн и одно упражнение.
+The subject of the review is the bad match `8963363814`; match `8963443105` is used only as a self-baseline. The v0 format: the match line, draft and role context, four stages, the turning point, one strength, one main pattern and one exercise.
 
-**Главная проблема:** после выигранной линии игрок не конвертировал преимущество в первый ключевой power spike и несколько раз повторно входил в уже невыгодные драки. Это точнее, чем общий совет «больше фармить».
+**Main problem:** after winning the lane, the player did not convert the advantage into the first key power spike and re-entered already unfavourable fights several times. That is more precise than the generic advice to farm more.
 
-**Доказательства:**
+**Evidence:**
 
-- STRATZ определяет линию как `RADIANT_VICTORY`, позицию как `POSITION_2`, но итоговый IMP равен `-15`; OpenDota показывает lane efficiency `77%`. То есть начало матча само по себе не является основной проблемой.
-- Urn был готов в `3:58`, затем Kaya в `11:21`, а Spirit Vessel — только в `17:43`. В self-baseline Vessel был куплен в `12:38`. Это делает порядок Kaya → Vessel проверяемой гипотезой, но не доказывает ошибку без контекста десяти героев и релевантной позиционной выборки STRATZ.
-- После последнего раннего убийства в `10:46` последовала серия смертей в `14:19`, `16:19`, `17:07` и `20:43` без собственного убийства между ними.
-- Самый доказательный эпизод: смерть в `16:19`, 34 секунды до возрождения, затем TP обратно в следующую драку и новая смерть в `17:07`. Между возрождением и повторной смертью прошло около 14 секунд. Vessel был завершён только после этого эпизода.
-- В self-baseline после Vessel в `12:38` игрок в драке `14:12–15:07` дважды применил предмет, сделал два убийства и не умер. Это не доказывает универсальную причинность, но показывает, что тот же игрок умеет конвертировать этот ранний spike заметно лучше.
+- STRATZ records the lane as `RADIANT_VICTORY` and the position as `POSITION_2`, yet the final IMP is `-15`; OpenDota shows lane efficiency of `77%`. So the start of the match is not the main problem by itself.
+- Urn was finished at `3:58`, then Kaya at `11:21`, and Spirit Vessel only at `17:43`. In the self-baseline, Vessel was bought at `12:38`. That makes the Kaya into Vessel order a testable hypothesis, but does not prove a mistake without the context of the ten heroes and a relevant positional STRATZ sample.
+- After the last early kill at `10:46` came a run of deaths at `14:19`, `16:19`, `17:07` and `20:43` with no kill of his own in between.
+- The most evidenced episode: the death at `16:19`, 34 seconds until respawn, then a TP back into the next fight and another death at `17:07`. About 14 seconds passed between the respawn and the second death. Vessel was finished only after that episode.
+- In the self-baseline, after Vessel at `12:38`, the player used the item twice in the fight at `14:12-15:07`, made two kills and did not die. That does not prove universal causality, but it shows that the same player can convert this early spike noticeably better.
 
-**Интерпретация:** высокая уверенность в потере темпа из-за цепочки повторных входов; средняя уверенность в том, что именно порядок Kaya → Vessel был основной причиной. По данным можно доказать тайминги и последовательность событий, но нельзя утверждать, что ранний Vessel гарантированно изменил бы каждую драку.
+**Interpretation:** high confidence in the loss of tempo from the chain of re-entries; medium confidence that the Kaya into Vessel order was the main cause. The data can prove the timings and the sequence of events, but cannot claim that an early Vessel would have changed every fight.
 
-**Одно упражнение на следующие три игры — `power-spike gate`:** после Urn завершать Vessel до вторичного scaling-предмета, если нет осознанной причины отклониться. После смерти не делать автоматический TP в продолжающуюся драку: сначала назвать конкретное преимущество для повторного входа — численное большинство, потраченные ключевые способности противника или защищаемый objective. Если его нет, забрать безопасную волну/кемп и вернуться после spike.
+**One exercise for the next three games, the `power-spike gate`:** after Urn, finish Vessel before a secondary scaling item unless there is a deliberate reason to deviate. After a death, do not TP automatically into an ongoing fight: first name a concrete advantage for re-entering — a numbers advantage, the enemy's key abilities spent, or an objective being defended. Without one, take a safe wave or camp and come back after the spike.
 
-Этот пример задаёт доказательную единицу внутри каждой стадии:
+This example sets the unit of evidence inside every stage:
 
-1. задача героя в конкретном пике;
-2. 2–5 проверяемых фактов с таймкодами или интервалом;
-3. сравнение с self-baseline и релевантной role/rank/patch выборкой;
-4. отделённая от фактов интерпретация;
-5. явный confidence и недоказанный counterfactual;
-6. конкретная альтернатива.
+1. the hero's task in this specific draft;
+2. two to five verifiable facts with timecodes or an interval;
+3. a comparison against the self-baseline and a relevant role, rank and patch sample;
+4. an interpretation kept separate from the facts;
+5. explicit confidence and the unproven counterfactual;
+6. a concrete alternative.
 
-После четырёх стадий отчёт выбирает один переломный момент, один повторяющийся паттерн и одно измеримое упражнение на 3–5 следующих игр.
+After the four stages the report picks one turning point, one recurring pattern and one measurable exercise for the next three to five games.
 
-### Точный патч
+### The exact patch
 
-OpenDota для свежего матча вернул `patch: 60`, который в его constants соответствует только `7.41`. Он не различает `7.41a`, `7.41b`, ..., `7.41e`.
+For a recent match, OpenDota returned `patch: 60`, which in its constants corresponds only to `7.41`. It does not distinguish `7.41a`, `7.41b`, ..., `7.41e`.
 
-Правильный алгоритм:
+The correct algorithm:
 
-1. взять `start_time` матча;
-2. загрузить официальный `patchnoteslist` Valve;
-3. выбрать последний patch timestamp, который не позже старта матча;
-4. получить точное имя вроде `7.41e`;
-5. сравнить его с последним подпатчем Valve;
-6. в v0 продолжать анализ только при совпадении, иначе вернуть явное `unsupported_patch`;
-7. только после этого загружать текущие правила и meta-baseline.
+1. take the match `start_time`;
+2. load Valve's official `patchnoteslist`;
+3. pick the last patch timestamp no later than the start of the match;
+4. obtain the exact name such as `7.41e`;
+5. compare it with Valve's latest sub-patch;
+6. in v0, continue the analysis only on a match, otherwise return an explicit `unsupported_patch`;
+7. only then load the current rules and the meta baseline.
 
 ### Valve Datafeed
 
-`Datafeed` — наше рабочее имя для живых JSON endpoint'ов на домене Valve `dota2.com`, например [`herolist`](https://www.dota2.com/datafeed/herolist?language=english), [`herodata`](https://www.dota2.com/datafeed/herodata?language=english&hero_id=107), [`itemlist`](https://www.dota2.com/datafeed/itemlist?language=english) и [`patchnoteslist`](https://www.dota2.com/datafeed/patchnoteslist?language=english). Отдельной официальной документации, OpenAPI-схемы, версии контракта или обещания стабильности Valve для них не найдено. Это first-party backend сайта, а не поддерживаемый Steam WebAPI.
+`Datafeed` is our working name for the live JSON endpoints on Valve's `dota2.com` domain, such as [`herolist`](https://www.dota2.com/datafeed/herolist?language=english), [`herodata`](https://www.dota2.com/datafeed/herodata?language=english&hero_id=107), [`itemlist`](https://www.dota2.com/datafeed/itemlist?language=english) and [`patchnoteslist`](https://www.dota2.com/datafeed/patchnoteslist?language=english). No separate official documentation, OpenAPI schema, contract version or stability promise from Valve was found for them. This is a first-party site backend, not a supported Steam WebAPI.
 
-Живая проверка `herodata` для Earth Spirit (`hero_id: 107`) вернула текущие базовые характеристики, способности, innate, cooldown/mana/cast range, Aghanim values и talents: 23 силы, 17 ловкости, 17 интеллекта, facets отсутствуют. `patchnoteslist` заканчивается на `7.41e`. Для v0 источник подходит, потому что область скилла зафиксирована только на текущем подпатче. В реализации нужны проверка HTTP/status и обязательных полей, cache последнего успешного ответа и явная ошибка при изменении схемы.
+A live check of `herodata` for Earth Spirit (`hero_id: 107`) returned the current base stats, abilities, innate, cooldown, mana and cast range, Aghanim values and talents: 23 strength, 17 agility, 17 intelligence, no facets. `patchnoteslist` ends at `7.41e`. The source is suitable for v0 because the scope of the skill is fixed to the current sub-patch only. The implementation needs an HTTP status and required-field check, a cache of the last successful response, and an explicit error when the schema changes.
 
 ### STRATZ
 
-GraphQL API STRATZ работоспособен: пользователь выполнил запрос `MatchDraft` в размещённом на `api.stratz.com` GraphiQL и получил `data.match.players`, включая свой `steamAccountId: 56386500`. В соседнем проекте `D:\vibe\dota` также есть включённый STRATZ adapter, endpoint `https://api.stratz.com/graphql` и чтение токена из `STRATZ_API_KEY`; пользовательский env-токен настроен.
+The STRATZ GraphQL API works: the user ran a `MatchDraft` query in the GraphiQL hosted on `api.stratz.com` and received `data.match.players`, including his own `steamAccountId: 56386500`. The neighbouring project `D:\vibe\dota` also has an enabled STRATZ adapter, the `https://api.stratz.com/graphql` endpoint and token reading from `STRATZ_API_KEY`; the user's env token is configured.
 
-Корень ошибки найден в обязательном заголовке из документации STRATZ: каждый запрос должен содержать точное значение `User-Agent: STRATZ_API`. В старом adapter'е использовалось `User-Agent: DotaCompanion/0.1`. Контрольный A/B-тест с тем же endpoint, токеном и GraphQL body дал `403` для старого значения и `200 application/graphql-response+json` для `STRATZ_API`. Значит, Cloudflare cookies или перенос browser session не нужны.
+The root of the error was found in the mandatory header from the STRATZ documentation: every request must carry the exact value `User-Agent: STRATZ_API`. The old adapter used `User-Agent: DotaCompanion/0.1`. A controlled A/B test with the same endpoint, token and GraphQL body returned `403` for the old value and `200 application/graphql-response+json` for `STRATZ_API`. So Cloudflare cookies and transferring a browser session are not needed.
 
-С правильным заголовком прямые GraphQL-запросы успешно вернули оба контрольных матча (`8963363814` и `8963443105`), по десять игроков в каждом; `steamAccountId: 56386500` найден на Earth Spirit (`heroId: 107`). Сайт STRATZ также показывает позиции, lane outcome, builds, графики и playback. Например, в первом матче Earth Spirit определён как mid, а сайт показывает тайминги Urn/Kaya/Vessel/Kaya and Sange.
+With the correct header, direct GraphQL requests successfully returned both control matches (`8963363814` and `8963443105`), ten players each; `steamAccountId: 56386500` was found on Earth Spirit (`heroId: 107`). The STRATZ site also shows positions, lane outcome, builds, charts and playback. In the first match, for example, Earth Spirit is identified as mid, and the site shows the Urn, Kaya, Vessel and Kaya and Sange timings.
 
-После успешного parse OpenDota уже вернул позицию, таймлайны и teamfights. STRATZ при этом остаётся основным источником точной позиции 1–5 и подробного playback; отдельный сбор ролевых/rank hero-baselines и hero leaderboard запланирован в roadmap. Если STRATZ недоступен, отчёт переходит в явно помеченный degraded mode. IMP используется только как дополнительный закрытый сигнал, не как доказательство ошибки.
+After a successful parse, OpenDota already returned the position, the timelines and the teamfights. STRATZ nonetheless remains the primary source of the exact position 1-5 and detailed playback; collecting role and rank hero baselines and the hero leaderboard separately is planned in the roadmap. If STRATZ is unavailable, the report switches to an explicitly marked degraded mode. IMP is used only as an auxiliary closed signal, never as evidence of a mistake.
 
-### Liquipedia против старого Fandom
+### Liquipedia versus the old Fandom
 
-[Команда Dota 2 Wiki перенесла поддерживаемую вики с Fandom на Liquipedia](https://www.reddit.com/r/DotA2/comments/1c4kg1n/official_announcement_dota_2_wiki_has_moved_to_a/) в 2024 году и объявила Fandom-копию неподдерживаемой. Сравнение [Earth Spirit в Liquipedia](https://liquipedia.net/dota2/Earth_Spirit) и [старой страницы в Fandom](https://dota2.fandom.com/wiki/Earth_Spirit) 25 августа 2026 года это подтверждает:
+[The Dota 2 Wiki team moved the maintained wiki from Fandom to Liquipedia](https://www.reddit.com/r/DotA2/comments/1c4kg1n/official_announcement_dota_2_wiki_has_moved_to_a/) in 2024 and declared the Fandom copy unmaintained. Comparing [Earth Spirit on Liquipedia](https://liquipedia.net/dota2/Earth_Spirit) with the [old page on Fandom](https://dota2.fandom.com/wiki/Earth_Spirit) on 25 August 2026 confirms it:
 
-- Liquipedia маркирует состояние как `7.41e`, показывает 23 базовой силы, 17 интеллекта, отсутствие facets и текущую пассивную механику Stone Remnant;
-- Fandom показывает 22 базовой силы, 18 интеллекта, старое дерево талантов и Recent Changes, которые заканчиваются на `7.35d`;
-- текущий Valve Datafeed совпадает с Liquipedia: 23 силы, 17 интеллекта, facets отсутствуют.
+- Liquipedia marks the state as `7.41e`, shows 23 base strength, 17 intelligence, no facets and the current passive Stone Remnant mechanic;
+- Fandom shows 22 base strength, 18 intelligence, the old talent tree, and Recent Changes ending at `7.35d`;
+- the current Valve Datafeed agrees with Liquipedia: 23 strength, 17 intelligence, no facets.
 
-Вывод: Liquipedia использовать для объяснений и взаимодействий; текущие числа проверять по Valve Datafeed. Fandom исключить из runtime-цепочки и оставлять только как возможный источник старого lore/архивного текста с явной пометкой.
+Conclusion: use Liquipedia for explanations and interactions; verify current numbers against the Valve Datafeed. Exclude Fandom from the runtime chain and keep it only as a possible source of old lore or archival text, explicitly marked.
 
-### Чем являются Imprint и Clarity
+### What Imprint and Clarity are
 
-- **Imprint** — внешний коммерческий API-провайдер данных, а не библиотека. Его match endpoint обещает готовый parse-level объект: position 1–5, минутные net worth/XP/LH, inventory, item/ability timelines и собственный рейтинг. Для доступа нужен API key и индивидуально согласуемый план. Для v0 это потенциальная альтернатива STRATZ/OpenDota, а не обязательный источник.
-- **Clarity** — Java-библиотека для чтения файла replay `.dem`, а не готовая база матчей. Она извлекает combat log, entities, modifiers, game/user events и summary. Нужна, если мы сами скачиваем replay и хотим разбирать конкретную смерть или драку; для итогового scoreboard она избыточна.
+- **Imprint** is an external commercial data API provider, not a library. Its match endpoint promises a ready parse-level object: position 1-5, per-minute net worth, XP and LH, inventory, item and ability timelines, and its own rating. Access needs an API key and an individually negotiated plan. For v0 it is a potential alternative to STRATZ and OpenDota, not a mandatory source.
+- **Clarity** is a Java library for reading a `.dem` replay file, not a ready match database. It extracts the combat log, entities, modifiers, game and user events, and a summary. It is needed if we download the replay ourselves and want to dissect a specific death or fight; for a final scoreboard it is overkill.
 
-### Официальный Steam WebAPI
+### The official Steam WebAPI
 
-Итог: `IDOTA2Match_570/GetMatchDetails` не использовать. Endpoint сломан и для обычных ranked pubs, а не только для custom/practice lobby.
+Conclusion: do not use `IDOTA2Match_570/GetMatchDetails`. The endpoint is broken for ordinary ranked pubs too, not only for custom and practice lobbies.
 
-- В [issue Valve `#24383`](https://github.com/ValveSoftware/Dota2-Gameplay/issues/24383) приведён матч `8187104544`, для которого `GetMatchDetails` вернул `{}`, хотя тот же Steam API key успешно работал с `GetMatchHistory`.
-- По данным OpenDota, `8187104544` — обычный **ranked public matchmaking**, All Draft, десять игроков, а не custom/practice lobby.
-- В более свежем [issue Valve `#32617`](https://github.com/ValveSoftware/Dota2-Gameplay/issues/32617) от 18 мая 2026 года сообщается, что endpoint всегда отвечает HTTP 500 и пустым телом с момента 7.36.
-- В актуальной конфигурации OpenDota `DISABLE_REAPI` включён по умолчанию с комментарием, что `SteamGetMatchDetails` сломан.
+- Valve [issue `#24383`](https://github.com/ValveSoftware/Dota2-Gameplay/issues/24383) cites match `8187104544`, for which `GetMatchDetails` returned `{}` while the same Steam API key worked fine with `GetMatchHistory`.
+- Per OpenDota, `8187104544` is an ordinary **ranked public matchmaking** All Draft match with ten players, not a custom or practice lobby.
+- The more recent Valve [issue `#32617`](https://github.com/ValveSoftware/Dota2-Gameplay/issues/32617) of 18 May 2026 reports that the endpoint always answers HTTP 500 with an empty body since 7.36.
+- In the current OpenDota configuration, `DISABLE_REAPI` is on by default with a comment that `SteamGetMatchDetails` is broken.
 
-Прямо повторить авторизованный запрос для двух пользовательских пабов в текущей среде нельзя: Steam API key здесь не настроен, а без key Valve закономерно отвечает 403. Поэтому 403 без ключа не считается доказательством поломки; доказательство для пабов — корректно авторизованный ranked-пример плюс текущая конфигурация OpenDota.
+The authorized request for the two user pubs cannot be reproduced directly in the current environment: no Steam API key is configured here, and without a key Valve naturally answers 403. So a 403 without a key is not evidence of breakage; the evidence for pubs is the properly authorized ranked example plus the current OpenDota configuration.
 
-Исторически `GetMatchDetails` давал только итоговый объект: десять игроков, героя, финальные предметы, K/D/A, LH/denies, GPM/XPM, победителя, длительность, start time, режим/lobby, итоговые строения, счёт и draft. Он не давал replay-level позиции, поминутные кривые, хронологию покупок и контекст конкретных драк. Даже если Valve починит endpoint, для этого скилла это будет источник scoreboard, а не глубокого разбора.
+Historically `GetMatchDetails` gave only the final object: ten players, the hero, final items, K/D/A, LH and denies, GPM and XPM, the winner, the duration, the start time, the mode and lobby, the final buildings, the score and the draft. It gave no replay-level positions, no per-minute curves, no purchase chronology and no context for specific fights. Even if Valve fixes the endpoint, for this skill it will be a scoreboard source, not a source for a deep review.
 
-## Важное ограничение: «клики»
+## An important limit: "clicks"
 
-OpenDota не отдаёт поток реальных кликов мыши игрока. Поле `actions` — агрегированные типы/счётчики действий. В Clarity встречаются user messages и spectator clicks, но это не эквивалент полной записи мыши, камеры и намерений игрока.
+OpenDota does not give the stream of the player's actual mouse clicks. The `actions` field holds aggregated action types and counts. Clarity exposes user messages and spectator clicks, but that is not equivalent to a full record of the mouse, the camera and the player's intent.
 
-По replay можно уверенно восстановить **что происходило**: позиции, урон, применения, состояния и события. Гораздо осторожнее нужно формулировать **почему игрок принял решение**. Коммуникация в голосе, план команды, внимание игрока и большая часть намерений отсутствуют.
+From a replay one can confidently reconstruct **what happened**: positions, damage, casts, states and events. **Why the player made a decision** must be phrased far more carefully. Voice communication, the team's plan, the player's attention and most of the intent are absent.
 
-## Иерархия доверия при конфликте
+## Trust hierarchy on a conflict
 
-1. Для точных текущих чисел: Valve Datafeed с валидацией схемы и cross-check по официальным patch notes.
-2. Для официально объявленных изменений: Valve patch notes.
-3. Для фактов матча: распарсенный replay, затем OpenDota/STRATZ/Imprint.
-4. Для объяснения взаимодействия механик: Liquipedia с проверкой по файлам/patch notes.
-5. Для статистических ожиданий: релевантная выборка того же патча, героя, роли, рейтинга и режима.
-6. Для стратегии и тренерской интерпретации: несколько источников плюс проверка человеком.
+1. For exact current numbers: the Valve Datafeed with schema validation and a cross-check against the official patch notes.
+2. For officially announced changes: Valve patch notes.
+3. For match facts: the parsed replay, then OpenDota, STRATZ and Imprint.
+4. For explaining how mechanics interact: Liquipedia, verified against the game files or patch notes.
+5. For statistical expectations: a relevant sample of the same patch, hero, role, rating and mode.
+6. For strategy and coaching interpretation: several sources plus human verification.
 
-Если источники расходятся, скилл должен назвать расхождение и снизить уверенность, а не выбирать удобный ответ молча.
+When sources disagree, the skill must name the disagreement and lower its confidence rather than silently pick the convenient answer.
 
-## Рекомендуемый стек первого прототипа
+## Recommended stack for the first prototype
 
-Основные источники:
+Primary sources:
 
-1. OpenDota — матч и базовые rank benchmarks.
-2. STRATZ — position 1–5, playback и lane outcome сейчас; role/rank baselines и сильные игроки после реализации соответствующего roadmap-этапа.
-3. Valve patch timeline/Datafeed — точный подпач и текущие механики.
-4. Liquipedia — объяснение механик и interactions.
+1. OpenDota — the match and basic rank benchmarks.
+2. STRATZ — position 1-5, playback and lane outcome now; role and rank baselines and strong players after the corresponding roadmap stage is implemented.
+3. Valve patch timeline and Datafeed — the exact sub-patch and the current mechanics.
+4. Liquipedia — explaining mechanics and interactions.
 
-Опционально позже:
+Optional later:
 
-- Imprint — parse-level analytics при наличии доступа;
-- локальный replay + Clarity/OpenDota parser — отдельный глубокий режим микромеханик после основы;
+- Imprint — parse-level analytics if access is available;
+- a local replay plus Clarity or the OpenDota parser — a separate deep micro-mechanics mode after the foundation is in place.
 
-## Граница честного MVP
+## The boundary of an honest MVP
 
-MVP может достаточно уверенно разбирать:
+The MVP can review with reasonable confidence:
 
-- темп фарма по отрезкам;
-- lane efficiency и просадку после линии;
-- item timings и отклонение от релевантного билда;
-- deaths/kills/buybacks и участие в teamfights;
-- wards, stacks, runes, damage и использование способностей/предметов;
-- окна маны, точные применения способностей и успешные добивания способностью, когда STRATZ playback доступен;
-- повторяющиеся паттерны по нескольким матчам;
-- один главный тренировочный фокус на следующие игры.
+- farm tempo across stretches;
+- lane efficiency and the drop after the lane;
+- item timings and deviation from a relevant build;
+- deaths, kills, buybacks and teamfight participation;
+- wards, stacks, runes, damage and the use of abilities and items;
+- mana windows, exact ability casts and successful last hits by ability, when STRATZ playback is available;
+- recurring patterns across several matches;
+- one main training focus for the next games.
 
-MVP не должен уверенно заявлять без replay и контекста пользователя:
+Without a replay and the user's context, the MVP must not confidently claim:
 
-- что конкретный заход в драку был однозначно неправильным;
-- что игрок «не смотрел на карту» или «запаниковал»;
-- что предмет плох только потому, что у него ниже win rate;
-- что pro-build автоматически оптимален для текущего рейтинга;
-- что высокая/низкая итоговая метрика сама по себе доказывает ошибку.
+- that a specific entry into a fight was unambiguously wrong;
+- that the player "was not looking at the map" or "panicked";
+- that an item is bad only because its win rate is lower;
+- that a pro build is automatically optimal for the current rating;
+- that a high or low final metric proves a mistake by itself.
 
-Даже с обычным STRATZ playback MVP не реконструирует все существовавшие крипы, их здоровье и input-последовательность. Поэтому причинная диагностика конкретной микромеханики остаётся гипотезой до будущего глубокого `.dem`-режима.
+Even with ordinary STRATZ playback, the MVP does not reconstruct every creep that existed, their health and the input sequence. So causal diagnosis of a specific micro-mechanic stays a hypothesis until the future deep `.dem` mode.
 
-## Предлагаемый runtime-процесс анализа
+## Proposed runtime analysis process
 
-1. Получить `match_id` и идентификатор пользователя: `account_id`, hero или player slot.
-2. Загрузить OpenDota match и проверить parse не по наличию `players`, а по `version`, replay URL и нужным replay-derived массивам (`gold_t`, `xp_t`, `lh_t`, `teamfights` и логам).
-3. Если parse отсутствует, отправить `POST /request/{match_id}`, дождаться terminal state job и повторно загрузить match. При недоступном replay или timeout перейти в явно помеченный degraded mode.
-4. Определить точный подпач по `start_time` и Valve timeline.
-5. Если это не последний текущий подпатч, прекратить v0-анализ с `unsupported_patch`, не подставляя текущие механики в старый матч.
-6. Определить режим, героя, предполагаемую позицию и rank bracket; запросить уточнение, если идентификация неоднозначна.
-7. Сформировать evidence по временным отрезкам, а не только итоговой таблице.
-8. Сравнить с self-baseline и только затем с hero/rank/role baseline.
-9. Проверить необходимые правила и механику текущего подпатча.
-10. Заполнить четыре стадийные карточки по адаптированному replay-review шаблону.
-11. Выбрать один переломный момент и один повторяющийся паттерн по влиянию и доказательности.
-12. Для каждого вывода вернуть evidence, expectation, интерпретацию, confidence и альтернативу; завершить одним тренировочным действием.
+1. Obtain the `match_id` and the user's identifier: `account_id`, hero or player slot.
+2. Load the OpenDota match and check the parse not by the presence of `players` but by `version`, the replay URL and the required replay-derived arrays (`gold_t`, `xp_t`, `lh_t`, `teamfights` and the logs).
+3. If the parse is missing, send `POST /request/{match_id}`, wait for the job to reach a terminal state and load the match again. On an unavailable replay or a timeout, switch to an explicitly marked degraded mode.
+4. Determine the exact sub-patch from `start_time` and the Valve timeline.
+5. If it is not the latest current sub-patch, stop the v0 analysis with `unsupported_patch` instead of applying current mechanics to an old match.
+6. Determine the mode, the hero, the estimated position and the rank bracket; ask for clarification when the identification is ambiguous.
+7. Build the evidence over time stretches, not only from the final table.
+8. Compare against the self-baseline first, and only then against the hero, rank and role baseline.
+9. Verify the required rules and mechanics of the current sub-patch.
+10. Fill in the four stage cards per the adapted replay-review template.
+11. Pick one turning point and one recurring pattern by impact and by evidence.
+12. For every conclusion return the evidence, the expectation, the interpretation, the confidence and an alternative; finish with one training action.
 
-## Источники, на которые не стоит опираться как на runtime-основу
+## Sources not to rely on as a runtime foundation
 
-- знания модели без проверки даты и патча;
-- старый Fandom Dota 2 Wiki;
-- случайные гайды/видео без маркировки патча;
-- scraping Dotabuff: у сервиса нет документированного публичного API;
-- Dota2ProTracker: исключён из runtime-цепочки после выбора STRATZ как прямого ролевого источника;
-- item win rate без учёта времени покупки и selection bias;
-- только pro-статистика для оценки игрока среднего рейтинга;
-- текущие числа героя для анализа матча старого подпата.
+- the model's own knowledge without checking the date and the patch;
+- the old Fandom Dota 2 Wiki;
+- random guides and videos with no patch marking;
+- scraping Dotabuff: the service has no documented public API;
+- Dota2ProTracker: excluded from the runtime chain after STRATZ was chosen as the direct role source;
+- item win rates that ignore purchase time and selection bias;
+- pro statistics alone for judging an average-rating player;
+- current hero numbers for analysing a match on an old sub-patch.
 
-## Как проверять качество будущего скилла
+## How to test the quality of the future skill
 
-Минимальный набор:
+The minimal set:
 
-1. плохой матч с известной пользователю ошибкой;
-2. хороший матч, где скилл не должен выдумывать проблему;
-3. неоднозначный матч, где вывод должен быть осторожным;
-4. по возможности — независимый разбор одного матча сильным игроком.
+1. a bad match with a mistake the user already knows about;
+2. a good match, where the skill must not invent a problem;
+3. an ambiguous match, where the conclusion must be cautious;
+4. where possible, an independent review of one match by a strong player.
 
-Критерий успеха — не совпадение формулировок, а нахождение реальной, доказанной и исправимой проблемы.
+The criterion of success is not matching wording but finding a real, proven and fixable problem.
 
-## Исторический хук для будущего видео
+## A historical hook for a future video
 
-Факт подтверждён первичными источниками OpenAI:
+The fact is confirmed by primary OpenAI sources:
 
-- [OpenAI Five проиграл два матча на The International 2018](https://openai.com/index/the-international-2018-results/).
-- [13 апреля 2019 года OpenAI Five победил действующих чемпионов мира OG в двух играх подряд](https://openai.com/index/openai-five-defeats-dota-2-world-champions/).
+- [OpenAI Five lost two matches at The International 2018](https://openai.com/index/the-international-2018-results/).
+- [On 13 April 2019, OpenAI Five beat the reigning world champions OG in two games in a row](https://openai.com/index/openai-five-defeats-dota-2-world-champions/).
 
-Этот сюжет можно сохранить для ролика, но он не влияет на MVP скилла.
+The story can be kept for a video, but it does not affect the skill's MVP.
 
-## TDD-проверка формы ответа
+## TDD check on the shape of the answer
 
-Пять независимых baseline-разборов без скилла одинаково нашли просадку Earth Spirit на `10–25`, но каждый добавил недоказанную причинность: потерянные руны, пассивный мид, свободный фарм TA, обязательные смоки или конкретный план через Vessel. Это определило центральное правило скилла: агрегаты локализуют слабый отрезок, но причина должна подтверждаться событийными данными или называться гипотезой.
+Five independent baseline reviews written without the skill all found the Earth Spirit drop at `10-25`, but each added unproven causality: lost runes, a passive mid, TA farming freely, mandatory smokes, or a specific plan through Vessel. That set the skill's central rule: aggregates localize a weak stretch, but the cause must be confirmed by event data or labelled a hypothesis.
 
-Отдельные baseline-тесты уже корректно различили position 2 и support baselines и отказались подтверждать конкретного пропущенного крипа без creep timeline. Эти поведения не требуют дополнительного запрета; их нужно сохранить структурой источников и полем `недостаточно данных`.
+Separate baseline tests already correctly distinguished position 2 from support baselines and refused to confirm a specific missed creep without a creep timeline. Those behaviours need no extra prohibition; they must be preserved by the structure of the sources and by the insufficient-data field.
 
-Первая GREEN-версия всё ещё превращала агрегаты в общие советы про ротации, смоки и давление. После введения ворот достаточности данных и отдельной `aggregate-only` формы пять финальных независимых прогонов локализовали окно `10–25`, явно отделили его от диагноза поведения и вместо выдуманной игровой нормы предложили разметку решений. Дополнительные edge-тесты не смешали position 2 с support-baseline и отказались объяснять конкретного пропущенного дальнего крипа без creep entities/HP и событий. Один ранний прогон ошибся в подписи экстремума XPM; поэтому в контракт добавлена обязательная проверка сравнительных рядов перед словами max/min.
+The first GREEN version still turned aggregates into generic advice about rotations, smokes and pressure. After the data sufficiency gates and a separate `aggregate-only` form were introduced, five final independent runs localized the `10-25` window, explicitly separated it from a diagnosis of behaviour, and offered decision annotation instead of an invented in-game norm. Additional edge tests did not mix position 2 with a support baseline and refused to explain a specific missed ranged creep without creep entities, HP and events. One early run mislabelled the XPM extreme; that is why the contract now requires checking the comparison rows before the words max and min.

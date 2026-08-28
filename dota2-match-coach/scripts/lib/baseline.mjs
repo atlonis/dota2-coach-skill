@@ -5,8 +5,8 @@ const WEEK_SECONDS = 604_800;
 const MAX_WEEKS = 6;
 const MAX_BASELINE_MINUTE = 75;
 
-// STRATZ `heroStats.stats` знает только грубый bracket из четырёх корзин.
-// Сузить его до конкретной медали нельзя, поэтому лейбл называет диапазон.
+// STRATZ `heroStats.stats` knows only a coarse bracket of four buckets. It cannot
+// be narrowed to a specific medal, so the label names the range instead.
 const BRACKETS = [
   { id: 'HERALD_GUARDIAN', label: 'Herald–Guardian', tiers: [1, 2] },
   { id: 'CRUSADER_ARCHON', label: 'Crusader–Archon', tiers: [3, 4] },
@@ -14,7 +14,7 @@ const BRACKETS = [
   { id: 'DIVINE_IMMORTAL', label: 'Divine–Immortal', tiers: [7, 8] },
 ];
 
-// matchCount и winCount складываются: это счётчики выборки, а не средние на игрока.
+// matchCount and winCount are summed: they count the sample, not per-player means.
 const BASELINE_COUNTS = ['matchCount', 'winCount'];
 const BASELINE_MEANS = ['networth', 'cs', 'dn', 'xp', 'level', 'kills', 'deaths', 'assists', 'heroDamage'];
 
@@ -36,8 +36,8 @@ export function weekIndexOf(epochSeconds) {
   return Math.floor(epochSeconds / WEEK_SECONDS);
 }
 
-// Только недели, целиком лежащие внутри текущего патча: неделя, пересекающая
-// границу патча, смешала бы два набора правил и сломала exact-patch дисциплину.
+// Only weeks lying entirely inside the current patch: a week crossing the patch
+// boundary would mix two sets of rules and break the exact-patch discipline.
 export function fullWeeksWithin(patchStartSeconds, nowSeconds, { maxWeeks = MAX_WEEKS } = {}) {
   if (!Number.isFinite(patchStartSeconds) || !Number.isFinite(nowSeconds)) return [];
   const first = Math.ceil(patchStartSeconds / WEEK_SECONDS);
@@ -57,8 +57,8 @@ function statsAlias(alias, { heroId, position, bracket, week }) {
     + `week: ${week * WEEK_SECONDS}) { ${STATS_FIELDS} }`;
 }
 
-// Средние взвешиваются размером выборки своей недели, поэтому редкая неделя
-// не перевешивает плотную. Каждая минута сохраняет собственный matchCount.
+// Means are weighted by their own week's sample size, so a thin week never
+// outweighs a dense one. Every minute keeps its own matchCount.
 export function mergeWeeklyCurves(curves) {
   const byMinute = new Map();
   for (const curve of curves) {

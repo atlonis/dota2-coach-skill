@@ -1,12 +1,12 @@
-// OpenDota отдаёт `game_mode` и `lobby_type` числами Valve, STRATZ — строками
-// собственных enum. Это два словаря одного факта, а не два независимых измерения:
-// сравнение `22` со строкой `ALL_PICK_RANKED` объявляло конфликт источников там,
-// где источники согласны.
+// OpenDota gives `game_mode` and `lobby_type` as Valve numbers, STRATZ as strings
+// from its own enums. These are two vocabularies for one fact, not two independent
+// measurements: comparing `22` with the string `ALL_PICK_RANKED` used to declare a
+// source conflict where the sources agree.
 //
-// Таблицы ниже сверены по обоим словарям и покрывают только совпадающие диапазоны:
-// game mode 0–24 и lobby type 0–9. Дальше нумерация расходится (OpenDota 25 —
-// coaches challenge, STRATZ на этой позиции держит UNKNOWN), поэтому значение вне
-// таблицы помечается как несравнимое, а не как расхождение фактов.
+// The tables below are verified against both vocabularies and cover only the ranges
+// where they agree: game mode 0-24 and lobby type 0-9. Beyond that the numbering
+// diverges (OpenDota 25 is the coaches challenge, STRATZ holds UNKNOWN there), so a
+// value outside the table is marked not comparable rather than a disagreement.
 
 export const GAME_MODES = [
   { id: 0, stratz: 'NONE', label: 'Unknown' },
@@ -31,8 +31,8 @@ export const GAME_MODES = [
   { id: 19, stratz: 'EVENT', label: 'Event' },
   { id: 20, stratz: 'ALL_RANDOM_DEATH_MATCH', label: 'All Random Deathmatch' },
   { id: 21, stratz: 'SOLO_MID', label: '1v1 Mid' },
-  // Valve зовёт этот режим `all_draft`, STRATZ — `ALL_PICK_RANKED`; игроку он
-  // известен как Ranked All Pick. Ранговость определяет lobby type, а не режим.
+  // Valve calls this mode `all_draft`, STRATZ calls it `ALL_PICK_RANKED`; the player
+  // knows it as Ranked All Pick. Whether it is ranked is set by the lobby type.
   { id: 22, stratz: 'ALL_PICK_RANKED', label: 'All Draft' },
   { id: 23, stratz: 'TURBO', label: 'Turbo' },
   { id: 24, stratz: 'MUTATION', label: 'Mutation' },
@@ -59,8 +59,9 @@ function entryForStratz(table, value) {
   return typeof value === 'string' ? table.find((entry) => entry.stratz === value.toUpperCase()) ?? null : null;
 }
 
-// Возвращает поле в той же форме, что и остальные sourced-поля модели, плюс `label`.
-// Три исхода вместо двух: согласие, настоящее расхождение и несравнимый словарь.
+// Returns the field in the same shape as the model's other sourced fields, plus a
+// `label`. Three outcomes instead of two: agreement, a real disagreement, and a
+// vocabulary that cannot be compared.
 export function resolveVocabularyField(label, table, { opendota, stratz } = {}) {
   const warnings = [];
   const candidates = [

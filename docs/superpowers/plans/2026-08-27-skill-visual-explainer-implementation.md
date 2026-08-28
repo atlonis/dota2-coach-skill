@@ -48,7 +48,7 @@ test('the explainer contains five technical screens and accurate source roles', 
 
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   for (const { id } of slides) assert.match(html, new RegExp(`id="${id}"`));
-  assert.doesNotMatch(html, /купить|установить сейчас|Dota2ProTracker|Fandom/i);
+  assert.doesNotMatch(html, /купить|установить сейчас|Dota2ProTracker|Fandom/i); // the site copy is Russian by design
 });
 ```
 
@@ -231,7 +231,7 @@ Expected: FAIL because the site README and root README link do not exist yet.
 
 - [ ] **Step 3: Integrate with Sites and document the visual artifact**
 
-Use the `sites:sites-building` workflow to create the required hosting metadata for the static `site/` entry. Add a short `site/README.md` describing the five presentation screens and a link from both root READMEs under a `Visual explainer` / `Визуальный explainer` heading. Do not add installation or sales copy to the site itself.
+Use the `sites:sites-building` workflow to create the required hosting metadata for the static `site/` entry. Add a short `site/README.md` describing the five presentation screens and a link from both root READMEs, under a `Visual explainer` heading in the English README and a `Визуальный explainer` heading in the Russian one. Do not add installation or sales copy to the site itself.
 
 - [ ] **Step 4: Verify code, content, and rendering**
 

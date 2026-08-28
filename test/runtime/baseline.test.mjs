@@ -28,7 +28,7 @@ test('maps only real positions to the position enum', () => {
 test('keeps only weeks lying entirely inside the current patch', () => {
   const patchStart = 2953 * WEEK;
   assert.deepEqual(fullWeeksWithin(patchStart, 2956 * WEEK), [2953, 2954, 2955]);
-  // Патч начался в середине недели 2953, поэтому эта неделя смешала бы два патча.
+  // The patch started mid-week in week 2953, so that week would mix two patches.
   assert.deepEqual(fullWeeksWithin(patchStart + 1, 2956 * WEEK), [2954, 2955]);
   assert.deepEqual(fullWeeksWithin(patchStart, 2956 * WEEK - 1), [2953, 2954]);
 });

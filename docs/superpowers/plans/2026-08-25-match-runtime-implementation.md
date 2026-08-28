@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a cross-platform, zero-package Node.js runtime that fetches OpenDota and STRATZ match evidence, normalizes it, and produces JSON/Markdown inputs for the «Выше контекста» review.
+**Goal:** Build a cross-platform, zero-package Node.js runtime that fetches OpenDota and STRATZ match evidence, normalizes it, and produces JSON/Markdown inputs for the coaching review.
 
 **Architecture:** Thin `.sh` and `.ps1` wrappers invoke a shared Node.js ESM CLI. Focused source clients feed a provenance-preserving normalizer; a deterministic renderer writes atomic JSON and Markdown artifacts. Source failures degrade data gates instead of inventing missing context.
 
@@ -453,9 +453,9 @@ test('aggregate-only report localizes metrics without inventing a cause', () => 
     phases: [{ id: 'midgame', interval: '15–25', metrics: { lhPerMin: 7.4, heroDamagePerMin: 348 }, extremaWithinMatch: ['lhPerMin:max', 'heroDamagePerMin:min'] }],
     dataQuality: { mode: 'degraded', gates: { phase_aggregates: true, event_ready: false }, missing: ['event timeline'], warnings: [] },
   });
-  assert.match(markdown, /приоритет.*разбор/i);
-  assert.match(markdown, /не диагноз/i);
-  assert.doesNotMatch(markdown, /фармил вместо|потерял темп|обязан был ротировать/i);
+  assert.match(markdown, /priorities rest on recorded facts/i);
+  assert.match(markdown, /not a diagnosis/i);
+  assert.doesNotMatch(markdown, /farmed instead of|lost tempo|should have rotated/i);
 });
 ```
 
@@ -658,7 +658,7 @@ Add the smallest fixture representing the live response shape, run it to RED, pa
 
 - [ ] **Step 4: Produce the full review from the evidence gates**
 
-Use `references/review-template.md`. Distinguish facts, role/patch baseline, interpretation, confidence and alternative. With event data, cite concrete timestamps; without a gate, keep the corresponding field `недостаточно данных`.
+Use `references/review-template.md`. Distinguish facts, role/patch baseline, interpretation, confidence and alternative. With event data, cite concrete timestamps; without a gate, keep the corresponding field `insufficient data`.
 
 - [ ] **Step 5: Final verification checkpoint**
 

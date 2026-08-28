@@ -1,49 +1,49 @@
 # Roadmap: Dota 2 Match Coach
 
-Документ для разработки репозитория, а не часть устанавливаемого скилла: агент во время разбора его не читает. Roadmap перечисляет функции, которые уже предусмотрены data gates, но ещё не автоматизированы в runtime. Каждый этап должен сохранять provenance, exact-patch filtering и запрет на выводы при закрытом gate.
+A document for developing the repository, not a part of the installed skill: the agent does not read it while writing a review. The roadmap lists capabilities already anticipated by the data gates but not yet automated in the runtime. Every stage must preserve provenance, exact-patch filtering and the ban on conclusions while a gate is closed.
 
-То, что реализовано сейчас, описано в [SKILL.md](dota2-match-coach/SKILL.md) и [политике источников](dota2-match-coach/references/source-policy.md); описание этапа ниже не является заявкой на возможность.
+What is implemented today is described in [SKILL.md](dota2-match-coach/SKILL.md) and the [source policy](dota2-match-coach/references/source-policy.md); a stage described below is not a claim of capability.
 
-## 1. Статистическая модель пика
+## 1. Statistical draft model
 
-Цель — давать проверяемый `draft_prior`, а не субъективный процент перевеса.
+The goal is to give a verifiable `draft_prior` rather than a subjective edge percentage.
 
-- собрать matchup и synergy-выборки текущего точного патча с фильтрами по позиции, bracket и mode;
-- отделить `lane_expectation` от общего преимущества десяти героев;
-- формализовать `team_fit` capability vector: initiation, control, save, frontline, damage profile, tower/objective pressure, wave clear, scaling и fight continuation;
-- выбрать документированную модель draft advantage, сохранить версию модели, размер выборки и calibration metadata;
-- выводить вероятность только при достаточной выборке и измеренной калибровке; иначе `insufficient_data`;
-- тестировать симметрию сторон, неизвестных героев, малые выборки и смену точного подпатча.
+- collect matchup and synergy samples for the current exact patch, filtered by position, bracket and mode;
+- separate `lane_expectation` from the overall advantage of the ten heroes;
+- formalize the `team_fit` capability vector: initiation, control, save, frontline, damage profile, tower and objective pressure, wave clear, scaling and fight continuation;
+- pick a documented draft-advantage model and store the model version, the sample size and the calibration metadata;
+- output a probability only with a sufficient sample and measured calibration; otherwise `insufficient_data`;
+- test the symmetry of the sides, unknown heroes, small samples and a change of the exact sub-patch.
 
-Definition of done: `draft_prior` имеет provenance, model version, sample size, confidence/calibration и не открывается одним фактом полного пика.
+Definition of done: `draft_prior` carries provenance, model version, sample size and confidence or calibration, and does not open from the single fact of a complete draft.
 
-## 2. Role/rank/patch baseline и сильные игроки
+## 2. Role, rank and patch baseline, and strong players
 
-Цель — открыть `baseline_ready` и заменить внутриматчевые extrema релевантным нормативным сравнением.
+The goal is to open `baseline_ready` and replace within-match extrema with a relevant normative comparison.
 
-Peer baseline реализован: runtime записывает `model.baseline.sameHeroPositionRankPatch` из STRATZ `heroStats.stats`, выбирает корзину по медали самого игрока и открывает `baseline_ready` только при выборке, прошедшей порог размера. Остаётся:
+The peer baseline is implemented: the runtime writes `model.baseline.sameHeroPositionRankPatch` from STRATZ `heroStats.stats`, picks the bucket by the player's own medal, and opens `baseline_ready` only for a sample that passed the size threshold. What remains:
 
-- self-baseline: тот же игрок, герой, позиция, patch и mode;
-- strong-player baseline: свежие матчи STRATZ leaderboard на том же hero + position + exact patch;
-- ранг на момент матча вместо снимка профиля: ни OpenDota, ни STRATZ его не отдают, поэтому медаль игрока берётся из текущего состояния аккаунта;
-- отдельные распределения по lane matchup, item components и power-spike timing;
-- percentile вместо отношения к среднему: текущий источник отдаёт только средние, поэтому нужен другой сбор;
-- точный патч вместо приближения неделями и фильтр по mode;
-- сравнение net worth по минутам: прокси из OpenDota `gold_t` убран как завышающий, а сопоставимого минутного ряда net worth не отдаёт ни OpenDota, ни STRATZ `playbackData`;
-- автоматический fallback к более широкой выборке только с маркировкой слабого ориентира.
+- a self-baseline: the same player, hero, position, patch and mode;
+- a strong-player baseline: recent STRATZ leaderboard matches on the same hero and position on the exact patch;
+- the rank at the time of the match instead of a profile snapshot: neither OpenDota nor STRATZ gives it, so the player's medal is taken from the current state of the account;
+- separate distributions by lane matchup, item components and power-spike timing;
+- a percentile instead of a ratio to the mean: the current source gives only means, so a different collection is needed;
+- the exact patch instead of an approximation by weeks, and a mode filter;
+- a per-minute net worth comparison: the OpenDota `gold_t` proxy was removed as inflating, and neither OpenDota nor STRATZ `playbackData` gives a comparable per-minute net worth row;
+- an automatic fallback to a wider sample only when marked as a weak reference.
 
-Definition of done для остатка: каждое сравнение несёт percentile и confidence, а не только отношение к среднему и размер выборки.
+Definition of done for the remainder: every comparison carries a percentile and a confidence, not only a ratio to the mean and a sample size.
 
-## 3. Сырой `.dem` и глубокие микромеханики
+## 3. Raw `.dem` and deep micro-mechanics
 
-Цель — анализировать не только успешные события API, но и доступные игроку возможности и последовательность inputs.
+The goal is to analyse not only the successful events of the API, but also the opportunities available to the player and the sequence of inputs.
 
-- безопасное получение replay и проверка patch/parser compatibility;
-- parser для orders, cast attempts, cooldowns, mana/health windows, vision, creep aggro и unit state;
-- реконструкция конкретной волны: здоровье крипов, attack projectiles, deny/last-hit window и доступные способности;
-- выявление полной маны при доступном полезном spell window без автоматического объявления ошибки;
-- анализ missed opportunity через состояние мира, а не через отсутствие success-event;
-- эпизодические доказательства с таймкодом, состоянием до input, действием, результатом и альтернативой;
-- отдельные confidence rules для неполных или повреждённых replay.
+- safe replay retrieval and a patch and parser compatibility check;
+- a parser for orders, cast attempts, cooldowns, mana and health windows, vision, creep aggro and unit state;
+- reconstruction of a specific wave: creep health, attack projectiles, the deny and last-hit window and the available abilities;
+- detecting full mana during an available useful spell window without automatically declaring a mistake;
+- missed-opportunity analysis through the state of the world rather than through the absence of a success event;
+- episode evidence with a timecode, the state before the input, the action, the result and an alternative;
+- separate confidence rules for incomplete or corrupted replays.
 
-Definition of done: скилл может объяснить конкретную микромеханику на линии по `.dem`, воспроизвести доказательство и отличить подтверждённую ошибку от гипотезы.
+Definition of done: the skill can explain a specific lane micro-mechanic from a `.dem`, reproduce the evidence and tell a confirmed mistake from a hypothesis.

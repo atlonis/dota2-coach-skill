@@ -84,17 +84,17 @@ function hasUsableSource(openDota, stratz) {
 }
 
 
-// Baseline собирается вторым проходом: селекторы hero/position/bracket известны
-// только после нормализации. Любой отказ оставляет baseline_ready закрытым и
-// не отменяет уже полученные факты матча.
+// The baseline is collected in a second pass: the hero, position and bracket
+// selectors are known only after normalization. Any refusal leaves baseline_ready
+// closed and never cancels the match facts already collected.
 async function loadBaseline(model, valve, baselineClient, nowSeconds) {
   const heroId = model.player?.heroId?.value ?? null;
   if (!Number.isInteger(heroId)) return { status: 'unavailable', reason: 'hero_unknown' };
   const position = positionEnumFor(model.player?.position?.value ?? null);
   if (!position) return { status: 'unavailable', reason: 'position_unknown' };
-  // Медаль игрока точнее среднего bracket матча: в смешанном лобби средний код
-  // может лежать на несколько корзин выше или ниже самого игрока. Средний bracket
-  // остаётся запасным вариантом, и артефакт всегда называет использованное основание.
+  // The player's own medal is more precise than the match average bracket: in a
+  // mixed lobby the average code can sit several buckets above or below the player.
+  // The average stays the fallback, and the artifact always names what was used.
   const selectors = [
     { rankCode: model.player?.rank?.value ?? null, bracketSource: 'player_medal' },
     { rankCode: model.match?.averageRank?.value ?? null, bracketSource: 'match_average' },

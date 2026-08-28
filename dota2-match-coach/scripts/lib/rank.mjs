@@ -11,8 +11,8 @@ const MEDALS = [
 
 const MEDAL_BY_TIER = new Map(MEDALS);
 
-// STRATZ отдаёт rank двузначным кодом: десятки — медаль, единицы — звезда.
-// Immortal (80) не имеет звёзд. Неизвестный код не превращается в лейбл.
+// STRATZ gives the rank as a two-digit code: tens are the medal, units the star.
+// Immortal (80) has no stars. An unknown code never turns into a label.
 export function rankLabel(code) {
   if (typeof code !== 'number' || !Number.isInteger(code)) return null;
   const tier = Math.floor(code / 10);

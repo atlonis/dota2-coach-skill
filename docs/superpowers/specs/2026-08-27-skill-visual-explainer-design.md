@@ -1,105 +1,105 @@
-# Визуальный explainer для Dota 2 Match Coach
+# Visual explainer for Dota 2 Match Coach
 
-## Цель
+## Goal
 
-Создать русскоязычный сайт-презентацию для технического блока видео. Сайт не продаёт skill и не пересказывает весь ролик: он визуально объясняет, что такое Codex skill, как `dota2-match-coach` получает данные, как ограничивает выводы и какой разбор формирует.
+Build a Russian-language presentation site for the technical part of the video. The site does not sell the skill and does not retell the whole video: it visually explains what a Codex skill is, how `dota2-match-coach` collects data, how it constrains its conclusions, and what review it produces.
 
-Основной сценарий использования — автор открывает сайт во время записи или использует его экраны как материал для монтажа.
+The main usage scenario is the author opening the site while recording, or using its screens as material for the edit.
 
-## Формат
+## Format
 
-- Один адаптивный статический сайт с вертикальным scrollytelling.
-- Пять полноэкранных смысловых секций.
-- Управление прокруткой, колесом мыши и клавишами навигации.
-- Каждый экран должен читаться как самостоятельный кадр видео 16:9.
-- Язык интерфейса и контента — русский.
-- Визуальная система: светлый бумажный фон, крупная чёрная editorial-типографика, красные смысловые акценты, тонкие технические линии и схемы.
-- Минимум сплошного текста; приоритет у диаграмм, карточек источников, статусов и реальных названий полей.
+- One responsive static site with vertical scrollytelling.
+- Five full-screen meaningful sections.
+- Navigation by scroll, mouse wheel and keyboard.
+- Every screen must read as a self-contained 16:9 video frame.
+- The interface and content language is Russian.
+- Visual system: a light paper background, large black editorial typography, red meaningful accents, thin technical lines and diagrams.
+- Minimal running text; the priority is diagrams, source cards, statuses and real field names.
 
-## Структура
+## Structure
 
-### 1. Что такое skill
+### 1. What a skill is
 
-Показать skill как воспроизводимую систему, а не один большой prompt:
+Show a skill as a reproducible system rather than one large prompt:
 
-`инструкции + runtime + политика источников + шаблон разбора`.
+`instructions + runtime + source policy + review template`.
 
-Центральная мысль: модель не начинает с мнения — сначала она собирает и проверяет доказательства по матчу.
+The central idea: the model does not start with an opinion — first it collects and verifies the evidence of the match.
 
-### 2. Путь одного запроса
+### 2. The path of one request
 
-Главная анимированная схема:
+The main animated diagram:
 
-`match_id + account_id/герой → выбор игрока → сбор источников → нормализованный evidence → data gates → тренерский разбор`.
+`match_id + account_id or hero -> player selection -> source collection -> normalized evidence -> data gates -> the coaching review`.
 
-Схема должна отдельно показать parse-first поведение OpenDota и degraded mode: если часть replay-данных недоступна, skill продолжает работу только с подтверждёнными фактами.
+The diagram must separately show OpenDota parse-first behaviour and degraded mode: when part of the replay data is unavailable, the skill continues with confirmed facts only.
 
-### 3. Источники данных
+### 3. Data sources
 
-Четыре карточки с разными ролями:
+Four cards with different roles:
 
-- **OpenDota** — базовые факты матча, scoreboard, parse job, временные ряды и replay-derived события после парсинга.
-- **STRATZ GraphQL** — позиции 1–5, lane outcome, полный пик и playback enrichment. Требует `STRATZ_API_KEY` и заголовок `User-Agent: STRATZ_API`.
-- **Valve** — точный текущий подпатч, patch timeline и актуальные числовые изменения. Datafeed используется только после проверки схемы.
-- **Liquipedia** — объяснение текущих механик; числовые значения сверяются с Valve. Это справочник, а не API матчей.
+- **OpenDota** — the basic match facts, the scoreboard, the parse job, the time series and the replay-derived events after parsing.
+- **STRATZ GraphQL** — positions 1-5, lane outcome, the full draft and playback enrichment. Requires `STRATZ_API_KEY` and the `User-Agent: STRATZ_API` header.
+- **Valve** — the exact current sub-patch, the patch timeline and the current numeric changes. The Datafeed is used only after a schema check.
+- **Liquipedia** — explanation of the current mechanics; numeric values are verified against Valve. This is a reference, not a match API.
 
-OpenDota и STRATZ показываются как источники фактов матча; Valve и Liquipedia — как источники контекста. Dota2ProTracker, старый Fandom и Valve `GetMatchDetails` не изображаются как runtime-зависимости.
+OpenDota and STRATZ are shown as sources of match facts; Valve and Liquipedia as sources of context. Dota2ProTracker, the old Fandom and Valve `GetMatchDetails` are not depicted as runtime dependencies.
 
-### 4. Data gates: когда вывод разрешён
+### 4. Data gates: when a conclusion is allowed
 
-Показать «шлюзы доказательств»:
+Show the evidence gates:
 
-- `scoreboard` — результат и паспорт матча;
-- `phase_aggregates` — сравнение стадий внутри матча;
-- `draft_ready` — полный пик и контекст драфта;
-- `event_ready` — таймлайн и анализ конкретного эпизода;
-- `baseline_ready` — сравнение с релевантной выборкой;
-- `current_patch` — подтверждённый текущий подпатч.
+- `scoreboard` — the result and the match line;
+- `phase_aggregates` — comparison of stages inside the match;
+- `draft_ready` — the full draft and the draft context;
+- `event_ready` — the timeline and analysis of a specific episode;
+- `baseline_ready` — comparison against a relevant sample;
+- `current_patch` — a confirmed current sub-patch.
 
-Открытый gate подсвечивается красным; закрытый остаётся серым и блокирует соответствующий тип утверждений. Ключевая формула экрана: `нет данных ≠ ноль действий`.
+An open gate is highlighted red; a closed one stays grey and blocks the corresponding kind of claim. The key formula of the screen: no data is not the same as zero actions.
 
-### 5. Что получает пользователь
+### 5. What the user gets
 
-Показать структуру итогового тренерского разбора:
+Show the structure of the final coaching review:
 
-- четыре стадии игры;
-- контекст роли, линии и драфта;
-- предметы и ключевые решения;
-- главное окно, где игру можно было изменить;
-- для каждого важного тезиса: `факт → ожидание → интерпретация → уверенность → альтернатива`.
+- four stages of the game;
+- the context of role, lane and draft;
+- items and key decisions;
+- the main window where the game could have been changed;
+- for every important claim: `fact -> expectation -> interpretation -> confidence -> alternative`.
 
-Внизу — компактный честный roadmap из трёх пунктов:
+At the bottom, a compact honest roadmap of three points:
 
-1. статистическая модель преимущества драфта;
-2. baseline по роли, рейтингу, патчу и сильным игрокам;
-3. сырой `.dem` для глубокого анализа микромеханик.
+1. a statistical draft advantage model;
+2. a baseline by role, rating, patch and strong players;
+3. a raw `.dem` for deep micro-mechanics analysis.
 
-Roadmap визуально отделён от уже работающих возможностей.
+The roadmap is visually separated from the capabilities that already work.
 
-## Взаимодействия и движение
+## Interaction and motion
 
-- Спокойные переходы между секциями без декоративной анимации ради анимации.
-- В схемах элементы появляются последовательно по направлению потока данных.
-- У карточек источников раскрываются короткие подробности по нажатию или наведению.
-- Индикатор `01—05` помогает использовать сайт как презентацию.
-- Поддерживается `prefers-reduced-motion`.
+- Calm transitions between sections, with no decorative animation for its own sake.
+- Inside diagrams, elements appear in sequence along the direction of the data flow.
+- Source cards reveal short details on tap or hover.
+- An `01-05` indicator makes the site usable as a presentation.
+- `prefers-reduced-motion` is supported.
 
-## Точность контента
+## Content accuracy
 
-- Не приписывать текущему runtime автоматический baseline, STRATZ leaderboard или статистическую модель драфта.
-- Не обещать объяснение конкретного пропущенного крипа или неверного input без сырого `.dem`.
-- Не показывать модельный процент победы без документированной и откалиброванной модели.
-- STRATZ описывать как обогащение: без токена возможен ограниченный OpenDota-разбор.
-- Различать подтверждённые факты, ожидания и тренерскую интерпретацию.
+- Do not attribute to the current runtime an automatic baseline, the STRATZ leaderboard or a statistical draft model.
+- Do not promise an explanation of a specific missed creep or a wrong input without a raw `.dem`.
+- Do not show a model win percentage without a documented and calibrated model.
+- Describe STRATZ as enrichment: without the token, a limited OpenDota review is still possible.
+- Distinguish confirmed facts, expectations and coaching interpretation.
 
-## Техническая форма
+## Technical form
 
-Сайт создаётся через Sites как отдельный frontend внутри репозитория. Он не вызывает Dota API в браузере и не хранит токены: все данные на экранах — заранее подготовленные безопасные примеры, отражающие контракт skill. Это делает визуал воспроизводимым для записи и не зависит от сети или состояния парсинга конкретного матча.
+The site is built through Sites as a separate frontend inside the repository. It does not call the Dota APIs from the browser and stores no tokens: everything on the screens is prepared safe examples reflecting the contract of the skill. That keeps the visuals reproducible for recording and independent of the network or the parse state of a specific match.
 
-## Проверка
+## Verification
 
-- Проверить desktop 16:9 как основной кадр для ролика.
-- Проверить мобильную компоновку без горизонтального скролла.
-- Проверить клавиатурную навигацию, фокус и reduced motion.
-- Сверить все подписи источников, gates и roadmap с `dota2-match-coach/references/source-policy.md`, `dota2-match-coach/references/runtime.md` и `ROADMAP.md`.
-- Убедиться, что на сайте отсутствуют рекламные CTA, установка, личная история и остальные части сценария видео.
+- Check desktop 16:9 as the main frame for the video.
+- Check the mobile layout with no horizontal scrolling.
+- Check keyboard navigation, focus and reduced motion.
+- Reconcile every source, gate and roadmap caption with `dota2-match-coach/references/source-policy.md`, `dota2-match-coach/references/runtime.md` and `ROADMAP.md`.
+- Confirm the site carries no advertising CTAs, no installation, no personal story and none of the other parts of the video script.

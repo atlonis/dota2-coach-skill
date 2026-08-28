@@ -18,7 +18,7 @@ test('an ordinary match-ID request routes to runtime.md and the platform wrapper
   assert.match(firstStep, /references\/runtime\.md/);
   assert.match(firstStep, /analyze-match\.ps1/);
   assert.match(firstStep, /analyze-match\.sh/);
-  assert.doesNotMatch(firstStep, /may be available|может быть доступен/i);
+  assert.doesNotMatch(firstStep, /may be available/i);
 });
 
 test('publishes the renamed skill contract and keeps the roadmap outside the installed bundle', async () => {
@@ -39,15 +39,15 @@ test('routes the complete user-facing review to Russian or English without chang
   const russianReadmePath = path.join(repositoryRoot, 'README.ru.md');
   const languageContract = skill.split('### Response language')[1]?.split('\n### ')[0]?.split('\n## ')[0] ?? '';
 
-  assert.match(languageContract, /русск.+русск|Russian.+Russian/is);
-  assert.match(languageContract, /английск.+английск|English.+English/is);
-  assert.match(languageContract, /явн.+указан.+приоритет|explicit.+override/is);
-  assert.match(languageContract, /последн.+содержательн.+сообщен|last.+substantive.+message/is);
-  assert.match(languageContract, /заголов|heading/i);
+  assert.match(languageContract, /Russian.+Russian/is);
+  assert.match(languageContract, /English.+English/is);
+  assert.match(languageContract, /explicit.+override/is);
+  assert.match(languageContract, /last.+substantive.+message/is);
+  assert.match(languageContract, /heading/i);
   assert.match(languageContract, /STRATZ/i);
   assert.match(languageContract, /JSON|schema/i);
   assert.match(languageContract, /hero|item|API/i);
-  assert.match(template, /язык ответа|response language/i);
+  assert.match(template, /response language/i);
   if (existsSync(readmePath)) {
     const readme = await readFile(readmePath, 'utf8');
     assert.equal(existsSync(russianReadmePath), true);
