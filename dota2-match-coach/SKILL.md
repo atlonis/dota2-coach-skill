@@ -94,7 +94,7 @@ Never derive the method of entry into a fight from the position row yourself: a 
 
 Follow the full form of the [review contract](references/review-template.md), in this order: bottom line with the match line, the main finding, the pattern and the exercise, then the turning point, then one stage table, then draft and role, then data limits when any exist. The exercise appears once, at the top, and is not repeated at the end. Take a numeric in-game target from the baseline; without one, the exercise measures the process of observation or decision instead of an invented KDA, rotation or objective norm.
 
-Expand a stage into a full row only when it earns attention: a deviation from the sample mean of at least 15 per cent on any compared metric at its checkpoint, or an event inside the stage, or a match extreme for a metric. Collapse the remaining stages into a single line with their numbers.
+A stage earns a full row on a deviation from the sample mean of at least 20 per cent on any compared metric except deaths, on holding the match extreme for hero damage per minute or GPM, or on containing the turning point. The table never holds more than two rows: when more stages qualify, keep the largest deviation and the stage with the turning point, and fold the rest into one line carrying their ratios.
 
 ## Common mistakes
 

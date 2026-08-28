@@ -87,7 +87,9 @@ If the episode contains a jump in the position row, take the method of entry fro
 
 Mandatory stages: laning, transition, midgame, closing. Default boundaries are `0-10`, `10-15`, `15-25`, `25+`; move them for the end of the lane, a key item, the first big fight or an objective, and say that you moved them.
 
-A stage is expanded into a full row only when it earns attention: any compared metric at its checkpoint deviates from the sample mean by at least 15 per cent, or the stage contains a death, a kill, an objective or a recorded reposition, or the stage holds the match extreme for a metric. Stages that meet none of these collapse into a single line under the table — "laning and transition stayed within the sample mean" — carrying their numbers and taking no row.
+A stage earns a full row when any compared metric other than deaths deviates from the sample mean by at least 20 per cent at its checkpoint, or when it holds the match extreme for hero damage per minute or GPM, or when the turning point lies inside it. Deaths are excluded from the test because a small integer count deviates from a mean almost always.
+
+**The table never holds more than two rows.** When more stages qualify — and in a genuinely bad match all four do — keep the stage with the largest deviation and the stage holding the turning point, and fold the rest into one line under the table with their ratios: "laning, transition and midgame all sit at 0.66-0.76 of the sample mean on hero damage with last hits at par". A four-row table where every row says the same thing is the failure this rule exists to prevent.
 
 | Stage | Key facts | Against the sample | Verdict and confidence | Alternative |
 |---|---|---|---|---|
