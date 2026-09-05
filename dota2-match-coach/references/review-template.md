@@ -1,138 +1,65 @@
 # Review contract
 
-The template is adapted from the [Dota 2 Replay Review Template](https://bsjdota.com/blog/dota-2-replay-review-template/): match details, draft, laning, midgame, late game, key moments and an action plan. Role-aware baselines, explicit evidence and hybrid stage boundaries are added on top of it.
+The final review normally has **500–780 words** and never exceeds **900**. Its primary content is the first five blocks. Headings are closed: use exactly the first five below, in order; `## Стадии` and `## Ограничения данных` are optional, and `## Драфт, задача и предметы` is mandatory in a full review. Do not add any heading or section. Omit generic role, draft, item, ability, or context advice; put brief, supported match-specific evidence only in the allowed blocks.
 
-The order is inverted on purpose. The player gets the verdict, the decisive episode and the exercise first; the evidence that earns them comes after. A reader who stops after the first screen must already have something to act on.
+```markdown
+## Матч
+## Главный вывод
+## Смерти
+## Переломный момент
+## Упражнение
+## Стадии
+## Драфт, задача и предметы
+## Ограничения данных
+```
 
-## Response language
+The listed Russian headings are canonical Russian renderings. Write in the language the user explicitly requested; otherwise use their last substantive-message language. For a non-Russian response, use faithful semantic localized equivalents of these headings in the exact same order and with the same mandatory, optional, and safety constraints. Preserve artifact spelling for hero, item, ability, and source names. Player-facing prose never shows schema, capability, gate, error-code, internal-ID, or field names. If a name is unresolved, use a localized neutral equivalent of “unknown entity,” never an ID or a guess.
 
-Keep the contract structure and localize every user-facing heading and explanation into the language selected by `SKILL.md`. Russian equivalents: `Bottom line` to «Итог», `Turning point` to «Переломный момент», `Stages` to «Стадии», `Draft and role` to «Пик и роль», `Data limits` to «Ограничения данных». Hero names, item names and source names are never translated. Schema identifiers never appear at all — see the next section.
+## Матч
 
-## The review is read by a player, not a debugger
+One line: hero, role/position when known, result, duration, and K/D/A. Hero-only selection uses “игрок на <Hero>”, never “ты”.
 
-The review is text for a human. Field names, keys, gate names and enum values belong to the artifact and to the optional provenance block, not to the review. This changes how a finding is written, never what may be claimed: the gates still decide that.
+## Главный вывод
 
-| Never in the review | Write the meaning instead |
-| --- | --- |
-| `lane_expectation` | lane expectation / «ожидание по линии» |
-| `team_fit` | how the hero fits the draft / «как герой ложится в состав» |
-| `draft_prior` | statistical draft edge / «статистический перевес пика» |
-| `insufficient_data` | insufficient data / «недостаточно данных» |
-| `draft_ready`, `event_ready`, `baseline_ready` and other gates | obey them silently; when a gate is closed, name what is missing |
-| `position_est`, `lane_role`, `rank_tier`, `seasonRank`, `gold_t` and any source field | "OpenDota estimates the position as 4", "the player's own medal", "the gold row" — the meaning, not the path |
-| `POSITION_4`, `OFF_LANE`, `CRUSADER_ARCHON`, `player_medal` | "position 4", "offlane", "the Crusader-Archon bracket", "by the player's own medal" |
-| `bracketSource`, `crossSourceProxy`, `matchCount`, `schemaVersion` | "what the bracket was chosen from", "a comparison across two different measurements", "sample size"; never show the schema version |
-| `teleport_item`, `ally_warp`, `unattributed` | "teleported with a scroll or boots" / «телепорт свитком или ботинками», "stepped into an ally's warp, Underlord's Dark Rift" / «вошёл в перенос союзника», "how the player got there is not established" / «способ входа не установлен» |
-| `mode: "full"`, `degraded` | "all data was collected" / "part of the data is unavailable, the report is incomplete" |
+Choose one evidenced priority: repeated confirmed death pattern; otherwise largest relevant ready-peer deviation; otherwise confirmed efficiency event. State the actual rank cohort and selection method, plus any mismatch; a mismatched/fallback/conflicting reference is not same-rank.
 
-Provenance stays mandatory but human: "according to STRATZ", "OpenDota estimates the position as 4", "confirmed by Valve". Name exact fields and paths in only two cases: the user asks about the data or about debugging, or you put them into the final "Where the data comes from" block. That block is optional and always comes last.
+## Смерти
 
-Runtime failures are reported by meaning — "STRATZ did not answer", "the replay is not parsed yet" — not by code. Name the code only when the user is going to fix it themselves.
+Account for every death with compact timecoded facts. First group deaths with the same non-empty confirmed signature into one compact row and list every grouped death timecode. Keep each unique death as its own compact row. State a shared feature only when every named context confirms it. Count rows after grouping: if more than five would render, show five most informative rows plus one final row that lists every remaining death timecode and contains no interpretation. The priority death is always among the five informative rows; then prefer confirmed repeated-signature rows, then the rows with the most known timestamped facts, breaking a tie by later death time. For the priority death, separate facts, the allowed hypothesis, and unavailable evidence. Preserve the event timestamps: a TP use, reposition, nearby-unit observation, item use, and death are distinct facts; nearby units at one recorded time are not facts about arrival or teleport choice.
 
-The report carries no status lines. Do not report that the data was collected, do not announce what the review will cover, do not retell your own method, and do not remind the reader that a win does not cancel analysis. Those are working principles, not text for the reader. Every sentence must carry a fact, a conclusion or an action.
+For a signature-only priority death in Russian, paste exactly this canonical two-sentence form and add no second hypothesis or behavioural, item-effect, destination, timing, or counterfactual inference:
 
-## Aggregate-only branch
+**«Поддерживаемая гипотеза (средняя уверенность): повторённая подтверждённая сигнатура — риск-паттерн этой игры и приоритет для проверки. Она не объясняет причину смерти.»**
 
-Use this short form when phase aggregates exist but the full draft, the role/rank/patch baseline or the event timeline do not. Do not try to fill the unavailable slots of the full form.
+In another response language, translate the meaning of the canonical form faithfully without adding a clause or another hypothesis.
 
-1. **Bottom line:** the available facts, the window that deserves further work, and a process exercise. No cause and no in-game recommendation.
-2. **Context:** hero task, lane expectation, draft fit and build assessment are all insufficient data — one sentence, not a section.
-3. **Stages:** one table, facts and each stage's rank per metric, without a normative verdict.
-4. **Missing data:** the concrete event types a diagnosis would need.
+## Переломный момент
 
-In this branch there is no exact hero task, no item or skill build assessment, no normative words `good / bad / timely / late`, no causal story and no in-game recommendation such as rotating, smoking, pressuring, farming or taking an objective. Those slots open only when the matching gate opens.
+Name one confirmed episode or state that no such episode is established. Do not infer intent, vision, enemy cooldowns, readiness, or guaranteed survival.
 
-Metrics here may only be localized: `the 10-25 window is the priority for further work, because the combination of [metrics] changed inside it; this is localization, not a diagnosis`. The words `underplayed`, `lost tempo`, `failed to convert`, `impact`, `presence`, `pressure` and `combat efficiency` already assign game meaning to aggregates and do not replace a diagnosis. State a positive finding the same way: `25-32 held the highest GPM, XPM and damage per minute among the phases`, not `the player restored their impact`.
+## Упражнение
 
-Before writing `max`, `min`, `above` or `below`, write out the metric for all four phases and check the comparison. Never carry the rank of one metric over to the whole phase.
+Paste exactly one paragraph before drafting; add no lead-in, follow-up, checklist, second goal, or other sentence. The Russian templates below are canonical; in another response language, use a faithful semantic localization of the chosen one-paragraph form without adding content.
 
-The table of this branch has exactly four fields besides the stage name — it has no `Task`, `Verdict` or `Alternative`:
+- Use this ready-reference template only when rank cohort/selection method agrees with player rank and is neither fallback nor conflict: `После матча сверить [показатель] игрока к [отметка матча] со средним [среднее выборки] по [число матчей] на основе [основа ранговой выборки] и записать значение игрока, среднее выборки и соответствие ранга. Критерий выполнения — записаны значение игрока, среднее выборки, отметка матча, число матчей и основа ранговой выборки/соответствие ранга.` Every token enclosed in `[` and `]` is an authoring placeholder: replace it with a localized player-facing label and the actual sourced value; never leave the delimiters or placeholder text in the review. Every quantity comes from that exact source row.
+- If the source row is mismatched, fallback, conflicting, or unsuitable, use only this no-reference template: `После каждого релевантного эпизода сделать запись: подтверждённые факты, недоступные данные и повторившаяся сигнатура; после матча сравнить записи. Критерий выполнения — в каждой рассмотренной записи всё необходимое указано либо явно помечено как недоступное.`
 
-| Stage | Facts | Rank among the phases | Unknown | Data needed |
-|---|---|---|---|---|
-| Laning 0-10 | | | | |
+The no-reference paragraph has no numerals, spelled-out counts, durations, percentages, game counts, checklist, or other quantity. In particular, a DIVINE reference for a Legend player uses this form.
 
-Build the comparison rows for every metric first, for example `XPM: 472 -> 269 -> 473 -> 801`, and only then attach the max and min labels. The rows need not be shown to the user, but the arithmetic check is mandatory.
+## Стадии
 
-An acceptable aggregate-only row:
+Optional. It is the only place any stage interval may appear. Use one table and at most two unique interval rows; do not name or summarize a stage/range anywhere else. Label each figure as an interval aggregate or cumulative value at a stated match-time marker. Stage membership is half-open `[start,end)`: an event exactly at 15:00 belongs to the interval starting at 15:00, not the interval ending then. The final match endpoint may be included in the final interval.
 
-| Stage | Facts | Rank among the phases | Unknown | Data needed |
-|---|---|---|---|---|
-| Midgame 15-25 | 7.4 LH/min; 348 hero damage/min; `0/3/4`, three deaths | LH/min is the highest of the four phases, hero damage/min the lowest | where the player was, which fights and objectives were available, why they died and whether that trade-off was right for this draft | position, rune, fight and death events, the full draft and an Earth Spirit position 2 baseline |
+## Драфт, задача и предметы
 
-The verdict against the role is insufficient data for all four stages in this branch.
+Required in a full review and placed after optional `## Стадии`. Cover each category in one compact passage:
 
-The full form below applies as the gates open.
+- **Draft:** when verified draft evidence and resolved named entities are available, state only the relevant fact and confidence; otherwise state that draft evidence is unavailable.
+- **Match-specific hero task:** when sourced match-specific task context and resolved named entities are available, state the task fact and confidence; otherwise state that the match-specific hero task is unavailable.
+- **Item decisions:** when recorded item-decision evidence and resolved named entities are available, state the item fact and confidence; otherwise state that item-decision evidence is unavailable.
 
-## Full form
+Do not turn an unavailable category into generic role, hero, ability, or item advice. Keep names unaltered from the artifact and keep an unresolved name as localized “unknown entity.”
 
-### 1. Bottom line
+## Ограничения данных
 
-Four compact blocks, nothing else, before any table:
-
-- **Match line:** match ID, result, duration, hero, position, lane, exact patch and bracket — one line, not a table.
-- **Main finding:** the single most consequential thing the evidence supports, with its number and timecode.
-- **Pattern:** one candidate or confirmed pattern. One match yields a pattern candidate; it becomes confirmed only after several matches or several comparable episodes.
-- **Exercise:** the observed condition, the concrete action, the measurable criterion, and the moment of the short self-check after the game. A numeric in-game target requires a baseline and is taken from one specific comparison row, naming the metric, the minute and the sample size. Without a baseline the exercise measures the process of observation or decision instead of an invented KDA, rotation or objective norm.
-
-The exercise lives here and is not repeated at the end of the review.
-
-### 2. Turning point
-
-With an event timeline, pick one episode with a timecode where the player's or the team's efficiency changed. Show the sequence `before -> action -> result -> available alternative`. Without an event timeline, name only the turning window between phases and the data needed to find the episode. Do not call an episode the cause of the whole match without a sufficient counterfactual.
-
-If the episode contains a jump in the position row, take the method of entry from the cause recorded in the artifact, not from the jump itself. Stepping into an ally's warp is an entry together with the team and cannot be blamed as a solo initiative; when the cause is not established, do not name the method of entry at all, and assess what happened after the arrival instead.
-
-### 3. Stages: one table
-
-Mandatory stages: laning, transition, midgame, closing. Default boundaries are `0-10`, `10-15`, `15-25`, `25+`; move them for the end of the lane, a key item, the first big fight or an objective, and say that you moved them.
-
-A stage earns a full row when any compared metric other than deaths deviates from the sample mean by at least 20 per cent at its checkpoint, or when it holds the match extreme for hero damage per minute or GPM, or when the turning point lies inside it. Deaths are excluded from the test because a small integer count deviates from a mean almost always.
-
-**The table never holds more than two rows.** When more stages qualify — and in a genuinely bad match all four do — keep the stage with the largest deviation and the stage holding the turning point, and fold the rest into one line under the table with their ratios: "laning, transition and midgame all sit at 0.66-0.76 of the sample mean on hero damage with last hits at par". A four-row table where every row says the same thing is the failure this rule exists to prevent.
-
-| Stage | Key facts | Against the sample | Verdict and confidence | Alternative |
-|---|---|---|---|---|
-| Midgame 15-25 | | | | |
-
-- **Key facts:** the numbers of the stage plus the confirmed micro or macro behind them — ability, item, resource, movement, farm, fight or objective. Only what the events actually confirm.
-- **Against the sample:** the ratio to the sample mean at this stage's checkpoint together with the sample size, for example `hero damage x0.55 (n=35101)`. This is a **mean**, never a percentile: write "below the sample mean by this ratio", never "you are in the bottom 30 per cent". Compare only on the metrics and minutes that actually have a comparison row. Values are cumulative, so the cell reads as the state at the checkpoint. Without a baseline the cell holds the stage's rank inside this match only.
-- **Verdict and confidence:** `strong / mixed / weak / insufficient data`, followed by high, medium or low confidence.
-- **Alternative:** one concrete, more reliable principle of action at the same level of detail as the evidence, never presented as a guaranteed counterfactual.
-
-Keep cells short: a long evidence quote goes into a footnote line under the table, not inside a cell. Never fill a slot artificially — an unconfirmed micro or macro leaves insufficient data in the cell.
-
-### 4. Draft and role
-
-Compact prose, and only what the full draft supports.
-
-- Both line-ups on one line each, then the lane matchup.
-- **The hero's task in this draft:** three or four concrete duties derived from the picks. Without the full draft this is insufficient data.
-- The three assessments in one line each, never in three paragraphs. Lane expectation needs a sample of the same matchup, patch, positions and a close bracket, and without it the honest answer is that there is nothing to say because no sample of this matchup exists. Draft fit is a qualitative coaching judgement from the capability checklist of the full draft — favourable, neutral or unfavourable, with facts and gaps, never a win probability. The statistical draft edge requires a documented model with a known output field and a relevant sample, and without one it is insufficient data.
-- Show the actual lane outcome separately from the expectation.
-- Power spikes and threats only when confirmed by the current patch.
-- The situational fit of the item and skill build against this draft.
-
-### 5. Data limits
-
-Only when limits exist: a missing source, an unparsed replay, a closed gate, a thin sample, a bracket chosen from the match average rather than from the player's own medal. Complete data is not news — when everything was collected, this section does not exist.
-
-## Correct boundary of a conclusion
-
-Match `8963363814`, Earth Spirit position 2:
-
-> **Fact:** the lane is recorded as a Radiant victory by STRATZ. At `10-15` the numbers fell to 338 GPM, 269 XPM and `1/2/0`; at `15-25` the player had 7.4 LH/min, 348 hero damage/min and `0/3/4`. Vessel appeared at 17:44.<br>
-> **Interpretation:** `10-25` is the priority window for further work: it contains three deaths, the lowest hero damage per minute among the phases and the highest LH/min. This localizes a divergence between metrics; it is not a diagnosis of behaviour, and without a role, rank and patch baseline the stretch cannot be called objectively weak for an Earth Spirit mid.<br>
-> **Not yet proven:** that the player chose farm over pressure, lost runes, stood passively in mid, let TA farm freely or should have smoked more often. Choosing between those causes needs routes, rune events, the specific deaths and both teams' states.<br>
-> **Pattern candidate:** in one game the economic and the combat metrics diverged after the lane; one match is not enough to call it a recurring habit or to explain the player's actions.
-> **Next analysis step:** work through the events around the deaths and compare them with the item timings, without judging the timings yet. Without the full draft, a baseline and events, the aggregate-only branch applies. The safe exercise is to record, after every death in `10-25`, the goal of the action, the visible information and the exit plan; assign a numeric target once a baseline exists.
-
-## Common failures of form
-
-- Opening with generic advice instead of the verdict and the exercise.
-- Repeating the scoreboard without comparison and interpretation.
-- Giving the same advice for all four stages.
-- Listing ten mistakes instead of one pattern and one exercise.
-- Expanding a stage that deviates from nothing and contains no event.
-- Hiding a data limit at the end, after a confident unproven conclusion.
-- Setting a numeric target for deaths, rotations or objectives without a baseline.
+Optional. State only data limits, source conflicts, unknowns, or rank-cohort/selection-method mismatch that change a conclusion.

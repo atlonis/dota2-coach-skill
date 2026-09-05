@@ -5,12 +5,26 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { parseArgs } from '../../dota2-match-coach/scripts/analyze-match.mjs';
 import { fileURLToPath } from 'node:url';
-import { runAnalysis } from '../../dota2-match-coach/scripts/analyze-match.mjs';
+import { runAnalysis as runAnalysisRaw } from '../../dota2-match-coach/scripts/analyze-match.mjs';
 import * as cli from '../../dota2-match-coach/scripts/analyze-match.mjs';
 import { NormalizationError } from '../../dota2-match-coach/scripts/lib/normalize.mjs';
 
 const runtimeDirectory = path.dirname(fileURLToPath(import.meta.url));
 const scriptsDirectory = path.resolve(runtimeDirectory, '../../dota2-match-coach/scripts');
+
+function readyEntityConstants(heroes = {}) {
+  return { status: 'ready', heroes, items: {}, abilityIds: {}, abilities: {}, missing: [] };
+}
+
+function runAnalysis(options, dependencies) {
+  return runAnalysisRaw(options, {
+    ...dependencies,
+    openDotaClient: {
+      loadEntityConstants: async () => readyEntityConstants(),
+      ...dependencies.openDotaClient,
+    },
+  });
+}
 
 function processResult(command, args) {
   return new Promise((resolve, reject) => {
@@ -79,9 +93,9 @@ test('resolves account ID from an unambiguous hero name before normalization', a
   const result = await runAnalysis({ matchId: 1, accountId: null, heroName: 'Earth Spirit' }, {
     openDotaClient: {
       loadMatch: async () => ({ status: 'ready', match: { start_time: 123, duration: 1, players: [{ account_id: 55, hero_id: 107 }] } }),
-      loadHeroConstants: async () => {
+      loadEntityConstants: async () => {
         calls.push('heroes');
-        return { status: 'ready', heroes: { 107: { id: 107, name: 'npc_dota_hero_earth_spirit', localized_name: 'Earth Spirit' } } };
+        return readyEntityConstants({ 107: { id: 107, name: 'npc_dota_hero_earth_spirit', localized_name: 'Earth Spirit' } });
       },
     },
     valveClient: { resolvePatch: async () => readyValve() },
@@ -101,7 +115,7 @@ test('rejects an account ID that conflicts with the requested hero', async () =>
   await assert.rejects(() => runAnalysis({ matchId: 1, accountId: 2, heroName: 'Earth Spirit' }, {
     openDotaClient: {
       loadMatch: async () => ({ status: 'ready', match: { start_time: 123, duration: 1, players: [{ account_id: 2, hero_id: 1 }, { account_id: 55, hero_id: 107 }] } }),
-      loadHeroConstants: async () => ({ status: 'ready', heroes: { 107: { id: 107, localized_name: 'Earth Spirit' } } }),
+      loadEntityConstants: async () => readyEntityConstants({ 107: { id: 107, localized_name: 'Earth Spirit' } }),
     },
     valveClient: { resolvePatch: async () => readyValve() },
     stratzClient: { loadMatch: async () => ({ status: 'unavailable', reason: 'missing_token' }) },
@@ -114,7 +128,7 @@ test('rejects an ambiguous duplicated hero selector', async () => {
   await assert.rejects(() => runAnalysis({ matchId: 1, accountId: null, heroName: 'Earth Spirit' }, {
     openDotaClient: {
       loadMatch: async () => ({ status: 'ready', match: { start_time: 123, duration: 1, players: [{ account_id: 55, hero_id: 107 }, { account_id: 56, hero_id: 107 }] } }),
-      loadHeroConstants: async () => ({ status: 'ready', heroes: { 107: { id: 107, localized_name: 'Earth Spirit' } } }),
+      loadEntityConstants: async () => readyEntityConstants({ 107: { id: 107, localized_name: 'Earth Spirit' } }),
     },
     valveClient: { resolvePatch: async () => readyValve() },
     stratzClient: { loadMatch: async () => ({ status: 'unavailable', reason: 'missing_token' }) },
@@ -307,7 +321,7 @@ function readyValve() {
 
 function cliModel({ openDota = 'ready', stratz = 'unavailable', valve = 'ready' } = {}) {
   return {
-    sources: { opendota: { status: openDota }, stratz: { status: stratz }, valve: { status: valve } },
+    sources: { opendota: { status: openDota }, stratz: { status: stratz }, valve: { status: valve }, entityConstants: { status: 'ready' } },
     request: { matchId: 1, accountId: 2 },
     dataQuality: { mode: 'degraded' },
   };
@@ -315,7 +329,7 @@ function cliModel({ openDota = 'ready', stratz = 'unavailable', valve = 'ready' 
 
 function cliDependencies({ openDota = readyOpenDota(), stratz = { status: 'unavailable', reason: 'missing_token' }, valve = readyValve(), normalize = () => cliModel(), write = async () => ({ jsonPath: 'safe.json', markdownPath: 'safe.md' }) } = {}) {
   return {
-    openDotaClient: { loadMatch: async () => openDota },
+    openDotaClient: { loadMatch: async () => openDota, loadEntityConstants: async () => readyEntityConstants() },
     stratzClient: { loadMatch: async () => stratz },
     valveClient: { resolvePatch: async () => valve },
     normalize,
@@ -333,7 +347,7 @@ test('CLI boundary returns success and prints only safe statuses and artifact pa
   });
 
   assert.equal(exitCode, 0);
-  assert.deepEqual(stdout, ['opendota: ready', 'valve: ready', 'stratz: unavailable', 'baseline: unavailable', 'json: safe.json', 'markdown: safe.md']);
+  assert.deepEqual(stdout, ['opendota: ready', 'valve: ready', 'stratz: unavailable', 'entityConstants: ready', 'baseline: unavailable', 'json: safe.json', 'markdown: safe.md']);
   assert.deepEqual(stderr, []);
 });
 

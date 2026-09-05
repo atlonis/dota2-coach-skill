@@ -85,7 +85,7 @@ function hasUsableSource(openDota, stratz) {
 
 
 // The baseline is collected in a second pass: the hero, position and bracket
-// selectors are known only after normalization. Any refusal leaves baseline_ready
+// selectors are known only after normalization. Any refusal leaves the baseline capability
 // closed and never cancels the match facts already collected.
 async function loadBaseline(model, valve, baselineClient, nowSeconds) {
   const heroId = model.player?.heroId?.value ?? null;
@@ -128,14 +128,16 @@ export async function runAnalysis(options, { openDotaClient, stratzClient, valve
   if (!hasUsableSource(openDota, stratz)) throw new AnalysisError('no_usable_source_data');
   if (valve?.status !== 'ready') throw new AnalysisError('patch_unverified');
   if (valve.isCurrentExactPatch !== true) throw new AnalysisError('unsupported_patch');
+  const entityConstants = await openDotaClient.loadEntityConstants();
 
   let accountId = options.accountId ?? null;
   if (options.heroName != null) {
-    const constants = await openDotaClient.loadHeroConstants();
-    if (constants?.status !== 'ready') throw new AnalysisError('hero_lookup_unavailable');
+    if (!entityConstants?.heroes || Object.keys(entityConstants.heroes).length === 0) {
+      throw new AnalysisError('hero_lookup_unavailable');
+    }
     const selected = resolveAccountIdByHero({
       heroName: options.heroName,
-      heroConstants: constants.heroes,
+      heroConstants: entityConstants.heroes,
       openDota,
       stratz,
     });
@@ -151,6 +153,7 @@ export async function runAnalysis(options, { openDotaClient, stratzClient, valve
       openDota,
       stratz,
       valve,
+      entityConstants,
       generatedAt: new Date().toISOString(),
     });
   } catch (error) {
@@ -165,6 +168,7 @@ export async function runAnalysis(options, { openDotaClient, stratzClient, valve
       openDota,
       stratz,
       valve,
+      entityConstants,
       baseline,
       generatedAt: model.generatedAt,
     });
@@ -204,7 +208,7 @@ export async function runCli(argv, { dependencies = defaultDependencies(), stdou
   try {
     const options = parseArgs(argv);
     const { model, artifacts } = await runAnalysis(options, dependencies);
-    for (const source of ['opendota', 'valve', 'stratz']) {
+    for (const source of ['opendota', 'valve', 'stratz', 'entityConstants']) {
       stdout(`${source}: ${model.sources?.[source]?.status ?? 'unavailable'}`);
     }
     stdout(`baseline: ${model.baseline?.status ?? 'unavailable'}`);

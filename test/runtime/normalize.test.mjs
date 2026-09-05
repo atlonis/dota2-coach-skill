@@ -1,9 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { NormalizationError, buildPhases, dataQualityFor, normalizeEvidence } from '../../dota2-match-coach/scripts/lib/normalize.mjs';
+import { NormalizationError, buildPhases, normalizeEvidence } from '../../dota2-match-coach/scripts/lib/normalize.mjs';
+import { computeCapabilities, qualityFromCapabilities } from '../../dota2-match-coach/scripts/lib/capabilities.mjs';
 
 const accountId = 56386500;
 const generatedAt = '2026-08-25T00:00:00.000Z';
+
+function dataQualityFor(model) {
+  return qualityFromCapabilities(computeCapabilities(model), model.warnings ?? []);
+}
 
 function openDotaPlayer(extra = {}) {
   return {
@@ -66,7 +71,7 @@ test('builds the pinned canonical evidence schema with provenance', () => {
     },
   });
 
-  assert.equal(model.schemaVersion, '1.2.0');
+  assert.equal(model.schemaVersion, '2.0.0');
   assert.deepEqual(model.match.startTime, { value: 1785400000, source: 'opendota' });
   assert.deepEqual(model.match.lobbyType, { value: 7, label: 'Ranked', source: 'opendota' });
   assert.deepEqual(model.match.gameMode, {
@@ -78,11 +83,13 @@ test('builds the pinned canonical evidence schema with provenance', () => {
   assert.deepEqual(model.player.side, { value: 'radiant', source: 'opendota' });
   assert.deepEqual(model.player.rank, { value: 42, label: 'Archon 2', source: 'stratz' });
   assert.deepEqual(model.match.averageRank, { value: 60, label: 'Ancient', source: 'stratz' });
-  assert.deepEqual(model.lane.outcome, { value: 'RADIANT_VICTORY', source: 'stratz' });
+  assert.deepEqual(model.lane, {
+    selectedLane: 'mid', opponents: [], status: 'unknown', reason: 'opponents_unknown',
+  });
   assert.deepEqual(model.summary.kda, { kills: 4, deaths: 2, assists: 6, source: 'opendota' });
   assert.deepEqual(model.summary.denies, { value: 1, source: 'opendota' });
-  assert.deepEqual(model.items.finalInventory.map((item) => item.value), [50, 60, 70, 80, 90, 100]);
-  assert.deepEqual(model.items.purchases[0], { time: 80, item: 'boots', source: 'opendota' });
+  assert.deepEqual(model.items.finalInventory.map((item) => item.value.id), [50, 60, 70, 80, 90, 100]);
+  assert.deepEqual(model.items.purchases[0], { time: 80, item: { id: null, name: null }, source: 'opendota' });
   assert.deepEqual(model.series.denies, { values: [0, 0, 1], source: 'opendota' });
   assert.deepEqual(model.events.deaths[0], { time: 100, attacker: 8, positionX: 10, positionY: 20, timeDead: 12, source: 'stratz' });
   assert.deepEqual(model.events.teamfights, []);
@@ -276,7 +283,7 @@ test('treats equivalent numeric and STRATZ role positions as one corroborated po
   assert.equal(model.dataQuality.warnings.some((warning) => /position conflict/i.test(warning)), false);
 });
 
-test('keeps phase metrics null and closes aggregate gate when all series are empty', () => {
+test('keeps phase metrics null and closes the phase-aggregate capability when all series are empty', () => {
   const model = normalize({ player: openDotaPlayer({ gold_t: [], xp_t: [], lh_t: [], dn_t: [], hero_damage_t: [] }) });
 
   assert.deepEqual(model.phases[0].metrics, {
@@ -284,7 +291,7 @@ test('keeps phase metrics null and closes aggregate gate when all series are emp
     denies: null, deniesPerMin: null, heroDamage: null, heroDamagePerMin: null,
     kills: null, deaths: null, assists: null,
   });
-  assert.equal(model.dataQuality.gates.phase_aggregates, false);
+  assert.equal(model.dataQuality.capabilities.phaseAggregates, false);
 });
 
 test('rejects an absent account before creating an evidence model', () => {
@@ -315,11 +322,11 @@ test('recognizes a ten-hero draft only when each side has five distinct heroes',
   assert.equal(full.draft.complete, true);
   assert.equal(full.draft.radiant.length, 5);
   assert.equal(full.draft.dire.length, 5);
-  assert.equal(full.dataQuality.gates.draft_ready, true);
+  assert.equal(full.dataQuality.capabilities.draft, true);
   assert.equal(duplicate.draft.complete, false);
-  assert.equal(duplicate.dataQuality.gates.draft_ready, false);
+  assert.equal(duplicate.dataQuality.capabilities.draft, false);
   assert.equal(unordered.draft.complete, false);
-  assert.equal(unordered.dataQuality.gates.draft_ready, false);
+  assert.equal(unordered.dataQuality.capabilities.draft, false);
 });
 
 test('uses a complete OpenDota hero set when STRATZ draft picks are partial', () => {
@@ -338,7 +345,7 @@ test('uses a complete OpenDota hero set when STRATZ draft picks are partial', ()
 
   assert.equal(model.draft.complete, true);
   assert.equal([...model.draft.radiant, ...model.draft.dire].every((pick) => pick.source === 'opendota'), true);
-  assert.equal(model.dataQuality.gates.draft_ready, true);
+  assert.equal(model.dataQuality.capabilities.draft, true);
 });
 
 test('warns when complete STRATZ and OpenDota hero sets disagree', () => {
@@ -359,8 +366,8 @@ test('warns when complete STRATZ and OpenDota hero sets disagree', () => {
   assert.match(model.dataQuality.warnings.join(' '), /draft conflict/i);
   assert.deepEqual(model.draft.candidates.map(({ source, radiant, dire }) => ({
     source,
-    radiant: radiant.map((pick) => pick.value),
-    dire: dire.map((pick) => pick.value),
+    radiant: radiant.map((pick) => pick.value.id),
+    dire: dire.map((pick) => pick.value.id),
   })), [
     { source: 'stratz', radiant: [11, 12, 13, 14, 15], dire: [16, 17, 18, 19, 20] },
     { source: 'opendota', radiant: [1, 2, 3, 4, 5], dire: [6, 7, 8, 9, 10] },
@@ -376,10 +383,10 @@ test('preserves both final inventory candidates with provenance on conflict', ()
     }] } },
   });
 
-  assert.deepEqual(model.items.finalInventory.map((item) => item.value), [50, 60, 70, 80, 90, 100]);
+  assert.deepEqual(model.items.finalInventory.map((item) => item.value.id), [50, 60, 70, 80, 90, 100]);
   assert.deepEqual(model.items.finalInventoryCandidates.map(({ source, items }) => ({
     source,
-    items: items.map((item) => item.value),
+    items: items.map((item) => item.value.id),
   })), [
     { source: 'opendota', items: [50, 60, 70, 80, 90, 100] },
     { source: 'stratz', items: [150, 160, 170, 180, 190, 200] },
@@ -414,7 +421,7 @@ test('bounds every STRATZ playback family and OpenDota teamfight to match durati
   assert.deepEqual(model.items.purchases.filter((purchase) => purchase.source === 'stratz').map((purchase) => purchase.time), [0, 120]);
 });
 
-test('does not open event_ready from an in-match death and an out-of-match teamfight', () => {
+test('drops an out-of-match teamfight while opening selected timeline from an in-match death', () => {
   const model = normalize({
     match: { teamfights: [{ start: 999, end: 1000 }] },
     stratz: { status: 'ready', match: { players: [{
@@ -426,10 +433,10 @@ test('does not open event_ready from an in-match death and an out-of-match teamf
 
   assert.deepEqual(model.events.deaths.map((event) => event.time), [100]);
   assert.deepEqual(model.events.teamfights, []);
-  assert.equal(model.dataQuality.gates.event_ready, false);
+  assert.equal(model.dataQuality.capabilities.selectedTimeline, true);
 });
 
-test('opens full quality gates from scoreboard, side-separated draft, persisted timed events and exact current patch', () => {
+test('opens full capabilities from scoreboard, side-separated draft, persisted timed events and exact current patch', () => {
   const draft = Array.from({ length: 10 }, (_, heroId) => ({ isPick: true, heroId: heroId + 1, isRadiant: heroId < 5 }));
   const model = normalize({
     stratz: {
@@ -445,12 +452,12 @@ test('opens full quality gates from scoreboard, side-separated draft, persisted 
   });
 
   assert.equal(model.dataQuality.mode, 'full');
-  assert.equal(model.dataQuality.gates.event_ready, true);
-  assert.equal(model.dataQuality.gates.baseline_ready, false);
-  assert.equal(model.dataQuality.gates.current_patch, true);
+  assert.equal(model.dataQuality.capabilities.selectedTimeline, true);
+  assert.equal(model.dataQuality.capabilities.peerBaseline, false);
+  assert.equal(model.dataQuality.capabilities.currentPatch, true);
 });
 
-test('reports missing data gates without treating baseline absence as a quality downgrade', () => {
+test('reports missing capabilities without treating baseline absence as a quality downgrade', () => {
   const model = normalize({
     stratz: { status: 'ready', match: { players: [{ steamAccountId: accountId, heroId: 107, playbackData: { deathEvents: [{ time: 2 }], runeEvents: [{ time: 3 }] } }], pickBans: Array.from({ length: 10 }, (_, index) => ({ isPick: true, heroId: index + 1, isRadiant: index < 5 })) } },
     valve: { status: 'ready', isCurrentExactPatch: true },
@@ -458,11 +465,11 @@ test('reports missing data gates without treating baseline absence as a quality 
   const quality = dataQualityFor(model);
 
   assert.equal(quality.mode, 'full');
-  assert.equal(quality.gates.baseline_ready, false);
-  assert.equal(quality.missing.includes('baseline comparison'), true);
+  assert.equal(quality.capabilities.peerBaseline, false);
+  assert.equal(quality.missing.includes('peer baseline'), true);
 });
 
-test('does not open event_ready from inventory booleans without consumable projected events', () => {
+test('does not open selected timeline from inventory booleans without timed events', () => {
   const quality = dataQualityFor({
     player: { accountId: { value: accountId } },
     match: { durationSeconds: { value: 120 } },
@@ -473,7 +480,7 @@ test('does not open event_ready from inventory booleans without consumable proje
     phases: [],
   });
 
-  assert.equal(quality.gates.event_ready, false);
+  assert.equal(quality.capabilities.selectedTimeline, false);
 });
 
 test('labels extrema independently for every available metric across phases', () => {
@@ -528,7 +535,7 @@ test('compares the player against the peer sample only at minutes both series ac
   });
 
   assert.equal(model.baseline.status, 'ready');
-  assert.equal(model.dataQuality.gates.baseline_ready, true);
+  assert.equal(model.dataQuality.capabilities.peerBaseline, true);
   assert.deepEqual(model.baseline.sameHeroPositionRankPatch.weeks, [2953, 2954]);
   assert.equal(model.baseline.sameHeroPositionRankPatch.statistic, 'mean');
   assert.equal(model.baseline.sameHeroPositionRankPatch.bracketLabel, 'Legend–Ancient');
@@ -572,7 +579,7 @@ test('drops a baseline minute whose sample is too thin to compare against', () =
   assert.deepEqual(model.baseline.sameHeroPositionRankPatch.points.map((point) => point.minute), [25]);
 });
 
-test('keeps baseline_ready closed when no minute survives the sample floor', () => {
+test('keeps peer baseline unavailable when no minute survives the sample floor', () => {
   const model = normalize({
     player: longMatchPlayer(),
     match: { duration: 1500 },
@@ -581,8 +588,8 @@ test('keeps baseline_ready closed when no minute survives the sample floor', () 
   });
 
   assert.deepEqual(model.baseline, { status: 'unavailable', reason: 'no_comparable_point', sameHeroPositionRankPatch: null, comparisons: [] });
-  assert.equal(model.dataQuality.gates.baseline_ready, false);
-  assert.equal(model.dataQuality.missing.includes('baseline comparison'), true);
+  assert.equal(model.dataQuality.capabilities.peerBaseline, false);
+  assert.equal(model.dataQuality.missing.includes('peer baseline'), true);
 });
 
 test('passes an unavailable baseline through without inventing a sample', () => {
@@ -595,7 +602,7 @@ test('passes an unavailable baseline through without inventing a sample', () => 
   assert.deepEqual(model.baseline, {
     status: 'unavailable', reason: 'no_full_week_in_current_patch', sameHeroPositionRankPatch: null, comparisons: [],
   });
-  assert.equal(model.dataQuality.gates.baseline_ready, false);
+  assert.equal(model.dataQuality.capabilities.peerBaseline, false);
 });
 
 test('records a baseline request that was never made', () => {
@@ -603,7 +610,7 @@ test('records a baseline request that was never made', () => {
 
   assert.equal(model.baseline.status, 'unavailable');
   assert.equal(model.baseline.reason, 'not_requested');
-  assert.equal(model.dataQuality.gates.baseline_ready, false);
+  assert.equal(model.dataQuality.capabilities.peerBaseline, false);
 });
 
 function withPlayback(playbackData, duration = 3000) {

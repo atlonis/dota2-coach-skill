@@ -133,10 +133,6 @@ function projectSource(source) {
   return projected;
 }
 
-function projectEventList(values, fields) {
-  return Array.isArray(values) ? values.map((event) => pickScalars(event, fields)) : [];
-}
-
 function projectSeries(series) {
   const projected = pickScalars(series, ['source']);
   projected.values = Array.isArray(series?.values)
@@ -145,11 +141,103 @@ function projectSeries(series) {
   return projected;
 }
 
-function normalizedArtifactModel(model) {
-  const sources = Object.fromEntries(['opendota', 'stratz', 'valve']
+function projectEntityRef(value) {
+  return {
+    id: Number.isSafeInteger(value?.id) ? value.id : null,
+    name: typeof value?.name === 'string' && value.name.trim() ? value.name : null,
+  };
+}
+
+function projectSourcedEntity(field) {
+  const projected = { value: projectEntityRef(field?.value) };
+  if (typeof field?.source === 'string') projected.source = field.source;
+  else if (field?.source === null) projected.source = null;
+  return projected;
+}
+
+function projectParticipant(participant, fallbackSlot) {
+  return {
+    slot: Number.isSafeInteger(participant?.slot) ? participant.slot : fallbackSlot,
+    accountId: Number.isSafeInteger(participant?.accountId) ? participant.accountId : null,
+    hero: projectEntityRef(participant?.hero),
+    side: typeof participant?.side === 'string' ? participant.side : null,
+    position: scalar(participant?.position) ?? null,
+    lane: typeof participant?.lane === 'string' ? participant.lane : null,
+    role: typeof participant?.role === 'string' ? participant.role : null,
+    rank: scalar(participant?.rank) ?? null,
+    playbackAvailable: typeof participant?.playbackAvailable === 'boolean' ? participant.playbackAvailable : null,
+    sourceConflict: typeof participant?.sourceConflict === 'boolean' ? participant.sourceConflict : null,
+  };
+}
+
+function projectPosition(position) {
+  if (!position || typeof position !== 'object') return null;
+  return pickNumbers(position, ['time', 'x', 'y', 'ageSeconds'], { nullable: true });
+}
+
+function projectParticipantContext(row) {
+  return {
+    participant: projectParticipant(row?.participant, null),
+    position: projectPosition(row?.position),
+    distance: Number.isFinite(row?.distance) ? row.distance : null,
+    positionAgeSeconds: Number.isFinite(row?.positionAgeSeconds) ? row.positionAgeSeconds : null,
+  };
+}
+
+function projectDeathEvent(event, kind) {
+  const projected = pickNumbers(event, ['time']);
+  if (kind === 'ability') projected.ability = projectEntityRef(event?.ability);
+  if (kind === 'item') projected.item = projectEntityRef(event?.item);
+  return projected;
+}
+
+function projectDeathContext(context) {
+  const recentReposition = context?.recentReposition;
+  return {
+    time: Number.isFinite(context?.time) ? context.time : null,
+    position: projectPosition(context?.position),
+    killerHero: projectEntityRef(context?.killerHero),
+    killingAbility: projectEntityRef(context?.killingAbility),
+    killingItem: projectEntityRef(context?.killingItem),
+    timeDead: Number.isFinite(context?.timeDead) ? context.timeDead : null,
+    teamfight: {
+      inFight: typeof context?.teamfight?.inFight === 'boolean' ? context.teamfight.inFight : null,
+      start: Number.isFinite(context?.teamfight?.start) ? context.teamfight.start : null,
+      end: Number.isFinite(context?.teamfight?.end) ? context.teamfight.end : null,
+    },
+    nearbyAllies: Array.isArray(context?.nearbyAllies) ? context.nearbyAllies.map(projectParticipantContext) : [],
+    nearbyEnemies: Array.isArray(context?.nearbyEnemies) ? context.nearbyEnemies.map(projectParticipantContext) : [],
+    ownAbilityUses: Array.isArray(context?.ownAbilityUses) ? context.ownAbilityUses.map((event) => projectDeathEvent(event, 'ability')) : [],
+    ownItemUses: Array.isArray(context?.ownItemUses) ? context.ownItemUses.map((event) => projectDeathEvent(event, 'item')) : [],
+    recentReposition: recentReposition == null ? null : {
+      ...pickScalars(recentReposition, ['time', 'fromX', 'fromY', 'x', 'y', 'cause', 'causeTime', 'source']),
+      causeItem: projectEntityRef(recentReposition.causeItem),
+      causeAbility: projectEntityRef(recentReposition.causeAbility),
+    },
+    nearbyDeaths: Array.isArray(context?.nearbyDeaths) ? context.nearbyDeaths.map((row) => ({
+      time: Number.isFinite(row?.time) ? row.time : null,
+      participant: projectParticipant(row?.participant, null),
+      position: projectPosition(row?.position),
+      distance: Number.isFinite(row?.distance) ? row.distance : null,
+    })) : [],
+    nearbyKills: Array.isArray(context?.nearbyKills) ? context.nearbyKills.map((row) => ({
+      time: Number.isFinite(row?.time) ? row.time : null,
+      participant: projectParticipant(row?.participant, null),
+      position: projectPosition(row?.position),
+      distance: Number.isFinite(row?.distance) ? row.distance : null,
+    })) : [],
+    observations: pickScalars(context?.observations, [
+      'isolated', 'afterConfirmedTeleport', 'firstAlliedDeathInFight', 'tradedLocally', 'ownDefensiveItemUsed', 'contextIncomplete',
+    ]),
+    unavailable: stringArray(context?.unavailable) ?? [],
+  };
+}
+
+export function projectArtifact(model = {}) {
+  const sources = Object.fromEntries(['opendota', 'stratz', 'valve', 'entityConstants']
     .filter((name) => Object.hasOwn(model.sources ?? {}, name))
     .map((name) => [name, projectSource(model.sources[name])]));
-  const player = Object.fromEntries(['accountId', 'heroId', 'side', 'position', 'lane', 'rank', 'kills', 'deaths', 'assists', 'result']
+  const player = Object.fromEntries(['accountId', 'heroId', 'heroName', 'side', 'position', 'lane', 'rank', 'kills', 'deaths', 'assists', 'result']
     .filter((name) => Object.hasOwn(model.player ?? {}, name))
     .map((name) => [name, projectSourced(model.player[name])]));
   const match = Object.fromEntries(['result', 'durationSeconds', 'startTime', 'averageRank', 'gameMode', 'lobbyType']
@@ -168,22 +256,6 @@ function normalizedArtifactModel(model) {
     .filter((name) => Object.hasOwn(model.summary ?? {}, name))
     .map((name) => [name, projectSourced(model.summary[name])]));
   if (model.summary?.kda) summary.kda = pickScalars(model.summary.kda, ['kills', 'deaths', 'assists', 'source']);
-  const eventFields = {
-    kills: ['time', 'target', 'byAbility', 'byItem', 'positionX', 'positionY', 'isGank', 'isSmoke', 'source'],
-    deaths: ['time', 'attacker', 'byAbility', 'byItem', 'positionX', 'positionY', 'timeDead', 'isFeed', 'source'],
-    assists: ['time', 'target', 'positionX', 'positionY', 'source'],
-    cs: ['time', 'npcId', 'byAbility', 'byItem', 'gold', 'xp', 'positionX', 'positionY', 'isCreep', 'isNeutral', 'isAncient', 'source'],
-    purchases: ['time', 'itemId', 'source'],
-    runes: ['time', 'rune', 'action', 'gold', 'positionX', 'positionY', 'source'],
-    abilityUses: ['time', 'abilityId', 'source'],
-    itemUses: ['time', 'itemId', 'source'],
-    positions: ['time', 'x', 'y', 'source'],
-    repositions: ['time', 'fromX', 'fromY', 'x', 'y', 'cause', 'causeTime', 'causeItemId', 'causeAbilityId', 'source'],
-    teamfights: ['start', 'end', 'source'],
-    objectives: ['time', 'type', 'source'],
-  };
-  const events = Object.fromEntries(Object.entries(eventFields)
-    .map(([name, fields]) => [name, projectEventList(model.events?.[name], fields)]));
   const series = Object.fromEntries(['gold', 'xp', 'lh', 'denies']
     .filter((name) => Object.hasOwn(model.series ?? {}, name))
     .map((name) => [name, projectSeries(model.series[name])]));
@@ -193,62 +265,60 @@ function normalizedArtifactModel(model) {
     sources,
     match,
     player,
+    participants: Array.from({ length: 10 }, (_, slot) => projectParticipant(model.participants?.[slot], slot)),
     draft: {
       ...pickBooleans(model.draft, ['complete']),
-      ...(Array.isArray(model.draft?.radiant) ? { radiant: model.draft.radiant.map(projectSourced) } : {}),
-      ...(Array.isArray(model.draft?.dire) ? { dire: model.draft.dire.map(projectSourced) } : {}),
+      ...(Array.isArray(model.draft?.radiant) ? { radiant: model.draft.radiant.map(projectSourcedEntity) } : {}),
+      ...(Array.isArray(model.draft?.dire) ? { dire: model.draft.dire.map(projectSourcedEntity) } : {}),
       ...(Array.isArray(model.draft?.candidates) ? { candidates: model.draft.candidates.map((candidate) => ({
         ...pickStrings(candidate, ['source']),
-        radiant: Array.isArray(candidate?.radiant) ? candidate.radiant.map(projectSourced) : [],
-        dire: Array.isArray(candidate?.dire) ? candidate.dire.map(projectSourced) : [],
+        radiant: Array.isArray(candidate?.radiant) ? candidate.radiant.map(projectSourcedEntity) : [],
+        dire: Array.isArray(candidate?.dire) ? candidate.dire.map(projectSourcedEntity) : [],
       })) } : {}),
     },
     lane: {
-      ...(Array.isArray(model.lane?.opponentHeroIds) ? { opponentHeroIds: model.lane.opponentHeroIds.map(projectSourced) } : {}),
-      ...(Object.hasOwn(model.lane ?? {}, 'outcome') ? { outcome: projectSourced(model.lane.outcome) } : {}),
-      ...(Object.hasOwn(model.lane ?? {}, 'efficiency') ? { efficiency: projectSourced(model.lane.efficiency) } : {}),
+      selectedLane: typeof model.lane?.selectedLane === 'string' ? model.lane.selectedLane : null,
+      opponents: Array.isArray(model.lane?.opponents) ? model.lane.opponents.map((opponent) => projectParticipant(opponent, null)) : [],
+      status: typeof model.lane?.status === 'string' ? model.lane.status : 'unknown',
+      reason: typeof model.lane?.reason === 'string' ? model.lane.reason : null,
     },
     summary,
     items: {
-      purchases: projectEventList(model.items?.purchases, ['time', 'item', 'source']),
-      finalInventory: Array.isArray(model.items?.finalInventory) ? model.items.finalInventory.map(projectSourced) : [],
+      purchases: Array.isArray(model.items?.purchases) ? model.items.purchases.map((purchase) => ({
+        ...pickScalars(purchase, ['time', 'source']),
+        item: projectEntityRef(purchase?.item),
+      })) : [],
+      finalInventory: Array.isArray(model.items?.finalInventory) ? model.items.finalInventory.map((item) => projectSourcedEntity(item)) : [],
       ...(Array.isArray(model.items?.finalInventoryCandidates) ? {
         finalInventoryCandidates: model.items.finalInventoryCandidates.map((candidate) => ({
           ...pickStrings(candidate, ['source']),
-          items: Array.isArray(candidate?.items) ? candidate.items.map(projectSourced) : [],
+          items: Array.isArray(candidate?.items) ? candidate.items.map((item) => projectSourcedEntity(item)) : [],
         })),
       } : {}),
     },
-    events,
     series,
     patch,
     phases,
     baseline: projectBaseline(model.baseline),
-    eventInventory: pickBooleans(model.eventInventory, ['timedEvents', 'deaths', 'positions', 'fights', 'runes', 'abilityUses', 'repositions']),
+    deathAnalysis: {
+      contexts: Array.isArray(model.deathAnalysis?.contexts) ? model.deathAnalysis.contexts.map(projectDeathContext) : [],
+      patterns: Array.isArray(model.deathAnalysis?.patterns) ? model.deathAnalysis.patterns.map((pattern) => ({
+        signature: typeof pattern?.signature === 'string' ? pattern.signature : null,
+        times: Array.isArray(pattern?.times) ? pattern.times.filter(Number.isFinite) : [],
+        count: Number.isInteger(pattern?.count) ? pattern.count : null,
+        representativeDeathTime: Number.isFinite(pattern?.representativeDeathTime) ? pattern.representativeDeathTime : null,
+      })) : [],
+      priorityDeathTime: Number.isFinite(model.deathAnalysis?.priorityDeathTime) ? model.deathAnalysis.priorityDeathTime : null,
+      unresolvedCount: Number.isInteger(model.deathAnalysis?.unresolvedCount) ? model.deathAnalysis.unresolvedCount : null,
+    },
     dataQuality: {
       ...pickStrings(model.dataQuality, ['mode']),
-      ...(model.dataQuality?.gates ? { gates: pickBooleans(model.dataQuality.gates, ['scoreboard', 'phase_aggregates', 'draft_ready', 'event_ready', 'baseline_ready', 'current_patch']) } : {}),
+      capabilities: Object.fromEntries(Object.entries(model.dataQuality?.capabilities ?? {})),
       ...(stringArray(model.dataQuality?.missing) !== undefined ? { missing: stringArray(model.dataQuality.missing) } : {}),
       ...(stringArray(model.dataQuality?.warnings) !== undefined ? { warnings: stringArray(model.dataQuality.warnings) } : {}),
     },
   };
   if (stringArray(model.warnings) !== undefined) artifact.warnings = stringArray(model.warnings);
-  const duration = artifact.match.durationSeconds?.value;
-  const inMatch = (time) => Number.isFinite(duration) && Number.isFinite(time) && time >= 0 && time <= duration;
-  for (const name of ['kills', 'deaths', 'assists', 'cs', 'purchases', 'runes', 'abilityUses', 'itemUses', 'positions', 'repositions', 'objectives']) {
-    artifact.events[name] = artifact.events[name].filter((event) => inMatch(event.time));
-  }
-  artifact.items.purchases = artifact.items.purchases.filter((purchase) => inMatch(purchase.time));
-  artifact.events.teamfights = artifact.events.teamfights.filter((fight) => inMatch(fight.start)
-    && inMatch(fight.end) && fight.start <= fight.end);
-  const hasTimed = (name, field = 'time') => artifact.events[name].some((event) => Number.isFinite(event[field]));
-  const projectedEventReady = hasTimed('deaths')
-    && (hasTimed('positions') || hasTimed('teamfights', 'start') || hasTimed('runes') || hasTimed('abilityUses'));
-  if (!projectedEventReady) {
-    artifact.dataQuality.gates.event_ready = false;
-    artifact.dataQuality.mode = 'degraded';
-    if (!artifact.dataQuality.missing.includes('event timeline')) artifact.dataQuality.missing.push('event timeline');
-  }
   return artifact;
 }
 
@@ -278,24 +348,9 @@ function baselineRows(baseline) {
   ].join(' | ')).map((line) => `| ${line} |`);
 }
 
-const REPOSITION_CAUSES = new Map([
-  ['teleport_item', 'teleport item used by the player'],
-  ['ally_warp', 'stepped into an ally warp'],
-  ['unattributed', 'cause not established'],
-]);
-
 function clock(seconds) {
   if (!Number.isFinite(seconds)) return '—';
   return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
-}
-
-function repositionRows(repositions = []) {
-  return repositions.map((move) => {
-    const basis = move.causeItemId != null ? `item ${move.causeItemId}`
-      : move.causeAbilityId != null ? `ability ${move.causeAbilityId}`
-        : '—';
-    return `| ${clock(move.time)} | ${valueOf(move.fromX)},${valueOf(move.fromY)} | ${valueOf(move.x)},${valueOf(move.y)} | ${REPOSITION_CAUSES.get(move.cause) ?? valueOf(move.cause)} | ${basis} | ${clock(move.causeTime)} |`;
-  });
 }
 
 function baselineSampleRows(baseline) {
@@ -317,61 +372,118 @@ function baselineSampleRows(baseline) {
   ];
 }
 
+function entityLabel(ref) {
+  if (ref?.name) return ref.name;
+  if (Number.isSafeInteger(ref?.id)) return `unknown entity (id ${ref.id})`;
+  return 'unavailable';
+}
+
+function observationValue(value) {
+  return value === null ? 'unavailable' : String(value);
+}
+
+function participantLabels(rows) {
+  return Array.isArray(rows) && rows.length > 0
+    ? rows.map((row) => entityLabel(row?.participant?.hero)).join(', ')
+    : 'none';
+}
+
+function entityUseLabels(events, field) {
+  return Array.isArray(events) && events.length > 0
+    ? events.map((event) => `${entityLabel(event?.[field])} @ ${clock(event?.time)}`).join(', ')
+    : 'none';
+}
+
+function repositionLabel(reposition) {
+  if (reposition == null) return 'none';
+  const cause = typeof reposition.cause === 'string' ? reposition.cause : 'unavailable';
+  const basis = reposition.causeItem?.id != null
+    ? `item: ${entityLabel(reposition.causeItem)}`
+    : reposition.causeAbility?.id != null
+      ? `ability: ${entityLabel(reposition.causeAbility)}`
+      : 'basis unavailable';
+  return `${cause} @ ${clock(reposition.time)} (${basis})`;
+}
+
+function deathEvidenceSummary(context) {
+  return [
+    `nearby allies: ${participantLabels(context?.nearbyAllies)}`,
+    `nearby enemies: ${participantLabels(context?.nearbyEnemies)}`,
+    `own abilities: ${entityUseLabels(context?.ownAbilityUses, 'ability')}`,
+    `own items: ${entityUseLabels(context?.ownItemUses, 'item')}`,
+    `recent reposition: ${repositionLabel(context?.recentReposition)}`,
+    `nearby deaths: ${participantLabels(context?.nearbyDeaths)}`,
+    `nearby kills: ${participantLabels(context?.nearbyKills)}`,
+  ].join('; ');
+}
+
+function deathFacts(context) {
+  const position = context?.position;
+  const location = position == null ? 'unavailable' : `${position.x},${position.y} at ${clock(position.time)}`;
+  const teamfight = context?.teamfight?.inFight === null ? 'unavailable' : String(context?.teamfight?.inFight);
+  return `killer: ${entityLabel(context?.killerHero)}; ability: ${entityLabel(context?.killingAbility)}; item: ${entityLabel(context?.killingItem)}; position: ${location}; teamfight: ${teamfight}; dead: ${valueOf({ value: context?.timeDead })}; ${deathEvidenceSummary(context)}`;
+}
+
+function deathObservationFacts(observations = {}) {
+  return Object.keys(observations).sort()
+    .map((name) => `${name}: ${observationValue(observations[name])}`)
+    .join('; ') || '—';
+}
+
 export function renderEvidenceMarkdown(model = {}) {
   const request = model.request ?? {};
   const match = model.match ?? {};
   const player = model.player ?? {};
-  const draft = model.draft ?? {};
-  const inventory = model.eventInventory ?? {};
   const quality = model.dataQuality ?? {};
-  const gates = quality.gates ?? {};
   const phases = phaseRows(model.phases);
+  const laneOpponents = Array.isArray(model.lane?.opponents) ? model.lane.opponents : [];
+  const contexts = Array.isArray(model.deathAnalysis?.contexts) ? model.deathAnalysis.contexts : [];
+  const patterns = Array.isArray(model.deathAnalysis?.patterns) ? model.deathAnalysis.patterns : [];
 
   return [
     '# Match evidence inventory',
     '',
-    'This is an evidence inventory, not the final coaching review.',
-    'Its priorities rest on recorded facts: aggregate metrics are not a diagnosis and establish no cause.',
+    'This is an evidence inventory, not the final coaching review. It records facts and unavailable observations without assigning an unrecorded cause.',
     '',
-    '## Request',
+    '## Request and sources',
     '',
     table([['matchId', valueOf(request.matchId)], ['accountId', valueOf(request.accountId)], ['generatedAt', valueOf(model.generatedAt)]]),
     '',
-    '## Source statuses',
-    '',
     table(sourceRows(model.sources)),
     '',
-    '## Match and player line',
+    '## Match and selected player',
     '',
     table([
       ['durationSeconds', `${valueOf(match.durationSeconds)} (source: ${sourceOf(match.durationSeconds)})`],
       ['gameMode', `${labelledCell(match.gameMode)} (source: ${sourceOf(match.gameMode)})`],
       ['lobbyType', `${labelledCell(match.lobbyType)} (source: ${sourceOf(match.lobbyType)})`],
-      ['heroId', `${valueOf(player.heroId)} (source: ${sourceOf(player.heroId)})`],
+      ['hero', `${valueOf(player.heroName)} (source: ${sourceOf(player.heroName)})`],
       ['position', `${valueOf(player.position)} (source: ${sourceOf(player.position)})`],
-      ['rank (player medal)', `${labelledCell(player.rank)} (source: ${sourceOf(player.rank)})`],
-      ['rank (match average bracket)', `${labelledCell(match.averageRank)} (source: ${sourceOf(match.averageRank)})`],
+      ['lane', `${valueOf(player.lane)} (source: ${sourceOf(player.lane)})`],
       ['result', `${valueOf(player.result)} (source: ${sourceOf(player.result)})`],
       ['K / D / A', `${valueOf(player.kills)} / ${valueOf(player.deaths)} / ${valueOf(player.assists)}`],
     ]),
     '',
-    '## Draft and lane',
+    '## Participants and actual lane opponents',
+    '',
+    '| Slot | Side | Position | Lane | Hero | Playback |',
+    '| --- | --- | --- | --- | --- | --- |',
+    ...(Array.isArray(model.participants) && model.participants.length > 0
+      ? model.participants.map((participant) => `| ${valueOf({ value: participant.slot })} | ${valueOf({ value: participant.side })} | ${valueOf({ value: participant.position })} | ${valueOf({ value: participant.lane })} | ${entityLabel(participant.hero)} | ${String(participant.playbackAvailable)} |`)
+      : ['| — | — | — | — | — | — |']),
     '',
     table([
-      ['lane', `${valueOf(player.lane)} (source: ${sourceOf(player.lane)})`],
-      ['lane outcome', `${valueOf(model.lane?.outcome)} (source: ${sourceOf(model.lane?.outcome)})`],
-      ['draft complete', String(Boolean(draft.complete))],
-      ['Radiant', list((draft.radiant ?? []).map((pick) => `${valueOf(pick)} (${sourceOf(pick)})`))],
-      ['Dire', list((draft.dire ?? []).map((pick) => `${valueOf(pick)} (${sourceOf(pick)})`))],
+      ['selectedLane', valueOf({ value: model.lane?.selectedLane })],
+      ['lane status', valueOf({ value: model.lane?.status })],
+      ['lane reason', valueOf({ value: model.lane?.reason })],
+      ['actual opponents', list(laneOpponents.map((opponent) => entityLabel(opponent.hero)))],
     ]),
     '',
-    '## Phases: facts',
+    '## Phases and baseline',
     '',
     '| Phase | Interval (min) | Metrics | Extremes within the match |',
     '| --- | --- | --- | --- |',
     ...(phases.length > 0 ? phases : ['| — | — | — | — |']),
-    '',
-    '## Baseline: hero + position + bracket + patch',
     '',
     table(baselineSampleRows(model.baseline)),
     '',
@@ -379,25 +491,35 @@ export function renderEvidenceMarkdown(model = {}) {
     '| --- | --- | --- | --- | --- | --- | --- | --- |',
     ...(baselineRows(model.baseline).length > 0 ? baselineRows(model.baseline) : ['| — | — | — | — | — | — | — | — |']),
     '',
-    '## Relocations: position jumps and their cause',
+    '## Death contexts',
     '',
-    'A jump in the position row is not a teleport by the player in itself. The cause is read from the player own item and ability uses near the arrival; a relocation applied to the player by an ally ability stays without a cause.',
+    '| Time | Facts | Observations | Unavailable |',
+    '| --- | --- | --- | --- |',
+    ...(contexts.length > 0
+      ? contexts.map((context) => `| ${clock(context.time)} | ${deathFacts(context)} | ${deathObservationFacts(context.observations)} | ${list(context.unavailable)} |`)
+      : ['| — | — | — | — |']),
     '',
-    '| Arrival | From | To | Cause | Basis | Cause time |',
-    '| --- | --- | --- | --- | --- | --- |',
-    ...(repositionRows(model.events?.repositions).length > 0 ? repositionRows(model.events?.repositions) : ['| — | — | — | — | — | — |']),
+    '## Death patterns and priority time',
     '',
-    '## Event inventory',
+    '| Pattern | Times | Count | Representative death |',
+    '| --- | --- | --- | --- |',
+    ...(patterns.length > 0
+      ? patterns.map((pattern) => `| ${valueOf({ value: pattern.signature })} | ${list(pattern.times?.map(clock))} | ${valueOf({ value: pattern.count })} | ${clock(pattern.representativeDeathTime)} |`)
+      : ['| — | — | — | — |']),
     '',
-    table(Object.keys(inventory).sort().map((name) => [name, String(Boolean(inventory[name]))])),
+    table([
+      ['priorityDeathTime', clock(model.deathAnalysis?.priorityDeathTime)],
+      ['unresolvedCount', valueOf({ value: model.deathAnalysis?.unresolvedCount })],
+    ]),
     '',
-    '## Data gates',
+    '## Capabilities, missing, and warnings',
     '',
-    table([['mode', valueOf(quality.mode)], ...Object.keys(gates).sort().map((name) => [name, String(Boolean(gates[name]))])]),
-    '',
-    '## Missing data and warnings',
-    '',
-    table([['missing', list(quality.missing)], ['warnings', list(quality.warnings ?? model.warnings)]]),
+    table([
+      ['mode', valueOf(quality.mode)],
+      ...Object.keys(quality.capabilities ?? {}).sort().map((name) => [name, observationValue(quality.capabilities[name])]),
+      ['missing', list(quality.missing)],
+      ['warnings', list(quality.warnings ?? model.warnings)],
+    ]),
     '',
   ].join('\n');
 }
@@ -415,7 +537,7 @@ async function atomicWrite(finalPath, contents) {
 
 export async function writeArtifacts(model, outputDir) {
   await mkdir(outputDir, { recursive: true });
-  const evidence = normalizedArtifactModel(model);
+  const evidence = projectArtifact(model);
   const base = path.join(outputDir, String(evidence.request.matchId));
   const jsonPath = `${base}.json`;
   const markdownPath = `${base}.md`;

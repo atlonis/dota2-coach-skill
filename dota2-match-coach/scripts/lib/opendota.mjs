@@ -2,6 +2,13 @@ import { SourceError, requestJson } from './http.mjs';
 
 const DEFAULT_BASE_URL = 'https://api.opendota.com/api';
 const TERMINAL_STATES = new Set(['completed', 'failed', 'error']);
+const HERO_ERROR_CODE = Symbol('heroErrorCode');
+const ENTITY_CONSTANT_PATHS = [
+  ['heroes', '/constants/heroes'],
+  ['items', '/constants/items'],
+  ['abilityIds', '/constants/ability_ids'],
+  ['abilities', '/constants/abilities'],
+];
 
 export function hasReplayData(match) {
   return Number.isInteger(match?.version) && (match.players ?? []).some((player) =>
@@ -59,16 +66,47 @@ export function createOpenDotaClient({
 
   const degraded = (match, parse, error) => makeResult('ready', match, parse, error);
 
-  return {
-    async loadHeroConstants() {
-      try {
-        const heroes = (await request('/constants/heroes')).data;
-        if (!validHeroConstants(heroes)) throw new SourceError('invalid_response', 'Hero constants unavailable');
-        return { status: 'ready', heroes };
-      } catch (error) {
-        const code = error instanceof SourceError ? error.code : 'unknown';
-        return { status: 'failed', error: { code } };
+  async function loadEntityConstants() {
+    let heroErrorCode;
+    const settled = await Promise.allSettled(
+      ENTITY_CONSTANT_PATHS.map(async ([name, requestPath]) => {
+        try {
+          return [name, (await request(requestPath)).data];
+        } catch (error) {
+          if (name === 'heroes') heroErrorCode = error instanceof SourceError ? error.code : 'unknown';
+          throw error;
+        }
+      }),
+    );
+    const result = {};
+    const missing = [];
+    for (let index = 0; index < ENTITY_CONSTANT_PATHS.length; index += 1) {
+      const name = ENTITY_CONSTANT_PATHS[index][0];
+      const entry = settled[index];
+      if (entry.status === 'fulfilled' && entry.value[1] && typeof entry.value[1] === 'object') {
+        result[name] = entry.value[1];
+      } else {
+        result[name] = {};
+        missing.push(name);
       }
+    }
+    const loaded = ENTITY_CONSTANT_PATHS.length - missing.length;
+    const constants = {
+      status: loaded === ENTITY_CONSTANT_PATHS.length ? 'ready' : loaded > 0 ? 'partial' : 'failed',
+      missing,
+      ...result,
+    };
+    Object.defineProperty(constants, HERO_ERROR_CODE, { value: heroErrorCode });
+    return constants;
+  }
+
+  return {
+    loadEntityConstants,
+
+    async loadHeroConstants() {
+      const constants = await loadEntityConstants();
+      if (validHeroConstants(constants.heroes)) return { status: 'ready', heroes: constants.heroes };
+      return { status: 'failed', error: { code: constants[HERO_ERROR_CODE] ?? 'invalid_response' } };
     },
 
     async loadMatch(matchId, { parseTimeoutMs = 30_000, pollIntervalMs = 1_000 } = {}) {

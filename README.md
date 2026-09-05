@@ -60,7 +60,7 @@ To review someone else's match, select the player by hero:
 Use $dota2-match-coach to analyze the Earth Spirit player in match 8963363814.
 ```
 
-The skill chooses the platform runtime, gathers data, and checks data gates before starting the review. Set `STRATZ_API_KEY` in the environment of your chosen agent for richer position/lane/playback data. A token is also required for the peer baseline, though it does not guarantee one: the position and a rank must be known — the player's own medal, or the match average bracket as a fallback and at least one full week must fall inside the current patch. See the [runtime contract](dota2-match-coach/references/runtime.md) for token setup, schema, exit codes, and troubleshooting. Never place the token in prompts, commands, repository files, or Git.
+The skill chooses the platform runtime, gathers data, and checks independent data capabilities before starting the review. Set `STRATZ_API_KEY` in the environment of your chosen agent for richer position/lane/playback data. A token is also required for the peer baseline, though it does not guarantee one: the position and a rank must be known — the player's own medal, or the match average bracket as a fallback and at least one full week must fall inside the current patch. See the [runtime contract](dota2-match-coach/references/runtime.md) for token setup, schema, exit codes, and troubleshooting. Never place the token in prompts, commands, repository files, or Git.
 
 ## Language
 
@@ -75,28 +75,29 @@ npx skills update dota2-match-coach --global --yes
 npx skills remove dota2-match-coach --global
 ```
 
-## Data gates
+## Data capabilities
 
-The runtime writes `dataQuality.gates`:
+The runtime writes independent `dataQuality.capabilities`:
 
 - `scoreboard` — basic match facts are available;
-- `phase_aggregates` — observable stage metrics are available;
-- `draft_ready` — five Radiant and five Dire heroes are known;
-- `event_ready` — a usable event timeline is stored;
-- `baseline_ready` — a peer sample of the same hero, position and bracket on the current patch is available;
-- `current_patch` — the latest exact subpatch is verified.
+- `phaseAggregates` — observable stage metrics are available;
+- `draft` — five Radiant and five Dire heroes are known;
+- `peerBaseline` — a peer sample of the same hero, position and bracket on the current patch is available;
+- `selectedTimeline` and `allPlayerPositions` — the required playback timelines are available;
+- `deathContext` and `deathPattern` — complete death contexts or a repeated confirmed signature are available;
+- `currentPatch` — the latest exact subpatch is verified.
 
-A closed gate blocks the corresponding conclusion. For example, without `event_ready` the skill cannot invent the cause of a specific episode, and without `baseline_ready` it cannot label a metric good or bad for the relevant role/rank/patch.
+A false capability blocks only its corresponding conclusion. A valid `deathPattern: false` is an observed absence of repetition, not missing data.
 
 ## Validation
 
 From the repository root:
 
 ```sh
-node --test test/runtime/*.test.mjs
+node --test test/runtime/*.test.mjs dota2-match-coach/scripts/test/*.test.mjs
 ```
 
-The offline suite contains 151 tests and needs no network access. Each wrapper runs only on its own platform: the POSIX script on macOS and Linux, and PowerShell on Windows. The test that does not apply to the current host is skipped, while both wrappers are also checked statically on every platform.
+The combined suite contains the repository regressions and the v2 skill tests. It needs no network access unless the opt-in live-smoke environment variables are present. Platform-specific and inactive live tests skip safely.
 
 ## Repository structure
 
@@ -105,7 +106,7 @@ dota2-match-coach/          the installed skill bundle
   SKILL.md                 skill instructions
   agents/openai.yaml       OpenAI-compatible UI metadata
   references/              runtime, source policy, review template, decision stack
-  scripts/                 runtime and platform wrappers
+  scripts/                 runtime, platform wrappers, and v2 tests
 test/runtime/              offline node:test suite
 docs/superpowers/          design spec and implementation plan
 RESEARCH.md                source and design research

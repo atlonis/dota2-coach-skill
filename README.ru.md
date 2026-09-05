@@ -60,7 +60,7 @@ npx skills list --global
 Используй $dota2-match-coach и разбери игрока на Earth Spirit в матче 8963363814.
 ```
 
-Скилл сам выберет платформенный runtime, соберёт данные и проверит data gates до начала разбора. Для расширенных position/lane/playback данных задайте `STRATZ_API_KEY` в среде выбранного агента. Токен нужен и для peer baseline, но не гарантирует его: должны быть известны позиция и ранг — медаль самого игрока либо средний bracket матча как запасное основание и хотя бы одна неделя целиком внутри текущего патча. Настройка токена, schema, exit codes и troubleshooting описаны в [runtime contract](dota2-match-coach/references/runtime.md). Не добавляйте токен в запросы, команды, файлы проекта или Git.
+Скилл сам выберет платформенный runtime, соберёт данные и проверит независимые data capabilities до начала разбора. Для расширенных position/lane/playback данных задайте `STRATZ_API_KEY` в среде выбранного агента. Токен нужен и для peer baseline, но не гарантирует его: должны быть известны позиция и ранг — медаль самого игрока либо средний bracket матча как запасное основание и хотя бы одна неделя целиком внутри текущего патча. Настройка токена, schema, exit codes и troubleshooting описаны в [runtime contract](dota2-match-coach/references/runtime.md). Не добавляйте токен в запросы, команды, файлы проекта или Git.
 
 ## Язык ответа
 
@@ -75,28 +75,29 @@ npx skills update dota2-match-coach --global --yes
 npx skills remove dota2-match-coach --global
 ```
 
-## Data gates
+## Data capabilities
 
-Runtime записывает `dataQuality.gates`:
+Runtime записывает независимые `dataQuality.capabilities`:
 
 - `scoreboard` — доступны базовые факты матча;
-- `phase_aggregates` — доступны наблюдаемые фазовые метрики;
-- `draft_ready` — известны пять героев Radiant и пять Dire;
-- `event_ready` — сохранён пригодный временной ряд событий;
-- `baseline_ready` — доступна выборка того же героя, позиции и bracket на текущем патче;
-- `current_patch` — подтверждён последний точный подпатч.
+- `phaseAggregates` — доступны наблюдаемые фазовые метрики;
+- `draft` — известны пять героев Radiant и пять Dire;
+- `peerBaseline` — доступна выборка того же героя, позиции и bracket на текущем патче;
+- `selectedTimeline` и `allPlayerPositions` — доступны необходимые playback timelines;
+- `deathContext` и `deathPattern` — доступны полные контексты смертей или повторённая подтверждённая сигнатура;
+- `currentPatch` — подтверждён последний точный подпатч.
 
-Закрытый gate запрещает соответствующий тип вывода. Например, без `event_ready` нельзя придумывать причину конкретного эпизода, а без `baseline_ready` — называть показатель хорошим или плохим относительно роли/rank/patch.
+Значение false запрещает только соответствующий тип вывода. Валидное `deathPattern: false` означает наблюдаемое отсутствие повторения, а не пропущенные данные.
 
 ## Проверка
 
 Из корня репозитория:
 
 ```sh
-node --test test/runtime/*.test.mjs
+node --test test/runtime/*.test.mjs dota2-match-coach/scripts/test/*.test.mjs
 ```
 
-Текущий offline-suite содержит 151 тест и не требует сети. Каждый wrapper запускается только на своей платформе: на macOS и Linux выполняется POSIX-скрипт, на Windows — PowerShell, а неприменимый на текущем хосте тест штатно пропускается. Оба wrapper дополнительно проверяются статически на всех платформах.
+Объединённый suite содержит репозиторные регрессии и v2-тесты скилла. Сеть не требуется, пока не заданы переменные opt-in live smoke. Платформенные и неактивные live-тесты штатно пропускаются.
 
 ## Структура репозитория
 
@@ -105,7 +106,7 @@ dota2-match-coach/          устанавливаемый бандл скилл
   SKILL.md                 инструкции скилла
   agents/openai.yaml       OpenAI-совместимые UI-метаданные
   references/              runtime, source policy, review template и стек решений
-  scripts/                 runtime и платформенные wrappers
+  scripts/                 runtime, платформенные wrappers и v2-тесты
 test/runtime/              offline node:test suite
 docs/superpowers/          design spec и implementation plan
 RESEARCH.md                исследование источников и решений

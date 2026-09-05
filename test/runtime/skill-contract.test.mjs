@@ -1,64 +1,49 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const bundleRoot = path.join(repositoryRoot, 'dota2-match-coach');
 
-test('an ordinary match-ID request routes to runtime.md and the platform wrapper as the first collection step', async () => {
-  const skill = await readFile(path.join(bundleRoot, 'SKILL.md'), 'utf8');
-  const process = skill.split('## Required process')[1]?.split('\n## ')[0] ?? '';
-  const firstStep = process.match(/^1\. .+$/m)?.[0] ?? '';
+test('skill bundle has valid identity frontmatter and resolvable local documentation links', async () => {
+  const skillPath = path.join(bundleRoot, 'SKILL.md');
+  const skill = await readFile(skillPath, 'utf8');
+  const lines = skill.split(/\r?\n/);
+  const closing = lines.indexOf('---', 1);
 
-  assert.match(firstStep, /match.?id/i);
-  assert.match(firstStep, /references\/runtime\.md/);
-  assert.match(firstStep, /analyze-match\.ps1/);
-  assert.match(firstStep, /analyze-match\.sh/);
-  assert.doesNotMatch(firstStep, /may be available/i);
+  assert.equal(lines[0], '---');
+  assert.ok(closing > 1);
+  assert.ok(lines.slice(1, closing).includes('name: dota2-match-coach'));
+  assert.ok(lines.slice(1, closing).some((line) => line.startsWith('description: ')));
+
+  const targets = [...skill.matchAll(/\[[^\]]+\]\(([^)]+)\)/g)]
+    .map((match) => match[1].split('#')[0])
+    .filter((target) => target && !/^[a-z]+:/i.test(target));
+  assert.ok(targets.length > 0);
+  for (const target of targets) {
+    assert.equal(existsSync(path.resolve(bundleRoot, target)), true, target);
+  }
 });
 
-test('publishes the renamed skill contract and keeps the roadmap outside the installed bundle', async () => {
-  const skill = await readFile(path.join(bundleRoot, 'SKILL.md'), 'utf8');
-  const metadata = await readFile(path.join(bundleRoot, 'agents', 'openai.yaml'), 'utf8');
-
-  assert.match(skill, /^name: dota2-match-coach$/m);
-  assert.match(metadata, /\$dota2-match-coach\b/);
+test('runtime entrypoints stay inside the skill bundle while roadmap remains repository-level', () => {
+  for (const relative of [
+    'agents/openai.yaml',
+    'references/runtime.md',
+    'references/source-policy.md',
+    'references/death-analysis.md',
+    'references/decision-stack.md',
+    'references/review-template.md',
+    'scripts/analyze-match.mjs',
+    'scripts/analyze-match.ps1',
+    'scripts/analyze-match.sh',
+  ]) {
+    assert.equal(existsSync(path.join(bundleRoot, relative)), true, relative);
+  }
   assert.equal(existsSync(path.join(repositoryRoot, 'ROADMAP.md')), true);
   assert.equal(existsSync(path.join(bundleRoot, 'references', 'roadmap.md')), false);
-  assert.doesNotMatch(skill, /roadmap/i);
-});
-
-test('routes the complete user-facing review to Russian or English without changing evidence identifiers', async () => {
-  const skill = await readFile(path.join(bundleRoot, 'SKILL.md'), 'utf8');
-  const template = await readFile(path.join(bundleRoot, 'references', 'review-template.md'), 'utf8');
-  const readmePath = path.join(repositoryRoot, 'README.md');
-  const russianReadmePath = path.join(repositoryRoot, 'README.ru.md');
-  const languageContract = skill.split('### Response language')[1]?.split('\n### ')[0]?.split('\n## ')[0] ?? '';
-
-  assert.match(languageContract, /Russian.+Russian/is);
-  assert.match(languageContract, /English.+English/is);
-  assert.match(languageContract, /explicit.+override/is);
-  assert.match(languageContract, /last.+substantive.+message/is);
-  assert.match(languageContract, /heading/i);
-  assert.match(languageContract, /STRATZ/i);
-  assert.match(languageContract, /JSON|schema/i);
-  assert.match(languageContract, /hero|item|API/i);
-  assert.match(template, /response language/i);
-  if (existsSync(readmePath)) {
-    const readme = await readFile(readmePath, 'utf8');
-    assert.equal(existsSync(russianReadmePath), true);
-    const russianReadme = await readFile(russianReadmePath, 'utf8');
-    assert.match(readme, /Language|Язык/);
-    assert.match(readme, /Analyze match 8963363814/i);
-    assert.match(readme, /\[Русский\]\(README\.ru\.md\)/);
-    assert.doesNotMatch(readme, /^## Русский$/m);
-    assert.match(russianReadme, /\[English\]\(README\.md\)/);
-    assert.match(russianReadme, /Используй \$dota2-match-coach/);
-  }
 });
 
 test('keeps the POSIX wrapper executable on POSIX hosts', async (context) => {

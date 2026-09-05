@@ -1,8 +1,12 @@
 import { rankLabel } from './rank.mjs';
 import { bracketLabelFor, positionEnumFor } from './baseline.mjs';
 import { GAME_MODES, LOBBY_TYPES, resolveVocabularyField } from './vocabulary.mjs';
+import { buildEntityCatalog, entityRef } from './entities.mjs';
+import { normalizeParticipants, resolveLaneMatchup } from './lane.mjs';
+import { buildDeathAnalysis } from './deaths.mjs';
+import { computeCapabilities, qualityFromCapabilities } from './capabilities.mjs';
 
-const SCHEMA_VERSION = '1.2.0';
+const SCHEMA_VERSION = '2.0.0';
 const PHASES = [
   { id: 'lane', start: 0, end: 600 },
   { id: 'transition', start: 600, end: 900 },
@@ -239,7 +243,7 @@ function draftCandidate(source, radiantIds, direIds) {
   return { source, radiant, dire, complete };
 }
 
-function draftFor(openDota, stratz) {
+function draftFor(openDota, stratz, catalog) {
   const pickBans = stratz?.status === 'ready' && Array.isArray(stratz.match?.pickBans) ? stratz.match.pickBans : [];
   const stratzPicks = pickBans.filter((pick) => pick?.isPick === true && typeof pick?.isRadiant === 'boolean');
   const openPlayers = playersFor(openDota).filter((player) => finiteNumber(player?.player_slot));
@@ -252,14 +256,15 @@ function draftFor(openDota, stratz) {
   const complete = candidates.filter((candidate) => candidate.complete);
   const signatures = complete.map((candidate) => `${candidate.radiant.slice().sort((a, b) => a - b)}|${candidate.dire.slice().sort((a, b) => a - b)}`);
   const warnings = new Set(signatures).size > 1 ? ['Draft conflict between complete OpenDota and STRATZ sides.'] : [];
-  const radiant = selected.radiant.map((heroId) => sourced(heroId, selected.source));
-  const dire = selected.dire.map((heroId) => sourced(heroId, selected.source));
+  const pickRef = (heroId, source) => sourced(entityRef(catalog, 'hero', heroId), source);
+  const radiant = selected.radiant.map((heroId) => pickRef(heroId, selected.source));
+  const dire = selected.dire.map((heroId) => pickRef(heroId, selected.source));
   const draft = { radiant, dire, picks: [...radiant, ...dire], complete: selected.complete };
   if (new Set(signatures).size > 1) {
     draft.candidates = complete.map((candidate) => ({
       source: candidate.source,
-      radiant: candidate.radiant.map((heroId) => sourced(heroId, candidate.source)),
-      dire: candidate.dire.map((heroId) => sourced(heroId, candidate.source)),
+      radiant: candidate.radiant.map((heroId) => pickRef(heroId, candidate.source)),
+      dire: candidate.dire.map((heroId) => pickRef(heroId, candidate.source)),
     }));
   }
   return { draft, warnings };
@@ -377,32 +382,39 @@ function laneOutcomeFor(stratzPlayer, stratz) {
   return null;
 }
 
-function finalInventoryFor(openPlayer, stratzPlayer, warnings) {
+function finalInventoryFor(openPlayer, stratzPlayer, warnings, catalog) {
   const openItems = Array.from({ length: 6 }, (_, index) => openPlayer?.[`item_${index}`]).filter(finiteNumber);
   const stratzItems = Array.from({ length: 6 }, (_, index) => stratzPlayer?.[`item${index}Id`]).filter(finiteNumber);
   const conflict = openItems.length > 0 && stratzItems.length > 0 && !sameValue(openItems, stratzItems);
   if (conflict) warnings.push('Final inventory conflict between opendota and stratz.');
   const values = openItems.length > 0 ? openItems : stratzItems;
   const source = openItems.length > 0 ? 'opendota' : 'stratz';
-  const result = { finalInventory: values.map((value) => sourced(value, source)) };
+  const result = { finalInventory: values.map((value) => sourced(entityRef(catalog, 'item', value), source)) };
   if (conflict) {
     result.finalInventoryCandidates = [
-      { source: 'opendota', items: openItems.map((value) => sourced(value, 'opendota')) },
-      { source: 'stratz', items: stratzItems.map((value) => sourced(value, 'stratz')) },
+      { source: 'opendota', items: openItems.map((value) => sourced(entityRef(catalog, 'item', value), 'opendota')) },
+      { source: 'stratz', items: stratzItems.map((value) => sourced(entityRef(catalog, 'item', value), 'stratz')) },
     ];
   }
   return result;
 }
 
-function purchasesFor(openPlayer, stratzPlayer, duration) {
+function purchaseItemRef(entry, catalog, entityConstants) {
+  const itemId = finiteNumber(entry?.item_id)
+    ? entry.item_id
+    : entityConstants?.items?.[entry?.key]?.id;
+  return entityRef(catalog, 'item', itemId);
+}
+
+function purchasesFor(openPlayer, stratzPlayer, duration, catalog, entityConstants) {
   const inMatch = (time) => finiteNumber(duration) && finiteNumber(time) && time >= 0 && time <= duration;
   const open = Array.isArray(openPlayer?.purchase_log) ? openPlayer.purchase_log
     .filter((entry) => inMatch(entry?.time) && (typeof entry?.key === 'string' || finiteNumber(entry?.item_id)))
-    .map((entry) => ({ time: entry.time, item: entry.key ?? entry.item_id, source: 'opendota' })) : [];
+    .map((entry) => ({ time: entry.time, item: purchaseItemRef(entry, catalog, entityConstants), source: 'opendota' })) : [];
   const stratz = Array.isArray(stratzPlayer?.playbackData?.purchaseEvents)
     ? stratzPlayer.playbackData.purchaseEvents
       .filter((event) => inMatch(event?.time) && finiteNumber(event?.itemId))
-      .map((event) => ({ time: event.time, item: event.itemId, source: 'stratz' }))
+      .map((event) => ({ time: event.time, item: entityRef(catalog, 'item', event.itemId), source: 'stratz' }))
     : [];
   return [...open, ...stratz]
     .sort((left, right) => left.time - right.time || left.source.localeCompare(right.source));
@@ -493,36 +505,24 @@ export function buildBaseline({ baseline, openPlayer, events, duration, patch, r
   };
 }
 
-export function dataQualityFor(model) {
-  const events = model.events ?? {};
-  const hasTimed = (name, field = 'time') => Array.isArray(events[name]) && events[name].some((event) => finiteNumber(event?.[field]));
-  const gates = {
-    scoreboard: Boolean(model.player?.accountId?.value != null && model.match?.durationSeconds?.value != null),
-    phase_aggregates: Boolean(model.phases?.some((phase) => ['gold', 'xp', 'lh'].some((metric) => phase.metrics?.[metric] != null))
-      || Object.keys(events).some((name) => hasTimed(name, name === 'teamfights' ? 'start' : 'time'))),
-    draft_ready: Boolean(model.draft?.complete && model.draft?.radiant?.length === 5 && model.draft?.dire?.length === 5),
-    event_ready: Boolean(hasTimed('deaths') && (hasTimed('positions') || hasTimed('teamfights', 'start') || hasTimed('runes') || hasTimed('abilityUses'))),
-    baseline_ready: Boolean(model.baseline?.sameHeroPositionRankPatch?.points?.length > 0
-      && model.baseline?.comparisons?.length > 0),
-    current_patch: Boolean(model.patch?.isCurrentExactPatch?.value === true),
-  };
-  const missing = [];
-  if (!gates.scoreboard) missing.push('scoreboard');
-  if (!gates.phase_aggregates) missing.push('phase aggregates');
-  if (!gates.draft_ready) missing.push('complete draft');
-  if (!gates.event_ready) missing.push('event timeline');
-  if (!gates.baseline_ready) missing.push('baseline comparison');
-  if (!gates.current_patch) missing.push('current exact patch');
-  return {
-    mode: gates.scoreboard && gates.draft_ready && gates.event_ready && gates.current_patch ? 'full' : 'degraded',
-    gates,
-    missing,
-    warnings: [...(model.warnings ?? [])],
-  };
-}
-
-export function normalizeEvidence({ matchId, accountId, openDota, stratz, valve, baseline, generatedAt } = {}) {
+export function normalizeEvidence({
+  matchId,
+  accountId,
+  openDota,
+  stratz,
+  valve,
+  baseline,
+  entityConstants,
+  generatedAt,
+} = {}) {
   const { openPlayer, stratzPlayer } = resolvePlayer(accountId, openDota, stratz);
+  const catalog = buildEntityCatalog(entityConstants);
+  const participants = normalizeParticipants({
+    openPlayers: playersFor(openDota),
+    stratzPlayers: playersFor(stratz),
+    catalog,
+  });
+  const lane = resolveLaneMatchup({ participants, selectedAccountId: accountId });
   const warnings = [];
   const field = (label, openValue, stratzValue) => resolvedField(label, [
     { value: openValue, source: 'opendota' },
@@ -539,7 +539,7 @@ export function normalizeEvidence({ matchId, accountId, openDota, stratz, valve,
   const position = positionFor(openPlayer, stratzPlayer, warnings);
   const side = sideFor(openPlayer, stratzPlayer, warnings);
   const result = resolvedField('Result', resultCandidates(openPlayer, stratzPlayer, openDota, stratz), warnings);
-  const draft = draftFor(openDota, stratz);
+  const draft = draftFor(openDota, stratz, catalog);
   warnings.push(...draft.warnings);
 
   const summary = {
@@ -562,13 +562,27 @@ export function normalizeEvidence({ matchId, accountId, openDota, stratz, valve,
 
   const events = eventTimeline(openDota, stratzPlayer, duration);
   events.repositions = repositionsFor(events);
-  const inventory = finalInventoryFor(openPlayer, stratzPlayer, warnings);
+  const deathAnalysis = buildDeathAnalysis({
+    selectedAccountId: accountId,
+    participants,
+    stratzPlayers: playersFor(stratz),
+    teamfights: openDota?.status === 'ready' && Array.isArray(openDota.match?.teamfights)
+      ? openDota.match.teamfights
+      : null,
+    selectedRepositions: events.repositions,
+    durationSeconds: duration,
+    catalog,
+    scoreboardDeaths: summary.deaths.value,
+  });
+  const inventory = finalInventoryFor(openPlayer, stratzPlayer, warnings, catalog);
+  const heroId = field('Hero ID', openPlayer?.hero_id, stratzPlayer?.heroId);
   const player = {
     accountId: sourced(accountId, openPlayer ? 'opendota' : 'stratz'),
-    heroId: field('Hero ID', openPlayer?.hero_id, stratzPlayer?.heroId),
+    heroId,
+    heroName: sourced(entityRef(catalog, 'hero', heroId.value).name, 'opendota_constants'),
     side,
     position,
-    lane: sourced(stratzPlayer?.lane, 'stratz'),
+    lane: sourced(lane.selectedLane, lane.status === 'ready' ? 'stratz' : null),
     rank: playerRankFor(openPlayer, stratzPlayer, warnings),
     kills: summary.kills,
     deaths: summary.deaths,
@@ -579,7 +593,12 @@ export function normalizeEvidence({ matchId, accountId, openDota, stratz, valve,
     schemaVersion: SCHEMA_VERSION,
     request: { matchId, accountId },
     generatedAt: generatedAt ?? null,
-    sources: { opendota: sourceSummary(openDota), stratz: sourceSummary(stratz), valve: sourceSummary(valve) },
+    sources: {
+      opendota: sourceSummary(openDota),
+      stratz: sourceSummary(stratz),
+      valve: sourceSummary(valve),
+      entityConstants: sourceSummary(entityConstants),
+    },
     match: {
       result,
       durationSeconds: durationField,
@@ -589,14 +608,12 @@ export function normalizeEvidence({ matchId, accountId, openDota, stratz, valve,
       lobbyType: vocabulary('Lobby type', LOBBY_TYPES, openDota?.match?.lobby_type, stratz?.match?.lobbyType),
     },
     player,
+    participants,
     draft: draft.draft,
-    lane: {
-      opponentHeroIds: side.value === 'radiant' ? draft.draft.dire : side.value === 'dire' ? draft.draft.radiant : [],
-      outcome: sourced(laneOutcomeFor(stratzPlayer, stratz), 'stratz'),
-      efficiency: sourced(null, null),
-    },
+    lane,
+    deathAnalysis,
     summary,
-    items: { purchases: purchasesFor(openPlayer, stratzPlayer, duration), ...inventory },
+    items: { purchases: purchasesFor(openPlayer, stratzPlayer, duration, catalog, entityConstants), ...inventory },
     events,
     series: {
       gold: arraySeries(openPlayer?.gold_t),
@@ -622,6 +639,6 @@ export function normalizeEvidence({ matchId, accountId, openDota, stratz, valve,
     eventInventory: eventInventory(events),
     warnings,
   };
-  model.dataQuality = dataQualityFor(model);
+  model.dataQuality = qualityFromCapabilities(computeCapabilities(model), warnings);
   return model;
 }
