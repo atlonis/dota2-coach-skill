@@ -35,11 +35,13 @@ test('PowerShell wrapper maps hero options without positional rebinding', { skip
     '-Hero', 'Keeper of the Light',
     '-ParseTimeoutMs', '45000',
     '-OutputDir', 'C:\\coach output',
+    '-HistoryDir', 'C:\\coach history',
   ]), [
     '--match-id', '8970339828',
     '--hero', 'Keeper of the Light',
     '--parse-timeout-ms', '45000',
     '--output-dir', 'C:\\coach output',
+    '--history-dir', 'C:\\coach history',
   ]);
 });
 

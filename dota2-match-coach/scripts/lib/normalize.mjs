@@ -429,9 +429,23 @@ function baselineMinutes(duration) {
   return [...new Set(minutes)].sort((left, right) => left - right);
 }
 
-function cumulativeDeathsAt(events, minute) {
-  const deaths = Array.isArray(events?.deaths) ? events.deaths.filter((death) => finiteNumber(death?.time)) : [];
-  return deaths.length === 0 ? null : deaths.filter((death) => death.time <= minute * 60).length;
+function completeDeathTimeline(deaths, scoreboardDeaths, duration) {
+  if (!Array.isArray(deaths) || !Number.isInteger(scoreboardDeaths) || scoreboardDeaths < 0
+    || deaths.length !== scoreboardDeaths || !finiteNumber(duration) || duration < 0) return false;
+  if (!deaths.every((death) => finiteNumber(death?.time) && death.time >= 0 && death.time <= duration)) return false;
+  return new Set(deaths.map((death) => death.time)).size === deaths.length;
+}
+
+function cumulativeDeathsAt(events, minute, timelineComplete) {
+  if (!timelineComplete || !Array.isArray(events?.deaths)) return null;
+  return events.deaths.filter((death) => death.time <= minute * 60).length;
+}
+
+function metricSampleSize(point, metric) {
+  // Legacy/direct points without the map describe one sample shared by all
+  // metrics. Once the map exists, a missing entry is unknown, never a fallback.
+  const sampleSize = Object.hasOwn(point, 'metricSampleSizes') ? point.metricSampleSizes?.[metric] : point.matchCount;
+  return finiteNumber(sampleSize) && sampleSize >= BASELINE_MIN_SAMPLE && sampleSize <= point.matchCount ? sampleSize : null;
 }
 
 function comparisonRow({ metric, minute, playerValue, baselineValue, matchCount, crossSourceProxy }) {
@@ -449,7 +463,7 @@ function comparisonRow({ metric, minute, playerValue, baselineValue, matchCount,
   };
 }
 
-export function buildBaseline({ baseline, openPlayer, events, duration, patch, rankCode, position }) {
+export function buildBaseline({ baseline, openPlayer, events, duration, patch, rankCode, position, deathTimelineComplete = false }) {
   const empty = { sameHeroPositionRankPatch: null, comparisons: [] };
   if (!baseline || baseline.status !== 'ready') {
     return {
@@ -466,23 +480,26 @@ export function buildBaseline({ baseline, openPlayer, events, duration, patch, r
   for (const minute of minutes) {
     const point = byMinute.get(minute);
     if (!point || !finiteNumber(point.matchCount) || point.matchCount < BASELINE_MIN_SAMPLE) continue;
-    points.push(point);
+    const previousComparisonCount = comparisons.length;
     for (const spec of BASELINE_COMPARISONS) {
       const sample = seriesSampleAt(openPlayer?.[spec.playerSeries], minute * 60);
       const baselineValue = point[spec.baselineMetric];
-      if (!sample || sample.index !== minute || !finiteNumber(baselineValue)) continue;
+      const matchCount = metricSampleSize(point, spec.baselineMetric);
+      if (!sample || sample.index !== minute || !finiteNumber(baselineValue) || matchCount == null) continue;
       comparisons.push(comparisonRow({
         metric: spec.metric, minute, playerValue: sample.value, baselineValue,
-        matchCount: point.matchCount, crossSourceProxy: spec.crossSourceProxy,
+        matchCount, crossSourceProxy: spec.crossSourceProxy,
       }));
     }
-    const playerDeaths = cumulativeDeathsAt(events, minute);
-    if (playerDeaths != null && finiteNumber(point.deaths)) {
+    const playerDeaths = cumulativeDeathsAt(events, minute, deathTimelineComplete);
+    const deathSampleSize = metricSampleSize(point, 'deaths');
+    if (playerDeaths != null && finiteNumber(point.deaths) && deathSampleSize != null) {
       comparisons.push(comparisonRow({
         metric: 'deaths', minute, playerValue: playerDeaths, baselineValue: point.deaths,
-        matchCount: point.matchCount, crossSourceProxy: false,
+        matchCount: deathSampleSize, crossSourceProxy: false,
       }));
     }
+    if (comparisons.length > previousComparisonCount) points.push(point);
   }
   if (comparisons.length === 0) return { status: 'unavailable', reason: 'no_comparable_point', ...empty };
   return {
@@ -635,6 +652,8 @@ export function normalizeEvidence({
       patch: valve?.currentPatch ?? null,
       rankCode: player.rank.value ?? stratz?.match?.rank ?? null,
       position: position?.value ?? null,
+      deathTimelineComplete: !heroId.candidates && !side.candidates
+        && completeDeathTimeline(stratzPlayer?.playbackData?.deathEvents, summary.deaths.value, durationField.value),
     }),
     eventInventory: eventInventory(events),
     warnings,

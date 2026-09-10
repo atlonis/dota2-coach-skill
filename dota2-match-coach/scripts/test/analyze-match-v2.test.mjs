@@ -1,8 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { AnalysisError, runAnalysis, runCli } from '../analyze-match.mjs';
 import { normalizeEvidence } from '../lib/normalize.mjs';
 import { fullMatchFixture } from './fixtures.mjs';
+import { projectArtifact, writeArtifacts } from '../lib/report.mjs';
 
 function fixtureDependencies({
   input = fullMatchFixture(),
@@ -165,4 +169,52 @@ test('does not write artifacts when hero selection is ambiguous', async () => {
     (error) => error?.code === 'hero_ambiguous',
   );
   assert.equal(writes, 0);
+});
+
+test('history option compares saved prior matches and persists progress in both artifacts', async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'dota-progress-cli-'));
+  try {
+    const historyDir = path.join(directory, 'history');
+    await mkdir(historyDir);
+    for (const [index, slope] of [3, 4].entries()) {
+      const prior = fullMatchFixture();
+      prior.stratz.match.gameMode = 'ALL_PICK_RANKED';
+      prior.matchId -= index + 1;
+      prior.openDota.match.start_time -= (index + 1) * 3600;
+      prior.stratz.match.startDateTime = prior.openDota.match.start_time;
+      prior.openDota.match.players[0].lh_t = Array.from({ length: 31 }, (_, minute) => minute * slope);
+      await writeFile(path.join(historyDir, `${index}.json`), JSON.stringify(projectArtifact(normalizeEvidence(prior))));
+    }
+    const input = fullMatchFixture();
+    input.stratz.match.gameMode = 'ALL_PICK_RANKED';
+    const { model, artifacts } = await runAnalysis({
+      matchId: input.matchId, accountId: input.accountId, historyDir, outputDir: path.join(directory, 'output'),
+    }, fixtureDependencies({ input, write: writeArtifacts }));
+    assert.equal(model.progress?.status, 'ready');
+    const written = JSON.parse(await readFile(artifacts.jsonPath, 'utf8'));
+    const row = written.progress.comparisons.find((entry) => entry.metric === 'lastHits' && entry.minute === 10);
+    assert.deepEqual({ current: row.current, mean: row.mean, delta: row.delta, count: row.matchCount }, {
+      current: 50, mean: 35, delta: 15, count: 2,
+    });
+    assert.equal(written.progress.historyLoad.status, 'ready');
+    assert.match(await readFile(artifacts.markdownPath, 'utf8'), /\| lastHits \| 10:00 \| 50 \| 35 \| 15 \| 2 \|/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('unreadable requested history preserves match facts and reports safe progress unavailability', async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'dota-progress-missing-'));
+  try {
+    const input = fullMatchFixture();
+    const { model } = await runAnalysis({
+      matchId: input.matchId, accountId: input.accountId, historyDir: path.join(directory, 'private-missing-directory'),
+    }, fixtureDependencies({ input }));
+    assert.equal(model.player.deaths.value, 3);
+    assert.equal(model.progress?.status, 'unavailable');
+    assert.equal(model.progress.historyLoad.status, 'unavailable');
+    assert.doesNotMatch(JSON.stringify(model.progress), /private-missing-directory|ENOENT|stack/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });

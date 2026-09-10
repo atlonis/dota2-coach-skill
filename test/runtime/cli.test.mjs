@@ -72,6 +72,14 @@ test('accepts a hero name instead of account ID and preserves an optional select
   });
 });
 
+test('accepts an explicit history directory and rejects empty or repeated history options', () => {
+  const options = parseArgs(['--match-id', '1', '--account-id', '2', '--history-dir', 'previous matches']);
+  assert.equal(options.historyDir, 'previous matches');
+  for (const tail of [['--history-dir', ''], ['--history-dir'], ['--history-dir', 'a', '--history-dir', 'b']]) {
+    assert.throws(() => parseArgs(['--match-id', '1', '--account-id', '2', ...tail]), /invalid_arguments/);
+  }
+});
+
 test('rejects missing, duplicate, fractional, zero, and unknown CLI arguments', () => {
   for (const argv of [
     ['--match-id', '1'],

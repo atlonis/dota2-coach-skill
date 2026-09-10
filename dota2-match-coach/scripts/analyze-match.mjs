@@ -7,6 +7,7 @@ import { bracketBasicFor, createBaselineClient, fullWeeksWithin, positionEnumFor
 import { resolveAccountIdByHero } from './lib/heroes.mjs';
 import { NormalizationError, normalizeEvidence } from './lib/normalize.mjs';
 import { writeArtifacts } from './lib/report.mjs';
+import { buildProgress, loadProgressHistory } from './lib/progress.mjs';
 
 const DEFAULT_PARSE_TIMEOUT_MS = 120_000;
 const SKILL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -36,6 +37,7 @@ export function parseArgs(argv) {
     ['--account-id', 'accountId'],
     ['--hero', 'heroName'],
     ['--output-dir', 'outputDir'],
+    ['--history-dir', 'historyDir'],
     ['--parse-timeout-ms', 'parseTimeoutMs'],
   ]);
   const seen = new Set();
@@ -173,6 +175,18 @@ export async function runAnalysis(options, { openDotaClient, stratzClient, valve
       generatedAt: model.generatedAt,
     });
   }
+  if (options.historyDir != null) {
+    const history = await loadProgressHistory(options.historyDir);
+    model.progress = buildProgress(model, history.artifacts);
+    model.progress.historyLoad = {
+      status: history.status, reason: history.reason,
+      skippedFileCount: history.skippedFileCount, truncated: history.truncated,
+    };
+    if (history.status !== 'ready') {
+      model.progress.status = 'unavailable';
+      model.progress.reason = history.reason;
+    }
+  }
   const artifacts = await write(model, outputDir);
   return { model, artifacts };
 }
@@ -212,6 +226,7 @@ export async function runCli(argv, { dependencies = defaultDependencies(), stdou
       stdout(`${source}: ${model.sources?.[source]?.status ?? 'unavailable'}`);
     }
     stdout(`baseline: ${model.baseline?.status ?? 'unavailable'}`);
+    if (model.progress) stdout(`progress: ${model.progress.status}`);
     stdout(`json: ${artifacts.jsonPath}`);
     stdout(`markdown: ${artifacts.markdownPath}`);
     return 0;

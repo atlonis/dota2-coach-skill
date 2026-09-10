@@ -21,9 +21,11 @@ Definition of done: `draft_prior` carries provenance, model version, sample size
 
 The goal is to open `baseline_ready` and replace within-match extrema with a relevant normative comparison.
 
-The peer baseline is implemented: the runtime writes `model.baseline.sameHeroPositionRankPatch` from STRATZ `heroStats.stats`, picks the bucket by the player's own medal, and opens `baseline_ready` only for a sample that passed the size threshold. What remains:
+The peer baseline is implemented: the runtime writes `model.baseline.sameHeroPositionRankPatch` from STRATZ `heroStats.stats`, picks the bucket by the player's own medal, and opens peer comparisons only for metrics that pass their own observed sample threshold. Incomplete death timelines do not produce death comparisons.
 
-- a self-baseline: the same player, hero, position, patch and mode;
+A descriptive self-reference is also implemented through `--history-dir`: prior normalized matches must share the selected account, hero, position, game mode, and verified current exact patch. Matching-minute cumulative metrics carry their own means and sample sizes, and fully observed death conditions can be compared across matches. This is not a percentile, a population norm, or proof of a training effect. What remains:
+
+- automated collection of the player's current-patch history and larger personal distributions;
 - a strong-player baseline: recent STRATZ leaderboard matches on the same hero and position on the exact patch;
 - the rank at the time of the match instead of a profile snapshot: neither OpenDota nor STRATZ gives it, so the player's medal is taken from the current state of the account;
 - separate distributions by lane matchup, item components and power-spike timing;

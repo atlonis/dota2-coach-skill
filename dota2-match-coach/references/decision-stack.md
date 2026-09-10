@@ -1,22 +1,31 @@
 # Decision stack
 
-Use this order to select the single main coaching priority after checking the artifact's source status, `dataQuality.capabilities`, warnings, and nulls:
+Choose one main coaching priority after inspecting source status, `dataQuality.capabilities`, warnings and nulls. The priority determines the main finding, the key evidence and the exercise together.
 
-1. The largest confirmed repeated death pattern in this match.
-2. The largest relevant deviation from a ready peer **mean**.
-3. A confirmed event that changed the selected player's personal efficiency.
-4. If none is available, a limited factual review.
+## Select the priority
 
-This ordering chooses what to emphasize; it does not promote correlation to cause. A death pattern needs the death policy’s confirmed repeated signature. A peer deviation needs the exact available metric, minute, sample size, actual bracket, bracket basis, and any mismatch with the player or match rank. An efficiency event needs a timestamped event rather than a phase aggregate alone.
+1. **Respect the requested topic.** A focused item review selects item evidence; unrelated deaths or a ready farming comparison cannot displace it. When the requested topic lacks support, state the limit and choose a relevant evidence-checking exercise rather than substitute generic advice.
+2. **Filter for evidence quality.** Candidates include timestamped events, confirmed repeated death signatures, relevant ready peer comparisons, sourced draft/task/item facts, and validated personal progress when requested. Remove conclusions that need unavailable capabilities or invented context. A phase aggregate alone cannot locate a causal event.
+3. **Choose relevance and actionability among supported candidates.** Prefer the signal that best answers the request and supports a specific observation or practice task. Consider repetition, the scope of a measured deviation and known event consequences only to the extent recorded. A repeated signature with no causal context may be less useful than a directly supported item or efficiency finding.
+4. **Break a genuine tie by evidence coverage, then recurrence.** Explain the choice briefly in the main finding. Do not create numeric severity scores, presumed win impact or a causal ranking from incomplete data. If no candidate supports coaching interpretation, give a limited factual review and one targeted evidence-checking task.
+
+A repeated death signature establishes recurrence within this match, not the reason for the deaths. A peer deviation must retain the metric, time marker, sample size, actual cohort, selection basis and material mismatch. Personal progress describes comparable recorded matches, not a permanent habit or an effect caused by training.
+
+## Connect evidence to practice
+
+Select the finding first. Then choose a timestamped episode that illustrates that finding, or its exact measurement marker if no episode is established. Use the corresponding exercise family in the review template. A ready comparison is useful only when it concerns the selected finding; its availability is not a reason to assign an unrelated exercise.
+
+For a death-related finding, use the death policy to distinguish the runtime's priority-death candidate from the episode most relevant to the requested topic. A key episode need not be a turning point. Do not infer a cause or an alternative outcome from a before/after sequence alone.
 
 ## Mechanic horizon
 
-Use the shortest horizon the evidence can support:
+Use the narrowest horizon that answers the question with available evidence:
 
-| Horizon | What may be discussed | Boundary |
+| Horizon | Supported discussion | Boundary |
 |---|---|---|
-| Fight, seconds | confirmed death context, item/ability use, teamfight interval | no vision, intent, mana, enemy cooldowns, or guaranteed escape |
-| Lane/economy, minutes | observed phase aggregates and ready peer rows | do not confuse cumulative values with phase aggregates |
-| Draft/match | verified full draft and current mechanics | no role prescription or draft probability without the required evidence |
+| Fight, seconds | timestamped death context, item/ability use, teamfight interval | no inferred vision, intent, mana, cooldowns, readiness or guaranteed escape |
+| Lane/economy, minutes | observed aggregates and relevant ready comparisons | distinguish interval aggregates from cumulative values |
+| Draft/match | verified draft, current mechanics and sourced task facts | no generic role prescription or draft probability without required evidence |
+| Comparable matches | runtime-validated local progress, when requested | same player, hero, position, mode and current exact patch; no causal training claim |
 
-When two signals compete, choose the one higher in the priority order and present the other only as context. A training action must use one of the review contract’s two closed exercise templates. Any number must be grounded in a ready peer-baseline row with minute and sample size; without it, do not introduce quantities of any kind. Draft or role tasks need their capability and sourced task facts, not a generic hero or position prescription.
+Recorded quantities, performance targets and organizational practice counts have different evidence requirements; apply the source policy rather than treating every number as a peer-baseline target.

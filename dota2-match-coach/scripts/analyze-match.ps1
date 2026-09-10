@@ -4,7 +4,8 @@ param(
   [long]$AccountId,
   [string]$Hero,
   [ValidateRange(1, [int]::MaxValue)][int]$ParseTimeoutMs = 120000,
-  [string]$OutputDir
+  [string]$OutputDir,
+  [string]$HistoryDir
 )
 
 $runtimeArgs = @('--match-id', [string]$MatchId)
@@ -17,6 +18,9 @@ if ($PSBoundParameters.ContainsKey('Hero')) {
 $runtimeArgs += @('--parse-timeout-ms', [string]$ParseTimeoutMs)
 if ($PSBoundParameters.ContainsKey('OutputDir')) {
   $runtimeArgs += @('--output-dir', $OutputDir)
+}
+if ($PSBoundParameters.ContainsKey('HistoryDir')) {
+  $runtimeArgs += @('--history-dir', $HistoryDir)
 }
 
 & node (Join-Path $PSScriptRoot 'analyze-match.mjs') @runtimeArgs

@@ -50,8 +50,8 @@ test('weights weekly means by their own sample size and keeps a per-minute match
   ]);
 
   assert.deepEqual(merged, [
-    { minute: 10, matchCount: 400, cs: 46, networth: 3600 },
-    { minute: 25, matchCount: 50, cs: 150 },
+    { minute: 10, matchCount: 400, cs: 46, networth: 3600, metricSampleSizes: { cs: 400, networth: 400 } },
+    { minute: 25, matchCount: 50, cs: 150, metricSampleSizes: { cs: 50 } },
   ]);
 });
 
@@ -62,6 +62,17 @@ test('drops rows without a usable minute or sample size', () => {
     { time: 200, matchCount: 100, cs: 40 },
     null,
   ]]), []);
+});
+
+test('reports each metric sample size without counting weeks where that metric is missing', () => {
+  const points = mergeWeeklyCurves([
+    [{ time: 10, matchCount: 1, cs: 20, xp: 3000 }],
+    [{ time: 10, matchCount: 10_000, cs: null, xp: 4000 }],
+  ]);
+
+  assert.equal(points[0].matchCount, 10_001);
+  assert.equal(points[0].cs, 20);
+  assert.deepEqual(points[0].metricSampleSizes, { cs: 1, xp: 10_001 });
 });
 
 test('does not call STRATZ without a token', async () => {
@@ -101,7 +112,7 @@ test('sends exact STRATZ headers and one aliased request per week', async () => 
   assert.match(body.query, new RegExp(`week: ${2953 * WEEK}`));
   assert.match(body.query, new RegExp(`week: ${2954 * WEEK}`));
   assert.equal(result.status, 'ready');
-  assert.deepEqual(result.points, [{ minute: 10, matchCount: 400, cs: 46 }]);
+  assert.deepEqual(result.points, [{ minute: 10, matchCount: 400, cs: 46, metricSampleSizes: { cs: 400 } }]);
 });
 
 test('reports an empty sample instead of a ready baseline', async () => {
@@ -130,5 +141,5 @@ test('sums sample counters instead of averaging them', () => {
     [{ time: 10, matchCount: 60_000, winCount: 29_100, cs: 45 }],
   ]);
 
-  assert.deepEqual(merged, [{ minute: 10, matchCount: 100_000, winCount: 49_500, cs: 43 }]);
+  assert.deepEqual(merged, [{ minute: 10, matchCount: 100_000, winCount: 49_500, cs: 43, metricSampleSizes: { cs: 100_000 } }]);
 });

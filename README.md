@@ -20,10 +20,13 @@ The project targets only the latest exact subpatch. Older matches or matches tha
 - dependency-free PowerShell and POSIX wrappers;
 - player selection by exact English hero name for reviewing someone else's match;
 - automatic Russian or English user-facing reviews based on the user's language.
+- full, brief, and focused reviews with one exercise linked to the main finding;
+- optional personal progress from comparable saved matches on the current exact patch;
+- peer comparisons protected against incomplete death timelines and metric-specific missing samples.
 
 Deep raw `.dem` analysis is intentionally outside runtime v1: without it, the skill cannot reliably explain every input or missed creep. The baseline runtime collects is a peer sample — same hero, position and bracket on the current patch — reported as a mean with its sample size, not as a percentile.
 
-The statistical draft model, the self and strong-player baselines, and deep `.dem` analysis are tracked in [ROADMAP.md](ROADMAP.md).
+The statistical draft model, stronger peer distributions and strong-player baselines, and deep `.dem` analysis are tracked in [ROADMAP.md](ROADMAP.md). Personal progress from saved normalized matches is available now.
 
 ## Requirements
 
@@ -66,7 +69,19 @@ The skill chooses the platform runtime, gathers data, and checks independent dat
 
 The complete user-facing review follows the user's language: a Russian request produces Russian output and an English request produces English output. An explicit language instruction overrides detection; mixed-language conversations follow the last substantive user message.
 
-Headings, the stage table, data limits, STRATZ notices, and the exercise are localized. Hero and item names, APIs, JSON/schema keys, data gates, and error codes remain unchanged.
+Headings, the stage table, data limits, source notices, and the exercise are localized. Hero and item names retain their source spelling. Internal schema keys, capability names, and error codes stay in evidence artifacts rather than coaching prose.
+
+## Review scope and progress
+
+Ask for a full review, a brief review, or a particular topic such as items or last hits at ten minutes. The skill selects the main finding by the requested scope, evidence quality, and a useful next action. Repeated death observations do not automatically take priority over the question you asked. Practice counts are proposed plans, while normative game targets require a suitable sourced comparison.
+
+To compare with earlier saved analyses of the same player:
+
+```sh
+./dota2-match-coach/scripts/analyze-match.sh MATCH_ID ACCOUNT_ID --history-dir ./dota2-match-coach/output --output-dir ./dota2-match-coach/output
+```
+
+PowerShell accepts `-HistoryDir` alongside its existing named options. Personal means require at least two distinct earlier matches with the same hero, position, game mode, and exact current patch, and use each metric's own observed sample count. This feature reads existing normalized JSON artifacts; it does not automatically fetch account history. Changes describe those matches and do not prove a training effect. See [personal progress](dota2-match-coach/references/progress.md).
 
 ## Update and remove
 
@@ -87,7 +102,7 @@ The runtime writes independent `dataQuality.capabilities`:
 - `deathContext` and `deathPattern` — complete death contexts or a repeated confirmed signature are available;
 - `currentPatch` — the latest exact subpatch is verified.
 
-A false capability blocks only its corresponding conclusion. A valid `deathPattern: false` is an observed absence of repetition, not missing data.
+A false capability blocks only its corresponding conclusion. `deathPattern: false` means no confirmed repeated signature was produced; check death coverage before claiming that repetition was absent.
 
 ## Validation
 
@@ -98,6 +113,8 @@ node --test test/runtime/*.test.mjs dota2-match-coach/scripts/test/*.test.mjs
 ```
 
 The combined suite contains the repository regressions and the v2 skill tests. It needs no network access unless the opt-in live-smoke environment variables are present. Platform-specific and inactive live tests skip safely.
+
+The final coaching answer is also evaluated through [offline consuming-agent scenarios](test/coaching/README.md), including missing replay data, zero deaths, mismatched ranks, and focused questions. These evaluations are separate from the Node test suite.
 
 ## Repository structure
 

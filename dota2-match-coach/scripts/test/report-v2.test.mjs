@@ -101,6 +101,36 @@ test('writeArtifacts serializes only the projectArtifact output', async () => {
   }
 });
 
+test('artifact retains metric sample sizes without serializing arbitrary baseline fields', () => {
+  const model = v2Model();
+  model.baseline.sameHeroPositionRankPatch.points[0].metricSampleSizes = { cs: 201, xp: 500, secret: 'do-not-export' };
+  const point = projectArtifact(model).baseline.sameHeroPositionRankPatch.points[0];
+  assert.deepEqual(point.metricSampleSizes, { cs: 201, xp: 500 });
+});
+
+test('progress evidence survives projection and reports actual per-metric samples', () => {
+  const model = v2Model();
+  model.progress = {
+    status: 'ready', reason: null, eligibleMatchCount: 3, excludedMatchCount: 1, minimumPriorMatches: 2,
+    comparisons: [{ metric: 'lh', minute: 10, current: 50, mean: 40, delta: 10, matchCount: 2, source: 'opendota', raw: 'do-not-export' }],
+    deathObservations: [{ observation: 'isolated', currentCount: 2, currentDeaths: 3, priorCount: 1, priorDeaths: 6, priorMatchCount: 2, currentShare: 2/3, priorMeanShare: 1/6 }],
+    history: [{ matchId: 111, startTime: 1000, raw: 'do-not-export' }],
+    limitations: ['descriptive_only', 'no_causal_inference'],
+    historyLoad: { status: 'ready', reason: null, skippedFileCount: 1, truncated: false, path: 'do-not-export' },
+    raw: 'do-not-export',
+  };
+  const artifact = projectArtifact(model);
+  assert.equal(artifact.progress.comparisons[0].matchCount, 2);
+  assert.equal(artifact.progress.comparisons[0].mean, 40);
+  assert.equal(artifact.progress.deathObservations[0].priorMatchCount, 2);
+  assert.deepEqual(artifact.progress.history, [{ matchId: 111, startTime: 1000 }]);
+  assert.doesNotMatch(JSON.stringify(artifact), /do-not-export/);
+  const markdown = renderEvidenceMarkdown(artifact);
+  assert.match(markdown, /Personal progress/);
+  assert.match(markdown, /\| lh \| 10:00 \| 50 \| 40 \| 10 \| 2 \|/);
+  assert.match(markdown, /descriptive_only/);
+});
+
 test('evidence Markdown inventories names, unavailable observations, and compact death evidence without legacy gates', () => {
   const markdown = renderEvidenceMarkdown(projectArtifact(v2Model()));
 

@@ -29,6 +29,20 @@ The shell wrapper remains positional on macOS/Linux:
 
 An account ID or exact English hero name is required. If both are passed, they must resolve to the same participant. Hero-only selection is for a player whose account is not known; it does not establish that the match belongs to the requester.
 
+## Optional personal history
+
+To compare with earlier saved analyses, pass `--history-dir` to the shell/Node entrypoint, or `-HistoryDir` to PowerShell. The directory may also be the output directory: the current match and duplicate matches are excluded before writing the new result.
+
+```sh
+./scripts/analyze-match.sh 8970339828 123456 --history-dir ./output --output-dir ./output
+```
+
+```powershell
+.\scripts\analyze-match.ps1 -MatchId 8970339828 -AccountId 123456 -HistoryDir .\output -OutputDir .\output
+```
+
+History is optional and local. A missing or unreadable directory leaves the match review available with an unavailable progress result and a safe reason. Only prior matches on the same account, hero, position, game mode, and currently verified exact patch can contribute. See [personal progress](progress.md) for interpretation and minimum samples.
+
 ## Opt-in live release smoke
 
 The repository contains no saved live match, account, hero, or token. To run the smoke, select a fresh public match from the current exact subpatch, then set its match ID and either its account ID or exact English hero name only in the current shell session:
@@ -60,6 +74,9 @@ The successful JSON has `schemaVersion: "2.0.0"`. Inspect these sections before 
 - `lane`: selected lane, verified physical opponents, and a safe unknown reason when no matchup can be established;
 - `deathAnalysis`: every selected-player death context, confirmed observations, unavailable prerequisites, same-match patterns, and priority death time;
 - `baseline`: ready peer-mean comparisons with metric, minute, sample size, and bracket basis.
+- `baseline.sameHeroPositionRankPatch.points[].metricSampleSizes`: the observed sample size per source metric; each comparison's `matchCount` uses that metric's own sample size. Death comparisons require a complete, consistent event count; missing events do not become zero.
+- `baseline.sameHeroPositionRankPatch.weeks`: epoch-week indices, not calendar week numbers; a week starts at `index * 604800` Unix seconds. The runtime includes only complete weeks inside the verified current patch.
+- `progress`, when history was requested: selected prior matches, per-metric means and sample sizes, observed death-condition shares, and history-loading limits. This is a descriptive personal reference, separate from peer baseline.
 
 The deterministic Markdown next to the JSON is an evidence inventory. It may name sources and missing data, but it is not the final player-facing review. Follow the source policy, death policy, decision stack, and review contract after inspecting the JSON.
 

@@ -58,7 +58,8 @@ function statsAlias(alias, { heroId, position, bracket, week }) {
 }
 
 // Means are weighted by their own week's sample size, so a thin week never
-// outweighs a dense one. Every minute keeps its own matchCount.
+// outweighs a dense one. Each metric retains the sample actually contributing to
+// its mean; a week missing that metric must not inflate its comparison confidence.
 export function mergeWeeklyCurves(curves) {
   const byMinute = new Map();
   for (const curve of curves) {
@@ -85,12 +86,13 @@ export function mergeWeeklyCurves(curves) {
   return [...byMinute.values()]
     .sort((left, right) => left.minute - right.minute)
     .map((point) => {
-      const merged = { minute: point.minute };
+      const merged = { minute: point.minute, metricSampleSizes: {} };
       for (const metric of BASELINE_COUNTS) {
         if (point.counts.has(metric)) merged[metric] = point.counts.get(metric);
       }
       for (const [metric, { total, weight }] of point.sums) {
         merged[metric] = weight > 0 ? Number((total / weight).toFixed(2)) : null;
+        merged.metricSampleSizes[metric] = weight;
       }
       return merged;
     });

@@ -111,7 +111,12 @@ function projectBaseline(baseline) {
       ...pickStrings(sample, ['position', 'bracket', 'bracketLabel', 'bracketSource', 'patch', 'statistic', 'source']),
       weeks: Array.isArray(sample.weeks) ? sample.weeks.filter(Number.isInteger) : [],
       points: Array.isArray(sample.points)
-        ? sample.points.map((point) => pickNumbers(point, BASELINE_POINT_FIELDS, { nullable: true }))
+        ? sample.points.map((point) => ({
+          ...pickNumbers(point, BASELINE_POINT_FIELDS, { nullable: true }),
+          ...(point.metricSampleSizes && typeof point.metricSampleSizes === 'object'
+            ? { metricSampleSizes: pickNumbers(point.metricSampleSizes, BASELINE_POINT_FIELDS.slice(2), { nullable: true }) }
+            : {}),
+        }))
         : [],
     },
     comparisons: Array.isArray(baseline?.comparisons)
@@ -124,6 +129,28 @@ function projectBaseline(baseline) {
   };
   if (typeof baseline?.error?.code === 'string') projected.error = { code: baseline.error.code };
   return projected;
+}
+
+function projectProgress(progress) {
+  return {
+    ...pickScalars(progress, ['status', 'reason']),
+    ...pickNumbers(progress, ['eligibleMatchCount', 'excludedMatchCount', 'minimumPriorMatches']),
+    comparisons: Array.isArray(progress.comparisons) ? progress.comparisons.map((row) => ({
+      ...pickStrings(row, ['metric', 'source']),
+      ...pickNumbers(row, ['minute', 'current', 'mean', 'delta', 'matchCount'], { nullable: true }),
+    })) : [],
+    deathObservations: Array.isArray(progress.deathObservations) ? progress.deathObservations.map((row) => ({
+      ...pickStrings(row, ['observation']),
+      ...pickNumbers(row, ['currentCount', 'currentDeaths', 'priorCount', 'priorDeaths', 'priorMatchCount', 'priorMatchesWithObservation', 'currentShare', 'priorMeanShare'], { nullable: true }),
+    })) : [],
+    history: Array.isArray(progress.history) ? progress.history.map((row) => pickNumbers(row, ['matchId', 'startTime'])) : [],
+    limitations: stringArray(progress.limitations) ?? [],
+    ...(progress.historyLoad ? { historyLoad: {
+      ...pickScalars(progress.historyLoad, ['status', 'reason']),
+      ...pickNumbers(progress.historyLoad, ['skippedFileCount']),
+      ...pickBooleans(progress.historyLoad, ['truncated']),
+    } } : {}),
+  };
 }
 
 function projectSource(source) {
@@ -319,6 +346,7 @@ export function projectArtifact(model = {}) {
     },
   };
   if (stringArray(model.warnings) !== undefined) artifact.warnings = stringArray(model.warnings);
+  if (model.progress != null) artifact.progress = projectProgress(model.progress);
   return artifact;
 }
 
@@ -346,6 +374,38 @@ function baselineRows(baseline) {
     Number.isFinite(row.matchCount) ? String(row.matchCount) : 'insufficient data',
     row.crossSourceProxy ? 'cross-source proxy' : '—',
   ].join(' | ')).map((line) => `| ${line} |`);
+}
+
+function progressMarkdown(progress) {
+  if (!progress) return [];
+  return [
+    '## Personal progress',
+    '',
+    'Descriptive comparison with prior matches of the same player, hero, position, mode, and exact patch. Differences do not establish a training effect.',
+    '',
+    table([
+      ['status', valueOf(progress.status)], ['reason', valueOf(progress.reason)],
+      ['eligible prior matches', valueOf(progress.eligibleMatchCount)],
+      ['excluded artifacts', valueOf(progress.excludedMatchCount)],
+      ['limitations', list(progress.limitations)],
+      ['history load', valueOf(progress.historyLoad?.status)],
+      ['skipped history files', valueOf(progress.historyLoad?.skippedFileCount)],
+      ['history truncated', valueOf(progress.historyLoad?.truncated)],
+    ]),
+    '',
+    '| Metric | Minute | Current | Prior mean | Delta | Prior matches for metric |',
+    '| --- | --- | --- | --- | --- | --- |',
+    ...(progress.comparisons ?? []).map((row) => `| ${row.metric} | ${clock(row.minute * 60)} | ${round(row.current)} | ${round(row.mean)} | ${round(row.delta)} | ${round(row.matchCount)} |`),
+    '',
+    '| Death observation | Current count / deaths | Prior count / deaths | Current share | Mean prior match share | Prior matches |',
+    '| --- | --- | --- | --- | --- | --- |',
+    ...(progress.deathObservations ?? []).map((row) => `| ${row.observation} | ${round(row.currentCount)} / ${round(row.currentDeaths)} | ${round(row.priorCount)} / ${round(row.priorDeaths)} | ${round(row.currentShare)} | ${round(row.priorMeanShare)} | ${round(row.priorMatchCount)} |`),
+    '',
+    '| Prior match | Start time (Unix seconds) |',
+    '| --- | --- |',
+    ...(progress.history ?? []).map((row) => `| ${row.matchId} | ${row.startTime} |`),
+    '',
+  ];
 }
 
 function clock(seconds) {
@@ -512,6 +572,7 @@ export function renderEvidenceMarkdown(model = {}) {
       ['unresolvedCount', valueOf({ value: model.deathAnalysis?.unresolvedCount })],
     ]),
     '',
+    ...progressMarkdown(model.progress),
     '## Capabilities, missing, and warnings',
     '',
     table([
