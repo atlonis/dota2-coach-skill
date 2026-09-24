@@ -52,7 +52,7 @@ Required in full mode; in focused mode cover the requested category. Keep the fu
 
 When relevant, add the recorded skill build or objectives the player took part in; neither is required in every review.
 
-An unavailable category does not license generic hero, role, item or ability advice. Recorded purchase or use alone does not prove the choice was tactically correct or incorrect.
+An unavailable category does not license generic hero, role, item or ability advice. Recorded purchase or use alone does not prove the choice was tactically correct or incorrect. Current-patch mechanics may explain a recorded item or ability, such as what an active does, its cost or cooldown; they never stand in for a missing match fact.
 
 ## Стадии and progress
 
@@ -71,6 +71,7 @@ State only limits, conflicts, unknowns or comparison mismatches that change an i
 - All available deaths were reviewed; full mode accounts for every timecode, and other modes do not imply omitted deaths were absent.
 - Facts, hypotheses and unavailable evidence remain distinct; a repeated signature is not a causal diagnosis, permanent habit or item-use verdict.
 - A team-economy change, objective or ward placement is described as measured or recorded; its cause, vision or participation is claimed only with supporting evidence.
+- Every stated mechanic comes from the artifact's current-patch mechanics and explains a recorded fact; none is used as evidence of readiness, affordability or effect.
 - Factual numbers and event times match their own artifact fields; cumulative and interval quantities are labelled correctly.
 - A performance target has the required relevant, matching ready comparison. Organizational counts are clearly proposed practice workload.
 - Material source conflicts, comparison mismatches and unknowns are explicit; local progress claims use validated comparable artifacts and assert no causal training effect.

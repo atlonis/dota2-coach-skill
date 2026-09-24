@@ -28,6 +28,7 @@ export function computeCapabilities(model = {}) {
     wardPlacements: model.wards?.status === 'ready',
     buybackLog: model.buybacks?.status === 'ready',
     skillBuild: model.skillBuild?.status === 'ready',
+    currentMechanics: ['ready', 'partial'].includes(model.mechanics?.status),
     currentPatch: model.patch?.isCurrentExactPatch?.value === true,
   };
 }
@@ -46,6 +47,7 @@ export function qualityFromCapabilities(capabilities, warnings = []) {
     wardPlacements: 'ward placements',
     buybackLog: 'buyback log',
     skillBuild: 'skill build',
+    currentMechanics: 'current-patch mechanics',
     currentPatch: 'current exact patch',
   };
   return {

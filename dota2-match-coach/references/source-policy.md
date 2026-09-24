@@ -10,7 +10,7 @@ The runtime supports only the current exact Dota 2 sub-patch. An older or unveri
 | Team economy, objectives, wards, buybacks, skill build | OpenDota parsed match | logged values and events locate what happened, not why |
 | Participants, lane, playback, peer baseline | STRATZ | token and each relevant capability are required |
 | Exact current sub-patch | Valve timeline | unavailable verification is not a current-patch result |
-| Mechanics | Liquipedia cross-checked with Valve | explains a fact; does not create match evidence |
+| Mechanics | Valve datafeed for the current exact patch, collected by the runtime; Liquipedia only for an interaction the datafeed text leaves open | explains a recorded fact; does not create match evidence |
 | Personal progress, when requested | runtime-validated normalized local artifacts supplied through `--history-dir` | require comparable player, hero, position, mode and current exact patch; descriptive change only |
 
 Do not add Dota2ProTracker, a raw `.dem`, smoke or historical-patch analysis to the claim set. Personal comparison is permitted only through the validated local-history path above; arbitrary prior-match text, conversation memory or a profile snapshot is not a personal baseline.
@@ -33,6 +33,15 @@ The parsed match records context around the player's own facts. Each section has
 - **Wards** are the selected player's recorded placements and the time each ward left the game, plus side totals when all five players' logs exist. A placement does not establish vision at a moment, what the ward revealed, whether it expired or was destroyed, or a named map location. A count is not a vision score or a quota.
 - **Buybacks** are recorded buyback times; they do not establish that a buyback was necessary or effective.
 - **Skill build** is the recorded upgrade order. The order is not the hero level of each upgrade, and a recorded choice does not establish that another choice was better.
+
+## Current-patch mechanics
+
+The artifact's mechanics are Valve datafeed values for the current exact patch: the selected hero's abilities, listed values and talents, the other heroes' abilities, the selected player's purchased items, and current sub-patch notes that touch them. Use them instead of memory to explain what a recorded ability, talent or item does, costs or requires.
+
+- They never supply match state. A cooldown, mana cost or effect in the datafeed does not establish that an ability or item was ready, affordable, used well or effective at a moment of the match.
+- A listed talent or value is the patch definition, not the player's choice; only the recorded skill build and purchases show what the player had.
+- Patch notes describe what changed in the current sub-patch, not how the change affected this match.
+- A description marked with an unknown value stays unknown; do not fill it from memory. When a needed mechanic is missing from the artifact, say so rather than relying on general knowledge.
 
 ## Language, names and ownership
 

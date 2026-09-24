@@ -3,6 +3,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createOpenDotaClient } from './lib/opendota.mjs';
 import { createStratzClient } from './lib/stratz.mjs';
 import { createValveClient } from './lib/valve.mjs';
+import { createDatafeedClient } from './lib/datafeed.mjs';
+import { mechanicsRequest, recipeItemIds } from './lib/mechanics.mjs';
 import { bracketBasicFor, createBaselineClient, fullWeeksWithin, positionEnumFor } from './lib/baseline.mjs';
 import { resolveAccountIdByHero } from './lib/heroes.mjs';
 import { NormalizationError, normalizeEvidence } from './lib/normalize.mjs';
@@ -109,7 +111,21 @@ async function loadBaseline(model, valve, baselineClient, nowSeconds) {
   return { ...baseline, rankCode: selector.rankCode, bracketSource: selector.bracketSource };
 }
 
-export async function runAnalysis(options, { openDotaClient, stratzClient, valveClient, baselineClient, normalize, write, now = () => Date.now() } = {}) {
+// Mechanics are requested in the same second pass as the baseline: the heroes and
+// purchased items are known only after the first normalization. A datafeed failure
+// leaves mechanics unavailable and never cancels the match facts.
+async function loadMechanics(model, valve, datafeedClient, entityConstants) {
+  const request = mechanicsRequest(model, { recipeItemIds: recipeItemIds(entityConstants?.items) });
+  if (request.selectedHeroId == null) return { request, reason: 'hero_unknown' };
+  try {
+    const fetched = await datafeedClient.loadMechanics({ heroIds: request.heroIds, itemIds: request.itemIds, patch: valve?.currentPatch ?? null });
+    return { request, fetched };
+  } catch {
+    return { request, reason: 'datafeed_failed' };
+  }
+}
+
+export async function runAnalysis(options, { openDotaClient, stratzClient, valveClient, baselineClient, datafeedClient, normalize, write, now = () => Date.now() } = {}) {
   const parseTimeoutMs = options?.parseTimeoutMs ?? DEFAULT_PARSE_TIMEOUT_MS;
   const outputDir = options?.outputDir ?? DEFAULT_OUTPUT_DIR;
   const openDota = await openDotaClient.loadMatch(options.matchId, { parseTimeoutMs });
@@ -162,8 +178,9 @@ export async function runAnalysis(options, { openDotaClient, stratzClient, valve
     if (error instanceof NormalizationError) throw new AnalysisError(error.code);
     throw error;
   }
-  if (baselineClient) {
-    const baseline = await loadBaseline(model, valve, baselineClient, Math.floor(now() / 1_000));
+  if (baselineClient || datafeedClient) {
+    const baseline = baselineClient ? await loadBaseline(model, valve, baselineClient, Math.floor(now() / 1_000)) : undefined;
+    const mechanics = datafeedClient ? await loadMechanics(model, valve, datafeedClient, entityConstants) : undefined;
     model = normalize({
       matchId: options.matchId,
       accountId,
@@ -172,6 +189,7 @@ export async function runAnalysis(options, { openDotaClient, stratzClient, valve
       valve,
       entityConstants,
       baseline,
+      mechanics,
       generatedAt: model.generatedAt,
     });
   }
@@ -197,6 +215,7 @@ function defaultDependencies() {
     stratzClient: createStratzClient({ apiKey: process.env.STRATZ_API_KEY }),
     valveClient: createValveClient(),
     baselineClient: createBaselineClient({ apiKey: process.env.STRATZ_API_KEY }),
+    datafeedClient: createDatafeedClient(),
     normalize: normalizeEvidence,
     write: writeArtifacts,
   };
@@ -226,6 +245,7 @@ export async function runCli(argv, { dependencies = defaultDependencies(), stdou
       stdout(`${source}: ${model.sources?.[source]?.status ?? 'unavailable'}`);
     }
     stdout(`baseline: ${model.baseline?.status ?? 'unavailable'}`);
+    stdout(`mechanics: ${model.mechanics?.status ?? 'unavailable'}`);
     if (model.progress) stdout(`progress: ${model.progress.status}`);
     stdout(`json: ${artifacts.jsonPath}`);
     stdout(`markdown: ${artifacts.markdownPath}`);

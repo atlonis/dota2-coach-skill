@@ -227,3 +227,45 @@ test('shows unavailable match context without empty-looking tables', () => {
   assert.match(markdown, /## Team economy\n\n\| Field \| Value \|\n\| --- \| --- \|\n\| status \| unavailable \|\n\| reason \| series_unavailable \|/);
   assert.match(markdown, /\| ward logs \| unavailable \(ward_logs_unavailable\) \|/);
 });
+
+function mechanicsInput() {
+  const hero = {
+    id: 90, name_loc: 'Keeper of the Light', primary_attr: 2, attack_capability: 2, attack_range: 600, lore_loc: 'leak-token',
+    abilities: [{
+      id: 5478, name_loc: 'Illuminate', type: 0, max_level: 4, desc_loc: 'Deals %damage% damage.', cooldowns: [10], mana_costs: [150], cast_ranges: [1800],
+      special_values: [{ name: 'damage', values_float: [100, 150], heading_loc: 'DAMAGE:', values_shard: [], values_scepter: [] }],
+    }],
+    talents: [],
+  };
+  const item = { id: 102, name_loc: 'Force Staff', item_cost: 2200, desc_loc: '<h1>Active: Force</h1> Pushes a unit.', cooldowns: [19], mana_costs: [100], cast_ranges: [550], special_values: [], notes_loc: [] };
+  return {
+    request: { selectedHeroId: 90, heroIds: [90], itemIds: [102] },
+    fetched: {
+      status: 'ready', patch: 'test-current-subpatch',
+      heroes: [{ kind: 'hero', id: 90, status: 'ready', record: hero }],
+      items: [{ kind: 'item', id: 102, status: 'ready', record: item }],
+      patchNotes: { kind: 'patchNotes', id: 'test-current-subpatch', status: 'ready', record: { patch_number: 'test-current-subpatch', heroes: [], items: [], success: true } },
+    },
+  };
+}
+
+test('projects mechanics through their allowlist and summarizes them in the inventory', () => {
+  const model = normalizeEvidence({ ...fullMatchFixture(), mechanics: mechanicsInput() });
+  model.mechanics.selectedHero.lore = 'leak-token';
+  model.mechanics.items[0].rawRecord = { token: 'leak-token' };
+
+  const artifact = projectArtifact(model);
+  const markdown = renderEvidenceMarkdown(artifact);
+
+  assert.equal(artifact.mechanics.status, 'ready');
+  assert.equal(artifact.mechanics.source, 'valve_datafeed');
+  assert.deepEqual(artifact.mechanics.selectedHero.abilities[0].values, [{ label: 'Damage', value: '100 / 150' }]);
+  assert.equal(artifact.mechanics.selectedHero.abilities[0].description, 'Deals 100 / 150 damage.');
+  assert.equal(artifact.mechanics.items[0].description, 'Active: Force. Pushes a unit.');
+  assert.equal(artifact.dataQuality.capabilities.currentMechanics, true);
+  assert.doesNotMatch(JSON.stringify(artifact), /leak-token|lore_loc|special_values/);
+  assert.match(markdown, /## Current-patch mechanics/);
+  assert.match(markdown, /\| selected hero \| Keeper of the Light \(intelligence, ranged\) \|/);
+  assert.match(markdown, /\| abilities \| Illuminate \(cooldown 10; mana 150\) \|/);
+  assert.match(markdown, /\| items \| Force Staff \(cost 2200\) \|/);
+});

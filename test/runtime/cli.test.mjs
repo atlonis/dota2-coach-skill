@@ -355,7 +355,7 @@ test('CLI boundary returns success and prints only safe statuses and artifact pa
   });
 
   assert.equal(exitCode, 0);
-  assert.deepEqual(stdout, ['opendota: ready', 'valve: ready', 'stratz: unavailable', 'entityConstants: ready', 'baseline: unavailable', 'json: safe.json', 'markdown: safe.md']);
+  assert.deepEqual(stdout, ['opendota: ready', 'valve: ready', 'stratz: unavailable', 'entityConstants: ready', 'baseline: unavailable', 'mechanics: unavailable', 'json: safe.json', 'markdown: safe.md']);
   assert.deepEqual(stderr, []);
 });
 

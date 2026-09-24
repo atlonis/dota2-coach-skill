@@ -26,7 +26,7 @@ Use the narrowest horizon that answers the question with available evidence:
 | Fight, seconds | timestamped death context, item/ability use, teamfight interval | no inferred vision, intent, mana, cooldowns, readiness or guaranteed escape |
 | Lane/economy, minutes | observed aggregates and relevant ready comparisons | distinguish interval aggregates from cumulative values |
 | Team economy and objectives, minutes | per-minute team difference, its largest swings and recorded objectives | a swing locates a change in the match situation; its cause needs event evidence |
-| Draft/match | verified draft, current mechanics and sourced task facts | no generic role prescription or draft probability without required evidence |
+| Draft/match | verified draft, the artifact's current-patch mechanics and sourced task facts | no generic role prescription or draft probability without required evidence; mechanics explain a finding, they do not create one |
 | Comparable matches | runtime-validated local progress, when requested | same player, hero, position, mode and current exact patch; no causal training claim |
 
 Recorded quantities, performance targets and organizational practice counts have different evidence requirements; apply the source policy rather than treating every number as a peer-baseline target.

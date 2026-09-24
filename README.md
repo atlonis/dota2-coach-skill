@@ -15,6 +15,7 @@ The project targets only the latest exact subpatch. Older matches or matches tha
 - four game stages, time series, and within-match extrema, with every per-minute value keyed by the replay's recorded sample time;
 - team earned-gold, XP and, when recorded, net worth difference per minute, with per-stage changes, leader changes and the largest swings;
 - recorded objectives (buildings, Roshan, Aegis, Tormentor, first blood, couriers), ward placements, buybacks, and the skill build;
+- current-patch mechanics from the Valve datafeed: the selected hero's abilities, values and talents, the other heroes' abilities, the purchased items, and the current sub-patch notes that touch them, so reviews explain abilities and items without relying on model memory;
 - allowlisted event timeline and teamfights bounded by match duration;
 - position jumps labelled with their cause, so an ally warp is never read as a solo teleport;
 - explicit source conflicts with alternatives and provenance preserved;
@@ -104,6 +105,7 @@ The runtime writes independent `dataQuality.capabilities`:
 - `deathContext` and `deathPattern` — complete death contexts or a repeated confirmed signature are available;
 - `teamEconomy` and `objectiveTimeline` — the per-minute team difference and the recorded objectives are available;
 - `wardPlacements`, `buybackLog`, and `skillBuild` — the selected player's corresponding logs are available;
+- `currentMechanics` — current-patch mechanics for the selected hero are available;
 - `currentPatch` — the latest exact subpatch is verified.
 
 A false capability blocks only its corresponding conclusion. `deathPattern: false` means no confirmed repeated signature was produced; check death coverage before claiming that repetition was absent.
@@ -138,4 +140,4 @@ Local `output/`, secrets, and process-specific `.superpowers/` artifacts are exc
 
 ## Source policy
 
-OpenDota is the primary source for the match object and parse job. STRATZ adds position/lane/playback enrichment, while Valve verifies the exact current subpatch. Dota2ProTracker, the old Fandom wiki, and Valve `GetMatchDetails` are not runtime dependencies. See the full [source policy](dota2-match-coach/references/source-policy.md).
+OpenDota is the primary source for the match object and parse job. STRATZ adds position/lane/playback enrichment, while Valve verifies the exact current subpatch and its datafeed supplies current-patch mechanics. Dota2ProTracker, the old Fandom wiki, and Valve `GetMatchDetails` are not runtime dependencies. See the full [source policy](dota2-match-coach/references/source-policy.md).

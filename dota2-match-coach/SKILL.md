@@ -10,7 +10,7 @@ Produce an evidence-backed review for the **current exact Dota 2 sub-patch**, us
 ## Workflow
 
 1. Read [runtime](references/runtime.md), run its wrapper, and inspect the normalized JSON and evidence Markdown. Check source status, warnings, nulls and `dataQuality.capabilities` before interpreting a result.
-2. Apply [source policy](references/source-policy.md). A closed capability prevents the corresponding conclusion, while supported facts still permit a narrower review. Keep provenance, source conflicts and material unknowns visible.
+2. Apply [source policy](references/source-policy.md). A closed capability prevents the corresponding conclusion, while supported facts still permit a narrower review. Keep provenance, source conflicts and material unknowns visible. Explain abilities and items from the artifact's current-patch mechanics, not from memory.
 3. Choose the response mode from the request: **full** by default, **brief** for a short summary, **focused** for a named topic. A request for both brevity and a topic uses a short focused review. Follow [review template](references/review-template.md) for mode contents and limits.
 4. Review every selected-player death when death evidence exists, following [death policy](references/death-analysis.md). Keep complete death evidence in the artifacts; the response mode controls how much to display.
 5. Use [decision stack](references/decision-stack.md) to choose one supported priority relevant to the request. Connect the main finding, its key episode or measurement, and **one practical exercise**. Repeated deaths do not automatically outrank better-supported, relevant evidence.

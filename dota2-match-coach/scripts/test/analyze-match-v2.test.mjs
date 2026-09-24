@@ -218,3 +218,44 @@ test('unreadable requested history preserves match facts and reports safe progre
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+function datafeedStub(calls, respond) {
+  return { loadMechanics: async (request) => { calls.push(request); return respond(request); } };
+}
+
+test('requests current-patch mechanics for the match heroes and bought items in the second pass', async () => {
+  const input = fullMatchFixture();
+  const calls = [];
+  const dependencies = fixtureDependencies({ input });
+  dependencies.datafeedClient = datafeedStub(calls, (request) => ({
+    status: 'ready',
+    patch: request.patch,
+    heroes: [{
+      kind: 'hero', id: 90, status: 'ready',
+      record: { id: 90, name_loc: 'Keeper of the Light', abilities: [{ id: 5478, name_loc: 'Illuminate (datafeed)', desc_loc: 'Channels a wave of light.', type: 0 }], talents: [] },
+    }],
+    items: [],
+    patchNotes: { kind: 'patchNotes', id: request.patch, status: 'failed', error: { code: 'http' } },
+  }));
+
+  const { model } = await runAnalysis({ matchId: input.matchId, accountId: input.accountId }, dependencies);
+
+  assert.deepEqual(calls, [{ heroIds: [90, 2, 3, 4, 5, 6, 7, 8, 9, 10], itemIds: [102], patch: 'test-current-subpatch' }]);
+  assert.equal(model.mechanics.status, 'partial');
+  assert.deepEqual(model.player.heroName, { value: 'Keeper of the Light', source: 'valve_datafeed' });
+  assert.equal(model.deathAnalysis.contexts[0].ownAbilityUses[0].ability.name, 'Illuminate (datafeed)');
+  assert.equal(model.dataQuality.capabilities.currentMechanics, true);
+});
+
+test('keeps the match review when the datafeed call fails outright', async () => {
+  const input = fullMatchFixture();
+  const dependencies = fixtureDependencies({ input });
+  dependencies.datafeedClient = { loadMechanics: async () => { throw new Error('unexpected'); } };
+
+  const { model } = await runAnalysis({ matchId: input.matchId, accountId: input.accountId }, dependencies);
+
+  assert.deepEqual([model.mechanics.status, model.mechanics.reason], ['unavailable', 'datafeed_failed']);
+  assert.equal(model.dataQuality.capabilities.currentMechanics, false);
+  assert.equal(model.deathAnalysis.contexts.length, 3);
+  assert.equal(model.player.heroName.source, 'opendota_constants');
+});

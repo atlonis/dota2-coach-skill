@@ -416,6 +416,123 @@ function projectSkillBuild(skillBuild) {
   };
 }
 
+const MAX_TEXT_LENGTH = 2000;
+
+function boundedText(value) {
+  return typeof value === 'string' && value.trim() && value.length <= MAX_TEXT_LENGTH ? value : null;
+}
+
+function numberArray(values) {
+  return Array.isArray(values) ? values.filter(Number.isFinite) : [];
+}
+
+function projectListedValues(values) {
+  return (Array.isArray(values) ? values : [])
+    .filter((row) => boundedText(row?.label) && boundedText(row?.value))
+    .map((row) => ({ label: row.label, value: row.value }));
+}
+
+function projectAbilityMechanics(row, full) {
+  return {
+    ability: projectEntityRef(row?.ability),
+    kind: ['basic', 'ultimate', 'innate'].includes(row?.kind) ? row.kind : null,
+    grantedBy: ['scepter', 'shard'].includes(row?.grantedBy) ? row.grantedBy : null,
+    description: boundedText(row?.description),
+    cooldowns: numberArray(row?.cooldowns),
+    manaCosts: numberArray(row?.manaCosts),
+    castRanges: numberArray(row?.castRanges),
+    scepter: boundedText(row?.scepter),
+    shard: boundedText(row?.shard),
+    ...(full ? { maxLevel: Number.isInteger(row?.maxLevel) ? row.maxLevel : null, values: projectListedValues(row?.values) } : {}),
+  };
+}
+
+function projectAttribute(attribute) {
+  return attribute && typeof attribute === 'object' ? pickNumbers(attribute, ['base', 'gain'], { nullable: true }) : null;
+}
+
+function heroTraits(hero) {
+  return {
+    primaryAttribute: ['strength', 'agility', 'intelligence', 'universal'].includes(hero?.primaryAttribute) ? hero.primaryAttribute : null,
+    attackType: ['melee', 'ranged'].includes(hero?.attackType) ? hero.attackType : null,
+  };
+}
+
+function projectPatchNoteRows(rows) {
+  return (Array.isArray(rows) ? rows : [])
+    .filter((row) => boundedText(row?.text))
+    .map((row) => ({ text: row.text, level: Number.isInteger(row.level) ? row.level : 1 }));
+}
+
+function projectPatchNotes(notes) {
+  if (!notes || typeof notes !== 'object') return null;
+  return {
+    status: notes.status === 'ready' ? 'ready' : 'unavailable',
+    version: boundedText(notes.version),
+    general: (Array.isArray(notes.general) ? notes.general : []).map((section) => ({
+      title: boundedText(section?.title), notes: projectPatchNoteRows(section?.notes),
+    })),
+    generalTruncated: notes.generalTruncated === true,
+    heroes: (Array.isArray(notes.heroes) ? notes.heroes : []).map((entry) => ({
+      hero: projectEntityRef(entry?.hero),
+      notes: projectPatchNoteRows(entry?.notes),
+      talentNotes: projectPatchNoteRows(entry?.talentNotes),
+      abilities: (Array.isArray(entry?.abilities) ? entry.abilities : []).map((ability) => ({
+        ability: projectEntityRef(ability?.ability), notes: projectPatchNoteRows(ability?.notes),
+      })),
+    })),
+    items: (Array.isArray(notes.items) ? notes.items : []).map((entry) => ({
+      item: projectEntityRef(entry?.item), notes: projectPatchNoteRows(entry?.notes),
+    })),
+  };
+}
+
+function projectMechanics(mechanics) {
+  const selected = mechanics?.selectedHero;
+  return {
+    status: ['ready', 'partial', 'unavailable'].includes(mechanics?.status) ? mechanics.status : 'unavailable',
+    reason: typeof mechanics?.reason === 'string' ? mechanics.reason : null,
+    source: mechanics?.source === 'valve_datafeed' ? 'valve_datafeed' : null,
+    patch: boundedText(mechanics?.patch),
+    selectedHero: selected && typeof selected === 'object' ? {
+      hero: projectEntityRef(selected.hero),
+      ...heroTraits(selected),
+      attributes: {
+        strength: projectAttribute(selected.attributes?.strength),
+        agility: projectAttribute(selected.attributes?.agility),
+        intelligence: projectAttribute(selected.attributes?.intelligence),
+      },
+      ...pickNumbers(selected, ['damageMin', 'damageMax', 'attackRate', 'attackRange', 'movementSpeed', 'armor', 'magicResistance'], { nullable: true }),
+      abilities: (Array.isArray(selected.abilities) ? selected.abilities : []).map((row) => projectAbilityMechanics(row, true)),
+      talents: (Array.isArray(selected.talents) ? selected.talents : []).map((row) => ({ ability: projectEntityRef(row?.ability) })),
+    } : null,
+    heroes: (Array.isArray(mechanics?.heroes) ? mechanics.heroes : []).map((hero) => ({
+      hero: projectEntityRef(hero?.hero),
+      ...heroTraits(hero),
+      attackRange: Number.isFinite(hero?.attackRange) ? hero.attackRange : null,
+      abilities: (Array.isArray(hero?.abilities) ? hero.abilities : []).map((row) => projectAbilityMechanics(row, false)),
+    })),
+    items: (Array.isArray(mechanics?.items) ? mechanics.items : []).map((item) => ({
+      item: projectEntityRef(item?.item),
+      cost: Number.isFinite(item?.cost) ? item.cost : null,
+      description: boundedText(item?.description),
+      cooldowns: numberArray(item?.cooldowns),
+      manaCosts: numberArray(item?.manaCosts),
+      castRanges: numberArray(item?.castRanges),
+      stats: projectListedValues(item?.stats),
+      notes: (Array.isArray(item?.notes) ? item.notes : []).filter((note) => boundedText(note)),
+    })),
+    patchNotes: projectPatchNotes(mechanics?.patchNotes),
+    unavailable: (Array.isArray(mechanics?.unavailable) ? mechanics.unavailable : [])
+      .filter((row) => ['hero', 'item', 'patch_notes'].includes(row?.kind))
+      .map((row) => ({
+        kind: row.kind,
+        id: Number.isSafeInteger(row.id) || boundedText(row.id) ? row.id : null,
+        reason: typeof row.reason === 'string' && /^[a-z_]{1,40}$/.test(row.reason) ? row.reason : 'unavailable',
+      })),
+  };
+}
+
 export function projectArtifact(model = {}) {
   const sources = Object.fromEntries(['opendota', 'stratz', 'valve', 'entityConstants']
     .filter((name) => Object.hasOwn(model.sources ?? {}, name))
@@ -487,6 +604,7 @@ export function projectArtifact(model = {}) {
     wards: projectWards(model.wards),
     buybacks: projectBuybacks(model.buybacks),
     skillBuild: projectSkillBuild(model.skillBuild),
+    mechanics: projectMechanics(model.mechanics),
     baseline: projectBaseline(model.baseline),
     deathAnalysis: {
       contexts: Array.isArray(model.deathAnalysis?.contexts) ? model.deathAnalysis.contexts.map(projectDeathContext) : [],
@@ -791,6 +909,47 @@ function playerActionsMarkdown(wards, buybacks, skillBuild) {
   ];
 }
 
+function levelsLabel(values) {
+  return Array.isArray(values) && values.length > 0 ? values.join(' / ') : null;
+}
+
+function abilitySummary(row) {
+  const parts = [
+    row.kind && row.kind !== 'basic' ? row.kind : null,
+    levelsLabel(row.cooldowns) ? `cooldown ${levelsLabel(row.cooldowns)}` : null,
+    levelsLabel(row.manaCosts) ? `mana ${levelsLabel(row.manaCosts)}` : null,
+  ].filter(Boolean);
+  return `${entityLabel(row.ability)}${parts.length > 0 ? ` (${parts.join('; ')})` : ''}`;
+}
+
+function mechanicsMarkdown(mechanics) {
+  const lines = [
+    '## Current-patch mechanics',
+    '',
+    'Valve datafeed values for the current exact patch, with full descriptions in the JSON artifact. They explain what a recorded ability or item does; they do not establish a cooldown, mana, or whether an effect applied at any moment of the match.',
+    '',
+  ];
+  const selected = mechanics?.selectedHero;
+  if (!selected) return [...lines, table(statusRows(mechanics)), ''];
+  const notes = mechanics.patchNotes;
+  const unavailable = Array.isArray(mechanics.unavailable) ? mechanics.unavailable : [];
+  return [
+    ...lines,
+    table([
+      ['status', valueOf({ value: mechanics.status })],
+      ['patch', valueOf({ value: mechanics.patch })],
+      ['selected hero', `${entityLabel(selected.hero)} (${[selected.primaryAttribute, selected.attackType].filter(Boolean).join(', ') || 'traits unavailable'})`],
+      ['abilities', list((selected.abilities ?? []).map(abilitySummary))],
+      ['talents', list((selected.talents ?? []).map((row) => entityLabel(row.ability)))],
+      ['other heroes', list((mechanics.heroes ?? []).map((hero) => entityLabel(hero.hero)))],
+      ['items', list((mechanics.items ?? []).map((item) => `${entityLabel(item.item)}${Number.isFinite(item.cost) ? ` (cost ${item.cost})` : ''}`))],
+      ['patch notes', notes ? `${valueOf({ value: notes.version })}: ${notes.heroes.length} hero entries, ${notes.items.length} item entries, ${notes.general.length} general sections${notes.generalTruncated ? ' (general notes truncated)' : ''}` : 'unavailable'],
+      ['unavailable', list(unavailable.map((row) => `${row.kind} ${row.id ?? '—'} (${row.reason})`))],
+    ]),
+    '',
+  ];
+}
+
 export function renderEvidenceMarkdown(model = {}) {
   const request = model.request ?? {};
   const match = model.match ?? {};
@@ -855,6 +1014,7 @@ export function renderEvidenceMarkdown(model = {}) {
     ...teamEconomyMarkdown(model.teamEconomy),
     ...objectivesMarkdown(model.objectives),
     ...playerActionsMarkdown(model.wards, model.buybacks, model.skillBuild),
+    ...mechanicsMarkdown(model.mechanics),
     '## Death contexts',
     '',
     '| Time | Facts | Observations | Unavailable |',

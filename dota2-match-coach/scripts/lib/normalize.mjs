@@ -7,6 +7,7 @@ import { buildDeathAnalysis } from './deaths.mjs';
 import { computeCapabilities, qualityFromCapabilities } from './capabilities.mjs';
 import { alignMinuteSeries } from './series.mjs';
 import { buildBuybacks, buildObjectives, buildSkillBuild, buildTeamEconomy, buildWards } from './match-context.mjs';
+import { buildMechanics, mechanicsEntityNames } from './mechanics.mjs';
 
 const SCHEMA_VERSION = '2.1.0';
 const PHASES = [
@@ -566,13 +567,16 @@ export function normalizeEvidence({
   stratz,
   valve,
   baseline,
+  mechanics,
   entityConstants,
   generatedAt,
 } = {}) {
   const { openPlayer, stratzPlayer } = resolvePlayer(accountId, openDota, stratz);
   const warnings = [];
   const aligned = minuteAlignedPlayer(openPlayer, warnings);
-  const catalog = buildEntityCatalog(entityConstants);
+  // Datafeed names, when fetched, take precedence over community constants.
+  const valveNames = mechanicsEntityNames(mechanics);
+  const catalog = buildEntityCatalog({ ...entityConstants, valve: valveNames });
   const participants = normalizeParticipants({
     openPlayers: playersFor(openDota),
     stratzPlayers: playersFor(stratz),
@@ -637,7 +641,7 @@ export function normalizeEvidence({
   const player = {
     accountId: sourced(accountId, openPlayer ? 'opendota' : 'stratz'),
     heroId,
-    heroName: sourced(entityRef(catalog, 'hero', heroId.value).name, 'opendota_constants'),
+    heroName: sourced(entityRef(catalog, 'hero', heroId.value).name, valveNames.heroes[heroId.value] ? 'valve_datafeed' : 'opendota_constants'),
     side,
     position,
     lane: sourced(lane.selectedLane, lane.status === 'ready' ? 'stratz' : null),
@@ -705,6 +709,7 @@ export function normalizeEvidence({
       deathTimelineComplete: !heroId.candidates && !side.candidates
         && completeDeathTimeline(stratzPlayer?.playbackData?.deathEvents, summary.deaths.value, durationField.value),
     }),
+    mechanics: buildMechanics(mechanics, { catalog }),
     eventInventory: eventInventory(events),
     warnings,
   };
