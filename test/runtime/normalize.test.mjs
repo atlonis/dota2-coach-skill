@@ -71,7 +71,7 @@ test('builds the pinned canonical evidence schema with provenance', () => {
     },
   });
 
-  assert.equal(model.schemaVersion, '2.0.0');
+  assert.equal(model.schemaVersion, '2.1.0');
   assert.deepEqual(model.match.startTime, { value: 1785400000, source: 'opendota' });
   assert.deepEqual(model.match.lobbyType, { value: 7, label: 'Ranked', source: 'opendota' });
   assert.deepEqual(model.match.gameMode, {
@@ -90,7 +90,7 @@ test('builds the pinned canonical evidence schema with provenance', () => {
   assert.deepEqual(model.summary.denies, { value: 1, source: 'opendota' });
   assert.deepEqual(model.items.finalInventory.map((item) => item.value.id), [50, 60, 70, 80, 90, 100]);
   assert.deepEqual(model.items.purchases[0], { time: 80, item: { id: null, name: null }, source: 'opendota' });
-  assert.deepEqual(model.series.denies, { values: [0, 0, 1], source: 'opendota' });
+  assert.deepEqual(model.series.denies, { values: [0, 0, 1], source: 'opendota', minuteBasis: 'array_index' });
   assert.deepEqual(model.events.deaths[0], { time: 100, attacker: 8, positionX: 10, positionY: 20, timeDead: 12, source: 'stratz' });
   assert.deepEqual(model.events.teamfights, []);
 });

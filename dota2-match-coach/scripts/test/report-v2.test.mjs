@@ -21,7 +21,7 @@ test('projectArtifact preserves the v2 tactical facts and capability values verb
 
   const artifact = projectArtifact(model);
 
-  assert.equal(artifact.schemaVersion, '2.0.0');
+  assert.equal(artifact.schemaVersion, '2.1.0');
   assert.deepEqual(Object.keys(artifact.sources).sort(), ['entityConstants', 'opendota', 'stratz', 'valve']);
   assert.equal(artifact.player.heroName.value, 'Keeper of the Light');
   assert.equal(artifact.participants.length, 10);
@@ -149,4 +149,20 @@ test('evidence Markdown inventories names, unavailable observations, and compact
   assert.match(markdown, /recent reposition: teleport_item @ 9:50 \(item: Town Portal Scroll\)/);
   assert.match(markdown, /nearby deaths: none; nearby kills: none/);
   assert.doesNotMatch(markdown, /opponentHeroIds|event_ready|draft_ready/);
+});
+
+test('projects the net worth series and how each series established its minutes', () => {
+  const input = fullMatchFixture();
+  input.openDota.match.players[0].networth_t = [0, 320, 640];
+  input.openDota.match.players[0].times = [0, 60, 120];
+  input.openDota.match.players[0].gold_t = [0, 300, 600];
+  input.openDota.match.players[0].xp_t = [0, 400, 800];
+  input.openDota.match.players[0].lh_t = [0, 5, 10];
+  input.openDota.match.players[0].dn_t = [0, 0, 1];
+  input.openDota.match.players[0].hero_damage_t = [0, 200, 400];
+
+  const artifact = projectArtifact(normalizeEvidence(input));
+
+  assert.deepEqual(artifact.series.netWorth, { source: 'opendota', minuteBasis: 'recorded_times', values: [0, 320, 640] });
+  assert.equal(artifact.series.gold.minuteBasis, 'recorded_times');
 });

@@ -5,8 +5,9 @@ import { buildEntityCatalog, entityRef } from './entities.mjs';
 import { normalizeParticipants, resolveLaneMatchup } from './lane.mjs';
 import { buildDeathAnalysis } from './deaths.mjs';
 import { computeCapabilities, qualityFromCapabilities } from './capabilities.mjs';
+import { alignMinuteSeries } from './series.mjs';
 
-const SCHEMA_VERSION = '2.0.0';
+const SCHEMA_VERSION = '2.1.0';
 const PHASES = [
   { id: 'lane', start: 0, end: 600 },
   { id: 'transition', start: 600, end: 900 },
@@ -22,18 +23,28 @@ const SERIES_METRICS = [
   ['heroDamage', 'hero_damage_t', 'heroDamagePerMin'],
 ];
 const EVENT_METRICS = [['kills', 'killEvents'], ['deaths', 'deathEvents'], ['assists', 'assistEvents']];
+// Per-minute OpenDota series that share the replay's interval ticks.
+const OPEN_MINUTE_SERIES = new Map([
+  ['gold_t', 'gold'],
+  ['xp_t', 'XP'],
+  ['lh_t', 'last hits'],
+  ['dn_t', 'denies'],
+  ['hero_damage_t', 'hero damage'],
+  ['networth_t', 'net worth'],
+]);
 // Comparable rows: the player's per-minute row on the left, the STRATZ sample metric
-// on the right. Net worth is deliberately absent. OpenDota `gold_t` is accumulated
-// gold, not net worth: in match 8963443105 the last point of the row is 12772 while
-// `net_worth` is 11150, so the proxy systematically inflated the player against the
-// `networth` baseline. No runtime source gives a comparable per-minute net worth row,
-// so the row was removed rather than kept with a caveat. The `crossSourceProxy` flag
-// stays in the schema for future rows and is currently set by none.
+// on the right. OpenDota `gold_t` is accumulated gold, not net worth: in match
+// 8963443105 the last point of the row is 12772 while `net_worth` is 11150, so it
+// never stands in for the `networth` baseline. Net worth is compared only through
+// `networth_t`, the replay's own per-minute net worth, which newer OpenDota parses
+// record and older ones leave empty. The `crossSourceProxy` flag stays in the
+// schema for future rows and is currently set by none.
 const BASELINE_COMPARISONS = [
   { metric: 'lastHits', playerSeries: 'lh_t', baselineMetric: 'cs', crossSourceProxy: false },
   { metric: 'denies', playerSeries: 'dn_t', baselineMetric: 'dn', crossSourceProxy: false },
   { metric: 'xp', playerSeries: 'xp_t', baselineMetric: 'xp', crossSourceProxy: false },
   { metric: 'heroDamage', playerSeries: 'hero_damage_t', baselineMetric: 'heroDamage', crossSourceProxy: false },
+  { metric: 'netWorth', playerSeries: 'networth_t', baselineMetric: 'networth', crossSourceProxy: false },
 ];
 const BASELINE_MINUTES = [10, 15, 25];
 const BASELINE_MAX_MINUTE = 75;
@@ -370,8 +381,33 @@ function eventInventory(events) {
   };
 }
 
-function arraySeries(values) {
-  return { values: Array.isArray(values) ? values.map((value) => finiteNumber(value) ? value : null) : [], source: Array.isArray(values) ? 'opendota' : null };
+function arraySeries(values, minuteBasis = null) {
+  return {
+    values: Array.isArray(values) ? values.map((value) => finiteNumber(value) ? value : null) : [],
+    source: Array.isArray(values) ? 'opendota' : null,
+    minuteBasis: Array.isArray(values) ? minuteBasis : null,
+  };
+}
+
+// A copy of the selected OpenDota player whose per-minute series are keyed by
+// minute. Every consumer below (stages, peer rows, stored series) reads this copy,
+// so a replay whose ticks start after 0:00 cannot shift a 10-minute marker.
+function minuteAlignedPlayer(openPlayer, warnings) {
+  if (!openPlayer || typeof openPlayer !== 'object') return { player: openPlayer, basis: {} };
+  const player = { ...openPlayer };
+  const basis = {};
+  const dropped = [];
+  for (const [key, label] of OPEN_MINUTE_SERIES) {
+    if (!Object.hasOwn(openPlayer, key)) continue;
+    const aligned = alignMinuteSeries(openPlayer[key], openPlayer.times);
+    player[key] = aligned.values ?? undefined;
+    basis[key] = aligned.basis;
+    if (aligned.basis === 'inconsistent') dropped.push(label);
+  }
+  if (dropped.length > 0) {
+    warnings.push(`OpenDota sample times disagree with the per-minute ${dropped.join(', ')} series; those series are unavailable.`);
+  }
+  return { player, basis };
 }
 
 function laneOutcomeFor(stratzPlayer, stratz) {
@@ -533,6 +569,8 @@ export function normalizeEvidence({
   generatedAt,
 } = {}) {
   const { openPlayer, stratzPlayer } = resolvePlayer(accountId, openDota, stratz);
+  const warnings = [];
+  const aligned = minuteAlignedPlayer(openPlayer, warnings);
   const catalog = buildEntityCatalog(entityConstants);
   const participants = normalizeParticipants({
     openPlayers: playersFor(openDota),
@@ -540,7 +578,6 @@ export function normalizeEvidence({
     catalog,
   });
   const lane = resolveLaneMatchup({ participants, selectedAccountId: accountId });
-  const warnings = [];
   const field = (label, openValue, stratzValue) => resolvedField(label, [
     { value: openValue, source: 'opendota' },
     { value: stratzValue, source: 'stratz' },
@@ -633,20 +670,21 @@ export function normalizeEvidence({
     items: { purchases: purchasesFor(openPlayer, stratzPlayer, duration, catalog, entityConstants), ...inventory },
     events,
     series: {
-      gold: arraySeries(openPlayer?.gold_t),
-      xp: arraySeries(openPlayer?.xp_t),
-      lh: arraySeries(openPlayer?.lh_t),
-      denies: arraySeries(openPlayer?.dn_t),
+      gold: arraySeries(aligned.player?.gold_t, aligned.basis.gold_t),
+      xp: arraySeries(aligned.player?.xp_t, aligned.basis.xp_t),
+      lh: arraySeries(aligned.player?.lh_t, aligned.basis.lh_t),
+      denies: arraySeries(aligned.player?.dn_t, aligned.basis.dn_t),
+      netWorth: arraySeries(aligned.player?.networth_t, aligned.basis.networth_t),
     },
     patch: {
       match: sourced(valve?.matchPatch, 'valve'),
       current: sourced(valve?.currentPatch, 'valve'),
       isCurrentExactPatch: sourced(valve?.status === 'ready' ? valve.isCurrentExactPatch : null, 'valve'),
     },
-    phases: buildPhases(openPlayer ?? {}, stratzPlayer, duration),
+    phases: buildPhases(aligned.player ?? {}, stratzPlayer, duration),
     baseline: buildBaseline({
       baseline,
-      openPlayer,
+      openPlayer: aligned.player,
       events,
       duration,
       patch: valve?.currentPatch ?? null,

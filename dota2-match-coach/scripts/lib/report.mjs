@@ -161,7 +161,7 @@ function projectSource(source) {
 }
 
 function projectSeries(series) {
-  const projected = pickScalars(series, ['source']);
+  const projected = pickScalars(series, ['source', 'minuteBasis']);
   projected.values = Array.isArray(series?.values)
     ? series.values.filter((value) => value === null || Number.isFinite(value))
     : [];
@@ -283,7 +283,7 @@ export function projectArtifact(model = {}) {
     .filter((name) => Object.hasOwn(model.summary ?? {}, name))
     .map((name) => [name, projectSourced(model.summary[name])]));
   if (model.summary?.kda) summary.kda = pickScalars(model.summary.kda, ['kills', 'deaths', 'assists', 'source']);
-  const series = Object.fromEntries(['gold', 'xp', 'lh', 'denies']
+  const series = Object.fromEntries(['gold', 'xp', 'lh', 'denies', 'netWorth']
     .filter((name) => Object.hasOwn(model.series ?? {}, name))
     .map((name) => [name, projectSeries(model.series[name])]));
   const artifact = {

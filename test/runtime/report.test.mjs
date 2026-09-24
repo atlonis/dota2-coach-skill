@@ -7,7 +7,7 @@ import { projectArtifact, renderEvidenceMarkdown, writeArtifacts } from '../../d
 
 function evidenceModel() {
   return {
-    schemaVersion: '2.0.0',
+    schemaVersion: '2.1.0',
     request: { matchId: '42', accountId: 56386500 },
     generatedAt: '2026-08-25T00:00:00.000Z',
     sources: {
@@ -186,7 +186,7 @@ test('writeArtifacts persists the canonical v2 entity references and death summa
   const artifacts = await writeArtifacts(evidenceModel(), directory);
   const persisted = JSON.parse(await readFile(artifacts.jsonPath, 'utf8'));
 
-  assert.equal(persisted.schemaVersion, '2.0.0');
+  assert.equal(persisted.schemaVersion, '2.1.0');
   assert.deepEqual(persisted.draft.radiant, [{ value: { id: 107, name: 'Earth Spirit' }, source: 'opendota' }]);
   assert.deepEqual(persisted.summary.kda, { kills: 8, deaths: 2, assists: 6, source: 'opendota' });
   assert.deepEqual(persisted.items.purchases, [{ time: 80, source: 'opendota', item: { id: 50, name: 'Phase Boots' } }]);

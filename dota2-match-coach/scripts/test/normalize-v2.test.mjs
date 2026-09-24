@@ -6,7 +6,7 @@ import { mergeWeeklyCurves } from '../lib/baseline.mjs';
 
 test('normalizes a full match into schema v2', () => {
   const model = normalizeEvidence(fullMatchFixture());
-  assert.equal(model.schemaVersion, '2.0.0');
+  assert.equal(model.schemaVersion, '2.1.0');
   assert.equal(model.participants.length, 10);
   assert.equal(model.player.heroName.value, 'Keeper of the Light');
   assert.equal(model.lane.status, 'ready');
@@ -112,4 +112,54 @@ test('does not fall back to the whole sample when a metric sample map omits that
   input.baseline.points = [{ minute: 10, matchCount: 10_000, cs: 20, xp: 4000, metricSampleSizes: { xp: 10_000 } }];
   const model = normalizeEvidence(input);
   assert.deepEqual(model.baseline.comparisons.map((row) => row.metric), ['xp']);
+});
+
+function shiftTicks(player, firstSecond) {
+  const times = [];
+  for (let second = firstSecond; second <= 1800; second += 60) times.push(second);
+  const at = (factor) => times.map((second) => (second / 60) * factor);
+  return { ...player, times, gold_t: at(300), xp_t: at(400), lh_t: at(5), dn_t: at(0.25), hero_damage_t: at(200) };
+}
+
+test('keys stage and peer markers by recorded minute when replay ticks start at 2:00', () => {
+  const input = fullMatchFixture();
+  input.openDota.match.players[0] = shiftTicks(input.openDota.match.players[0], 120);
+
+  const model = normalizeEvidence(input);
+
+  assert.deepEqual(model.series.lh.values.slice(0, 3), [null, null, 10]);
+  assert.equal(model.series.lh.values[10], 50);
+  assert.equal(model.series.lh.minuteBasis, 'recorded_times');
+  assert.deepEqual(model.baseline.comparisons.find((row) => row.metric === 'lastHits' && row.minute === 10).player, 50);
+  assert.equal(model.phases.find((phase) => phase.id === 'lane').metrics.lh, null);
+  assert.equal(model.phases.find((phase) => phase.id === 'transition').metrics.lh, 25);
+});
+
+test('drops a per-minute series whose recorded times disagree with its length', () => {
+  const input = fullMatchFixture();
+  const player = shiftTicks(input.openDota.match.players[0], 0);
+  player.lh_t = player.lh_t.slice(1);
+  input.openDota.match.players[0] = player;
+
+  const model = normalizeEvidence(input);
+
+  assert.deepEqual(model.series.lh.values, []);
+  assert.equal(model.series.lh.source, null);
+  assert.equal(model.baseline.comparisons.some((row) => row.metric === 'lastHits'), false);
+  assert.ok(model.warnings.some((warning) => warning.includes('last hits')));
+  assert.equal(model.series.gold.values[10], 3000);
+});
+
+test('compares net worth only through the replay net worth series', () => {
+  const input = fullMatchFixture();
+  input.baseline.points = input.baseline.points.map((point) => ({ ...point, networth: point.minute * 350 }));
+  let model = normalizeEvidence(input);
+  assert.equal(model.baseline.comparisons.some((row) => row.metric === 'netWorth'), false);
+  assert.deepEqual(model.series.netWorth, { values: [], source: null, minuteBasis: null });
+
+  input.openDota.match.players[0].networth_t = Array.from({ length: 31 }, (_, minute) => minute * 320);
+  model = normalizeEvidence(input);
+  const row = model.baseline.comparisons.find((comparison) => comparison.metric === 'netWorth' && comparison.minute === 10);
+  assert.deepEqual([row.player, row.baseline, row.crossSourceProxy], [3200, 3500, false]);
+  assert.equal(model.series.netWorth.values[10], 3200);
 });

@@ -31,7 +31,7 @@ A descriptive self-reference is also implemented through `--history-dir`: prior 
 - separate distributions by lane matchup, item components and power-spike timing;
 - a percentile instead of a ratio to the mean: the current source gives only means, so a different collection is needed;
 - the exact patch instead of an approximation by weeks, and a mode filter;
-- a per-minute net worth comparison: the OpenDota `gold_t` proxy was removed as inflating, and neither OpenDota nor STRATZ `playbackData` gives a comparable per-minute net worth row;
+- per-minute net worth for older parses: the comparison now reads the replay's own `networth_t`, which the OpenDota parser began recording in August 2026; earlier parses leave the row unavailable, and the `gold_t` proxy stays excluded as inflating;
 - an automatic fallback to a wider sample only when marked as a weak reference.
 
 Definition of done for the remainder: every comparison carries a percentile and a confidence, not only a ratio to the mean and a sample size.

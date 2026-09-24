@@ -42,6 +42,23 @@ test('compares exact-minute series from projected reports with metric-specific m
   assert.ok(result.limitations.includes('no_causal_inference'));
 });
 
+test('compares per-minute replay net worth when every contributing match recorded it', () => {
+  const withNetWorth = (evidence, perMinute) => {
+    evidence.series.netWorth = { values: Array.from({ length: 31 }, (_, minute) => minute * perMinute), source: 'opendota', minuteBasis: 'recorded_times' };
+    return evidence;
+  };
+  const current = withNetWorth(model(), 400);
+  const result = buildProgress(current, [
+    projectArtifact(withNetWorth(model(100, 1000000), 300)),
+    projectArtifact(withNetWorth(model(200, 2000000), 350)),
+  ]);
+
+  assert.deepEqual(comparison(result, 'netWorth'), {
+    metric: 'netWorth', minute: 10, current: 4000, mean: 3250, delta: 750, matchCount: 2, source: 'opendota',
+  });
+  assert.equal(comparison(buildProgress(current, [model(100, 1000000), model(200, 2000000)]), 'netWorth'), undefined);
+});
+
 test('does not manufacture means from one prior match or carry earlier samples forward', () => {
   const current = model();
   const first = model(100, 1000000);
@@ -62,7 +79,7 @@ test('only compares minutes reached in every contributing match and never compar
   const result = buildProgress(current, [short, model(200, 2000000)]);
   assert.ok(result.comparisons.length > 0);
   assert.ok(result.comparisons.every((row) => row.minute === 10));
-  assert.ok(result.comparisons.every((row) => row.metric !== 'netWorth'));
+  assert.ok(result.comparisons.every((row) => row.metric !== 'netWorth' && row.current !== 9999999));
 });
 
 for (const [label, mutate] of [

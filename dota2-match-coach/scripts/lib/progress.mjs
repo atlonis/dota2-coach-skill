@@ -4,7 +4,7 @@ import path from 'node:path';
 
 const MINIMUM_PRIOR_MATCHES = 2;
 const MINUTES = [10, 15, 25];
-const SERIES = [['gold', 'gold'], ['xp', 'xp'], ['lh', 'lastHits'], ['denies', 'denies']];
+const SERIES = [['gold', 'gold'], ['xp', 'xp'], ['lh', 'lastHits'], ['denies', 'denies'], ['netWorth', 'netWorth']];
 const OBSERVATIONS = ['isolated', 'afterConfirmedTeleport', 'firstAlliedDeathInFight', 'tradedLocally', 'ownDefensiveItemUsed'];
 const PROVIDERS = new Set(['opendota', 'stratz', 'valve']);
 const MAX_FILES = 100;

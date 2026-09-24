@@ -37,7 +37,7 @@ A ready peer comparison is a **mean** for the artifact's stated hero, position, 
 
 The baseline's `weeks` values are epoch-week indices (each represents 604800 seconds from the Unix epoch), not calendar week numbers or `YYYYWW` dates. Do not infer a calendar date from their digits or show these internal indices in coaching prose. Usually describe the selection as complete weeks inside the current patch. If dates matter to the user's question, calculate the UTC boundaries explicitly from the runtime definition before naming them.
 
-A peer-comparison row's source labels the STRATZ reference, not every value in that row: the player's last hits, denies, XP and hero damage come from OpenDota time series; timed deaths come from STRATZ. A copied comparison value and its original series are the same measurement, not independent corroboration. When scoreboard totals disagree with the same provider's timeline, describe an internal data mismatch rather than attributing the disagreement to different providers.
+A peer-comparison row's source labels the STRATZ reference, not every value in that row: the player's last hits, denies, XP, hero damage and net worth come from OpenDota time series; timed deaths come from STRATZ. Net worth is compared only through the replay's own per-minute net worth; the cumulative gold series is never a net worth measure. A copied comparison value and its original series are the same measurement, not independent corroboration. When scoreboard totals disagree with the same provider's timeline, describe an internal data mismatch rather than attributing the disagreement to different providers.
 
 Distinguish these quantities:
 
