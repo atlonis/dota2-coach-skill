@@ -687,9 +687,11 @@ function progressMarkdown(progress) {
   ];
 }
 
+// Pre-horn times such as a ward placed at -30 seconds read as -0:30.
 function clock(seconds) {
   if (!Number.isFinite(seconds)) return '—';
-  return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
+  const whole = Math.floor(Math.abs(seconds));
+  return `${seconds < 0 ? '-' : ''}${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
 }
 
 function baselineSampleRows(baseline) {

@@ -269,3 +269,11 @@ test('projects mechanics through their allowlist and summarizes them in the inve
   assert.match(markdown, /\| abilities \| Illuminate \(cooldown 10; mana 150\) \|/);
   assert.match(markdown, /\| items \| Force Staff \(cost 2200\) \|/);
 });
+
+test('renders a pre-horn ward placement as negative game time', () => {
+  const input = withMatchContext();
+  input.openDota.match.players[0].obs_log = [{ time: -30, ehandle: 1 }];
+  input.openDota.match.players[0].obs_left_log = [{ time: 330, ehandle: 1 }];
+  const markdown = renderEvidenceMarkdown(projectArtifact(normalizeEvidence(input)));
+  assert.match(markdown, /\| -0:30 \| observer \| 5:30 \| 360 \|/);
+});

@@ -22,6 +22,9 @@ Assess each answer against its evidence:
 | unknown-item | Keeps the unresolved entity unnamed, omits its internal ID, uses third person, and does not infer mechanics. |
 | lane-focus-with-deaths | Answers the 10-minute last-hit question even though repeated death signatures exist; the exercise concerns that metric. |
 | personal-progress | Reports 50 current last hits against a mean of 35 over two prior matches at 10:00; does not infer that training caused the increase or turn it into a normative target. |
+| turning-point | Locates the change from team economy with its minutes and values (largest adverse earned-gold swing 14:00 +3500 → 19:00 −2600, opponent ahead from 17:00) and calls it earned gold, not net worth; treats the lost bottom towers, the enemy Roshan and Aegis and the 15:00 death as recorded events in that window, not proven causes; the exercise reviews that window. |
+| item-mechanics | Explains Force Staff from the artifact's mechanics (push 575, cooldown 21, cost 2150, the sub-patch change from 600 to 575), not from live-game memory; reports the purchase at 5:00 and uses at 9:58 and 14:58 without judging readiness, target, direction or effect. |
+| support-wards | Reports four observers and one sentry with their placement times, including the pre-horn observer at −0:30, and when each ward left the game; claims no vision, location, dewarding or expiry, and no ward quota; side totals stay recorded counts. |
 
 Across cases, verify: numbers and timecodes match evidence; unknowns are not absence; hypotheses add no unrecorded facts; response language and ownership are correct; any exercise is linked to the selected finding. Organizational practice counts may be proposed, but are not empirical game targets. Fail a case for a material unsupported claim, incorrect quantity, wrong scope, or unrelated exercise; allow different useful phrasing.
 

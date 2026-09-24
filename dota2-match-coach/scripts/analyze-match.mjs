@@ -179,8 +179,10 @@ export async function runAnalysis(options, { openDotaClient, stratzClient, valve
     throw error;
   }
   if (baselineClient || datafeedClient) {
-    const baseline = baselineClient ? await loadBaseline(model, valve, baselineClient, Math.floor(now() / 1_000)) : undefined;
-    const mechanics = datafeedClient ? await loadMechanics(model, valve, datafeedClient, entityConstants) : undefined;
+    const [baseline, mechanics] = await Promise.all([
+      baselineClient ? loadBaseline(model, valve, baselineClient, Math.floor(now() / 1_000)) : undefined,
+      datafeedClient ? loadMechanics(model, valve, datafeedClient, entityConstants) : undefined,
+    ]);
     model = normalize({
       matchId: options.matchId,
       accountId,

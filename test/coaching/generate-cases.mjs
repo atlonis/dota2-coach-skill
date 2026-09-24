@@ -20,6 +20,56 @@ function matchedFixture() {
   return input;
 }
 
+const MINUTES = Array.from({ length: 31 }, (_, minute) => minute);
+
+// Parsed-match context: recorded sample times, team economy and objectives.
+function withMatchContext(input, goldBySelectedSideMinute) {
+  const players = input.openDota.match.players;
+  for (const player of players) player.times = MINUTES.map((minute) => minute * 60);
+  Object.assign(input.openDota.match, {
+    radiant_gold_adv: MINUTES.map(goldBySelectedSideMinute),
+    radiant_xp_adv: MINUTES.map((minute) => Math.round(goldBySelectedSideMinute(minute) * 1.2)),
+    objectives: [],
+  });
+  return input;
+}
+
+// Synthetic datafeed records. Their numbers deliberately differ from the live game,
+// so an answer quoting live values reveals reliance on memory.
+function mechanicsFixture() {
+  const hero = {
+    id: 90, name_loc: 'Keeper of the Light', primary_attr: 2, attack_capability: 2, attack_range: 600,
+    abilities: [{
+      id: 5478, name_loc: 'Illuminate', type: 0, max_level: 4, cooldowns: [11], mana_costs: [140], cast_ranges: [1750],
+      desc_loc: 'Channels a wave of light that deals up to %total_damage% damage to enemies in its path.',
+      special_values: [{ name: 'total_damage', values_float: [95, 170, 245, 320], heading_loc: 'MAX DAMAGE:', values_shard: [], values_scepter: [] }],
+    }],
+    talents: [],
+  };
+  const forceStaff = {
+    id: 102, name_loc: 'Force Staff', item_cost: 2150, cooldowns: [21], mana_costs: [95], cast_ranges: [575],
+    desc_loc: '<h1>Active: Force</h1> Pushes the target unit %push_length% units in the direction it is facing.',
+    notes_loc: ['Does not interrupt the target\'s actions.'],
+    special_values: [
+      { name: 'push_length', values_float: [575], heading_loc: '', values_shard: [], values_scepter: [] },
+      { name: 'bonus_health', values_float: [165], heading_loc: '+$health', values_shard: [], values_scepter: [] },
+      { name: 'bonus_intellect', values_float: [11], heading_loc: '+$int', values_shard: [], values_scepter: [] },
+    ],
+  };
+  return {
+    request: { selectedHeroId: 90, heroIds: [90], itemIds: [102] },
+    fetched: {
+      status: 'ready', patch: 'test-current-subpatch',
+      heroes: [{ kind: 'hero', id: 90, status: 'ready', record: hero }],
+      items: [{ kind: 'item', id: 102, status: 'ready', record: forceStaff }],
+      patchNotes: {
+        kind: 'patchNotes', id: 'test-current-subpatch', status: 'ready',
+        record: { patch_number: 'test-current-subpatch', heroes: [], items: [{ ability_id: 102, ability_notes: [{ indent_level: 1, note: 'Push distance decreased from 600 to 575' }] }], success: true },
+      },
+    },
+  };
+}
+
 const cases = [
   {
     name: 'full-review',
@@ -72,6 +122,41 @@ const cases = [
     prompt: 'Это мой матч. Разбери только добивания на линии к 10-й минуте и дай упражнение по этому аспекту.',
     change(input) {
       input.openDota.match.players[0].lh_t = Array.from({ length: 31 }, (_, minute) => minute * 2);
+    },
+  },
+  {
+    name: 'turning-point',
+    prompt: 'Это мой матч. Где игра перевернулась и почему? Кратко, с одной задачей на следующую игру.',
+    change(input) {
+      const lead = (minute) => (minute <= 14 ? minute * 250 : minute <= 19 ? 3500 - (minute - 14) * 1220 : -2600 - (minute - 19) * 300);
+      withMatchContext(input, lead);
+      input.openDota.match.objectives = [
+        { time: 965, type: 'building_kill', unit: 'npc_dota_hero_6', key: 'npc_dota_goodguys_tower1_bot', player_slot: 128 },
+        { time: 1060, type: 'CHAT_MESSAGE_ROSHAN_KILL', team: 3 },
+        { time: 1061, type: 'CHAT_MESSAGE_AEGIS', player_slot: 129 },
+        { time: 1110, type: 'building_kill', unit: 'npc_dota_creep_badguys_melee', key: 'npc_dota_goodguys_tower2_bot' },
+      ];
+    },
+  },
+  {
+    name: 'item-mechanics',
+    prompt: 'Это мой матч. Коротко: что делает мой Force Staff в этом патче и что видно о том, как я его использовал?',
+    change(input) {
+      input.mechanics = mechanicsFixture();
+    },
+  },
+  {
+    name: 'support-wards',
+    prompt: 'Это мой матч, я играл саппорта. Кратко: как я ставил варды и что проверить в следующей игре?',
+    change(input) {
+      withMatchContext(input, (minute) => minute * 100);
+      input.openDota.match.players.forEach((player, index) => {
+        player.obs_log = index === 0 ? [{ time: -30, ehandle: 1 }, { time: 250, ehandle: 2 }, { time: 700, ehandle: 3 }, { time: 1350, ehandle: 4 }] : index < 5 ? [{ time: 400, ehandle: 10 + index }] : [{ time: 300, ehandle: 20 + index }, { time: 900, ehandle: 30 + index }];
+        player.obs_left_log = index === 0 ? [{ time: 330, ehandle: 1 }, { time: 610, ehandle: 2 }, { time: 760, ehandle: 3 }] : [];
+        player.sen_log = index === 0 ? [{ time: 480, ehandle: 5 }] : [];
+        player.sen_left_log = index === 0 ? [{ time: 900, ehandle: 5 }] : [];
+        player.buyback_log = [];
+      });
     },
   },
   {

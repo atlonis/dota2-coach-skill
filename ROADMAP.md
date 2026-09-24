@@ -36,7 +36,18 @@ A descriptive self-reference is also implemented through `--history-dir`: prior 
 
 Definition of done for the remainder: every comparison carries a percentile and a confidence, not only a ratio to the mean and a sample size.
 
-## 3. Raw `.dem` and deep micro-mechanics
+## 3. Match context and mechanics follow-ups
+
+The runtime now records team economy, objectives, ward placements, buybacks, the skill build and current-patch Valve datafeed mechanics. What remains:
+
+- live confirmation: the parsers were checked against published OpenDota test data and a public dump of the Valve datafeed, not against live responses; a fresh current-subpatch smoke must confirm both;
+- ward coverage at a death: ward coordinates stay out of the artifact until OpenDota's ward grid is verified against the STRATZ position grid used by death contexts;
+- a turning window for the priority death from the largest team-economy swing, which the death analysis already accepts;
+- objective participation beyond the credited last hit, from positions near the building or pit at the event time;
+- a per-patch cache of datafeed records, so a run does not repeat about forty requests for unchanged heroes and items;
+- item-timing and item-choice baselines from STRATZ purchase statistics for the same hero, position and bracket.
+
+## 4. Raw `.dem` and deep micro-mechanics
 
 The goal is to analyse not only the successful events of the API, but also the opportunities available to the player and the sequence of inputs.
 
