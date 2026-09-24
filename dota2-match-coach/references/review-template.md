@@ -28,7 +28,7 @@ Brief and focused modes may show only the deaths relevant to the selected findin
 
 Choose a confirmed episode relevant to the main finding. Copy each event's own timecode from its artifact field: a TP use, reposition, nearby-unit observation, item use and death are separate facts. Nearby units at one recorded time do not establish the state at an earlier arrival.
 
-An episode is not automatically a turning point. Use that stronger description only when evidence establishes a change in the match situation, and state exactly what changed without inventing a cause. When only a cumulative measure or aggregate is supported, give its recorded marker or interval and say a specific episode cannot be localized. In brief/focused mode, this evidence may sit directly under the relevant topic without its own heading.
+An episode is not automatically a turning point. Use that stronger description only when evidence establishes a change in the match situation, and state exactly what changed without inventing a cause. A team-economy swing or leader change establishes such a change over its stated minutes; deaths, fights and objectives inside that interval co-occur with it unless further evidence links them. When only a cumulative measure or aggregate is supported, give its recorded marker or interval and say a specific episode cannot be localized. In brief/focused mode, this evidence may sit directly under the relevant topic without its own heading.
 
 ## Упражнение
 
@@ -50,11 +50,13 @@ Required in full mode; in focused mode cover the requested category. Keep the fu
 - **Match-specific task:** state sourced task facts with their confidence when supported; otherwise state that the hero's match-specific task is unavailable.
 - **Items:** state recorded item decisions and supported context; otherwise state that item-decision evidence is unavailable.
 
+When relevant, add the recorded skill build or objectives the player took part in; neither is required in every review.
+
 An unavailable category does not license generic hero, role, item or ability advice. Recorded purchase or use alone does not prove the choice was tactically correct or incorrect.
 
 ## Стадии and progress
 
-Include stages only when they clarify the finding or answer the request. Label each figure as an interval aggregate or a cumulative value at a stated marker, including when used in prose. Use a compact table for several intervals. Assign events by half-open intervals `[start,end)`: an event at 15:00 belongs to the interval starting at 15:00; the final match endpoint may belong to the final interval. Keep repeated figures and intervals consistent throughout the response.
+Include stages only when they clarify the finding or answer the request. Label each figure as an interval aggregate or a cumulative value at a stated marker, including when used in prose. Team economy may accompany the stages: quote its start and end values with their minutes and name the measure, since earned gold is not net worth. Use a compact table for several intervals. Assign events by half-open intervals `[start,end)`: an event at 15:00 belongs to the interval starting at 15:00; the final match endpoint may belong to the final interval. Keep repeated figures and intervals consistent throughout the response.
 
 Include personal progress only when requested or explicitly enabled by the supplied history directory, following the separately loaded progress reference. A change between comparable matches is descriptive; it does not establish the effect of an exercise.
 
@@ -68,6 +70,7 @@ State only limits, conflicts, unknowns or comparison mismatches that change an i
 - The supporting episode or measurement and the one exercise concern that same finding.
 - All available deaths were reviewed; full mode accounts for every timecode, and other modes do not imply omitted deaths were absent.
 - Facts, hypotheses and unavailable evidence remain distinct; a repeated signature is not a causal diagnosis, permanent habit or item-use verdict.
+- A team-economy change, objective or ward placement is described as measured or recorded; its cause, vision or participation is claimed only with supporting evidence.
 - Factual numbers and event times match their own artifact fields; cumulative and interval quantities are labelled correctly.
 - A performance target has the required relevant, matching ready comparison. Organizational counts are clearly proposed practice workload.
 - Material source conflicts, comparison mismatches and unknowns are explicit; local progress claims use validated comparable artifacts and assert no causal training effect.

@@ -5,7 +5,7 @@ Choose one main coaching priority after inspecting source status, `dataQuality.c
 ## Select the priority
 
 1. **Respect the requested topic.** A focused item review selects item evidence; unrelated deaths or a ready farming comparison cannot displace it. When the requested topic lacks support, state the limit and choose a relevant evidence-checking exercise rather than substitute generic advice.
-2. **Filter for evidence quality.** Candidates include timestamped events, confirmed repeated death signatures, relevant ready peer comparisons, sourced draft/task/item facts, and validated personal progress when requested. Remove conclusions that need unavailable capabilities or invented context. A phase aggregate alone cannot locate a causal event.
+2. **Filter for evidence quality.** Candidates include timestamped events, confirmed repeated death signatures, recorded objectives, measured team-economy changes, relevant ready peer comparisons, sourced draft/task/item facts, and validated personal progress when requested. Remove conclusions that need unavailable capabilities or invented context. A phase aggregate alone cannot locate a causal event.
 3. **Choose relevance and actionability among supported candidates.** Prefer the signal that best answers the request and supports a specific observation or practice task. Consider repetition, the scope of a measured deviation and known event consequences only to the extent recorded. A repeated signature with no causal context may be less useful than a directly supported item or efficiency finding.
 4. **Break a genuine tie by evidence coverage, then recurrence.** Explain the choice briefly in the main finding. Do not create numeric severity scores, presumed win impact or a causal ranking from incomplete data. If no candidate supports coaching interpretation, give a limited factual review and one targeted evidence-checking task.
 
@@ -25,6 +25,7 @@ Use the narrowest horizon that answers the question with available evidence:
 |---|---|---|
 | Fight, seconds | timestamped death context, item/ability use, teamfight interval | no inferred vision, intent, mana, cooldowns, readiness or guaranteed escape |
 | Lane/economy, minutes | observed aggregates and relevant ready comparisons | distinguish interval aggregates from cumulative values |
+| Team economy and objectives, minutes | per-minute team difference, its largest swings and recorded objectives | a swing locates a change in the match situation; its cause needs event evidence |
 | Draft/match | verified draft, current mechanics and sourced task facts | no generic role prescription or draft probability without required evidence |
 | Comparable matches | runtime-validated local progress, when requested | same player, hero, position, mode and current exact patch; no causal training claim |
 

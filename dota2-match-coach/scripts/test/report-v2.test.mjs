@@ -166,3 +166,64 @@ test('projects the net worth series and how each series established its minutes'
   assert.deepEqual(artifact.series.netWorth, { source: 'opendota', minuteBasis: 'recorded_times', values: [0, 320, 640] });
   assert.equal(artifact.series.gold.minuteBasis, 'recorded_times');
 });
+
+function withMatchContext(input = fullMatchFixture()) {
+  const players = input.openDota.match.players;
+  const times = Array.from({ length: 31 }, (_, minute) => minute * 60);
+  players.forEach((player, index) => {
+    player.times = times;
+    player.obs_log = index === 0 ? [{ time: 314, ehandle: 7, x: 140, y: 106 }] : [];
+    player.obs_left_log = index === 0 ? [{ time: 674, ehandle: 7, attackername: 'npc_dota_hero_ogre_magi' }] : [];
+    player.sen_log = [];
+    player.sen_left_log = [];
+    player.buyback_log = index === 0 ? [{ time: 1500, slot: 0, player_slot: 0 }] : [];
+  });
+  players[0].ability_upgrades_arr = [5478, 5478];
+  Object.assign(input.openDota.match, {
+    radiant_gold_adv: times.map((second) => second * 2),
+    radiant_xp_adv: times.map((second) => second * 3),
+    objectives: [
+      { time: 651, type: 'building_kill', unit: 'npc_dota_hero_6', key: 'npc_dota_goodguys_tower1_bot', player_slot: 128 },
+      { time: 1331, type: 'CHAT_MESSAGE_ROSHAN_KILL', team: 3, rawText: 'leak-token' },
+    ],
+  });
+  return input;
+}
+
+test('projects match context sections through their allowlists', () => {
+  const model = normalizeEvidence(withMatchContext());
+  model.objectives.events[0].rawUnit = 'leak-token';
+  model.wards.selectedPlayer.placements[0].attackername = 'leak-token';
+
+  const artifact = projectArtifact(model);
+  const json = JSON.stringify(artifact);
+
+  assert.equal(artifact.teamEconomy.status, 'ready');
+  assert.equal(artifact.teamEconomy.perspective, 'radiant');
+  assert.equal(artifact.teamEconomy.measures.earnedGold.values[10], 1200);
+  assert.deepEqual(artifact.teamEconomy.phases[1].xp, { startMinute: 10, endMinute: 15, start: 1800, end: 2700, change: 900 });
+  assert.deepEqual(artifact.objectives.events.map((event) => event.type), ['building_destroyed', 'roshan_killed']);
+  assert.deepEqual(artifact.objectives.events[0].killer, { kind: 'hero', hero: { id: 6, name: 'Hero 6' }, side: 'dire', selectedPlayer: false });
+  assert.deepEqual(artifact.wards.selectedPlayer.placements, [{ time: 314, kind: 'observer', endedAt: 674, secondsActive: 360 }]);
+  assert.deepEqual(artifact.buybacks.selectedPlayer, [{ time: 1500 }]);
+  assert.deepEqual(artifact.skillBuild.upgrades[0], { order: 1, ability: { id: 5478, name: 'Illuminate' } });
+  assert.equal(artifact.dataQuality.capabilities.teamEconomy, true);
+  assert.equal(artifact.dataQuality.capabilities.objectiveTimeline, true);
+  assert.doesNotMatch(json, /leak-token|attackername|ehandle|"x":140/);
+});
+
+test('renders match context in the evidence inventory without implying causes', () => {
+  const markdown = renderEvidenceMarkdown(projectArtifact(normalizeEvidence(withMatchContext())));
+
+  for (const heading of ['## Team economy', '## Objectives', '## Wards, buybacks, and skill build']) assert.match(markdown, new RegExp(heading));
+  assert.match(markdown, /it does not identify a cause/);
+  assert.match(markdown, /bottom tier 1 tower; last hit: Hero 6, dire/);
+  assert.match(markdown, /1\. Illuminate; 2\. Illuminate/);
+  assert.match(markdown, /\| 5:14 \| observer \| 11:14 \| 360 \|/);
+});
+
+test('shows unavailable match context without empty-looking tables', () => {
+  const markdown = renderEvidenceMarkdown(projectArtifact(normalizeEvidence(fullMatchFixture())));
+  assert.match(markdown, /## Team economy\n\n\| Field \| Value \|\n\| --- \| --- \|\n\| status \| unavailable \|\n\| reason \| series_unavailable \|/);
+  assert.match(markdown, /\| ward logs \| unavailable \(ward_logs_unavailable\) \|/);
+});

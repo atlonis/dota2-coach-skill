@@ -10,10 +10,14 @@ function records(value) {
   return value && typeof value === 'object' ? Object.entries(value) : [];
 }
 
+// Some constant talent names still carry an unfilled value template such as
+// `{s:bonus_stun_duration}`; such a name is not a display name and stays unknown.
+const VALUE_TEMPLATE = /\{s:[^}]*\}|%[A-Za-z_][A-Za-z0-9_]*%/;
+
 function put(catalog, kind, id, name, overwrite = false) {
   const numericId = Number(id);
   const cleanName = text(name);
-  if (!Number.isSafeInteger(numericId) || numericId <= 0 || !cleanName) return;
+  if (!Number.isSafeInteger(numericId) || numericId <= 0 || !cleanName || VALUE_TEMPLATE.test(cleanName)) return;
   const key = String(numericId);
   if (overwrite || !catalog[kind][key]) catalog[kind][key] = cleanName;
 }

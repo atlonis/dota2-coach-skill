@@ -74,6 +74,11 @@ The successful JSON has `schemaVersion: "2.1.0"`. Inspect these sections before 
 - `lane`: selected lane, verified physical opponents, and a safe unknown reason when no matchup can be established;
 - `deathAnalysis`: every selected-player death context, confirmed observations, unavailable prerequisites, same-match patterns, and priority death time;
 - `series`: the selected player's per-minute OpenDota values, where `values[m]` is the value at minute `m`. `minuteBasis` records whether minutes come from the replay's recorded sample times or, only when none were recorded, from array position. `netWorth` is present only when the parse recorded per-minute net worth; cumulative `gold` is collected gold, not net worth.
+- `teamEconomy`: per-minute team earned-gold and XP difference, and net worth difference when all ten participants recorded it, from the selected side's perspective (positive means the selected side is ahead), with per-phase changes, extremes, leader changes and the largest change within `swingWindowMinutes`. Earned gold is total gold earned, not net worth.
+- `objectives`: recorded building, Roshan, Aegis, Tormentor, first-blood and courier events with time, side, the recorded last hit and whether the selected player is involved; `unrecognizedCount` counts records the runtime could not place on the match clock or classify.
+- `wards`: the selected player's observer and sentry placements with the time each ward left the game, placements without a usable match time, and side totals when all five players' logs exist.
+- `buybacks`: the selected player's buyback times and side totals when all five players' logs exist.
+- `skillBuild`: the recorded ability and talent upgrade order.
 - `baseline`: ready peer-mean comparisons with metric, minute, sample size, and bracket basis.
 - `baseline.sameHeroPositionRankPatch.points[].metricSampleSizes`: the observed sample size per source metric; each comparison's `matchCount` uses that metric's own sample size. Death comparisons require a complete, consistent event count; missing events do not become zero.
 - `baseline.sameHeroPositionRankPatch.weeks`: epoch-week indices, not calendar week numbers; a week starts at `index * 604800` Unix seconds. The runtime includes only complete weeks inside the verified current patch.

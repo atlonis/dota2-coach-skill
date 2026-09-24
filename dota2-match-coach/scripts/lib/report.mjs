@@ -260,6 +260,162 @@ function projectDeathContext(context) {
   };
 }
 
+const SIDES = new Set(['radiant', 'dire']);
+const TEAM_MEASURES = ['earnedGold', 'xp', 'netWorth'];
+const OBJECTIVE_TYPES = new Set([
+  'building_destroyed', 'roshan_killed', 'tormentor_killed', 'aegis_picked_up', 'aegis_stolen', 'aegis_denied', 'first_blood', 'courier_lost',
+]);
+
+function booleanOrNull(value) {
+  return typeof value === 'boolean' ? value : null;
+}
+
+function sideOrNull(value) {
+  return SIDES.has(value) ? value : null;
+}
+
+function sectionHeader(section, sources) {
+  return {
+    status: typeof section?.status === 'string' ? section.status : 'unavailable',
+    reason: typeof section?.reason === 'string' ? section.reason : null,
+    source: sources.includes(section?.source) ? section.source : null,
+  };
+}
+
+function minuteValues(values) {
+  return Array.isArray(values) ? values.map((value) => (Number.isFinite(value) ? value : null)) : [];
+}
+
+function projectMinutePoint(point) {
+  return point && typeof point === 'object' ? pickNumbers(point, ['minute', 'value']) : null;
+}
+
+function projectSwing(swing) {
+  return swing && typeof swing === 'object'
+    ? pickNumbers(swing, ['startMinute', 'endMinute', 'start', 'end', 'change'], { nullable: true })
+    : null;
+}
+
+function projectTeamEconomy(economy) {
+  const measures = TEAM_MEASURES.filter((name) => Array.isArray(economy?.measures?.[name]?.values));
+  const perMeasure = (build) => Object.fromEntries(measures.map((name) => [name, build(name)]));
+  return {
+    ...sectionHeader(economy, ['opendota']),
+    perspective: sideOrNull(economy?.perspective),
+    swingWindowMinutes: Number.isInteger(economy?.swingWindowMinutes) ? economy.swingWindowMinutes : null,
+    measures: perMeasure((name) => ({ values: minuteValues(economy.measures[name].values) })),
+    phases: Array.isArray(economy?.phases) ? economy.phases.map((phase) => ({
+      ...pickStrings(phase, ['id', 'interval']),
+      ...pickNumbers(phase, ['start', 'end']),
+      ...Object.fromEntries(measures.filter((name) => phase?.[name] && typeof phase[name] === 'object')
+        .map((name) => [name, pickNumbers(phase[name], ['startMinute', 'endMinute', 'start', 'end', 'change'], { nullable: true })])),
+    })) : [],
+    extremes: perMeasure((name) => ({
+      maxLead: projectMinutePoint(economy?.extremes?.[name]?.maxLead),
+      maxDeficit: projectMinutePoint(economy?.extremes?.[name]?.maxDeficit),
+    })),
+    leadChanges: perMeasure((name) => (Array.isArray(economy?.leadChanges?.[name]) ? economy.leadChanges[name] : [])
+      .filter((row) => ['selected_side', 'opponent_side'].includes(row?.ahead))
+      .map((row) => ({ ...pickNumbers(row, ['minute']), ahead: row.ahead }))),
+    largestSwings: perMeasure((name) => ({
+      adverse: projectSwing(economy?.largestSwings?.[name]?.adverse),
+      favorable: projectSwing(economy?.largestSwings?.[name]?.favorable),
+    })),
+  };
+}
+
+function projectActor(actor) {
+  if (!actor || typeof actor !== 'object') return null;
+  return {
+    ...(['hero', 'non_hero'].includes(actor.kind) ? { kind: actor.kind } : {}),
+    hero: actor.hero && typeof actor.hero === 'object' ? projectEntityRef(actor.hero) : null,
+    side: sideOrNull(actor.side),
+    selectedPlayer: booleanOrNull(actor.selectedPlayer),
+  };
+}
+
+function projectBuilding(building) {
+  if (!building || typeof building !== 'object') return null;
+  return {
+    side: sideOrNull(building.side),
+    kind: ['tower', 'barracks', 'ancient'].includes(building.kind) ? building.kind : null,
+    tier: Number.isInteger(building.tier) ? building.tier : null,
+    lane: ['top', 'mid', 'bottom'].includes(building.lane) ? building.lane : null,
+    barracks: ['melee', 'ranged'].includes(building.barracks) ? building.barracks : null,
+  };
+}
+
+function projectObjectiveEvent(event) {
+  const projected = { ...pickNumbers(event, ['time']), type: event.type };
+  if (event.type === 'building_destroyed') {
+    return {
+      ...projected, building: projectBuilding(event.building), killer: projectActor(event.killer),
+      denied: booleanOrNull(event.denied), ownBuilding: booleanOrNull(event.ownBuilding),
+    };
+  }
+  if (event.type === 'roshan_killed' || event.type === 'tormentor_killed') {
+    return { ...projected, team: sideOrNull(event.team), bySelectedSide: booleanOrNull(event.bySelectedSide), participant: projectActor(event.participant) };
+  }
+  if (event.type === 'first_blood') return { ...projected, killer: projectActor(event.killer), victim: projectActor(event.victim) };
+  if (event.type === 'courier_lost') {
+    return { ...projected, lostBy: sideOrNull(event.lostBy), lostBySelectedSide: booleanOrNull(event.lostBySelectedSide), killer: projectActor(event.killer) };
+  }
+  return { ...projected, participant: projectActor(event.participant), bySelectedSide: booleanOrNull(event.bySelectedSide) };
+}
+
+function projectObjectives(objectives) {
+  return {
+    ...sectionHeader(objectives, ['opendota']),
+    events: Array.isArray(objectives?.events)
+      ? objectives.events.filter((event) => OBJECTIVE_TYPES.has(event?.type) && Number.isFinite(event?.time)).map(projectObjectiveEvent)
+      : [],
+    unrecognizedCount: Number.isInteger(objectives?.unrecognizedCount) ? objectives.unrecognizedCount : null,
+  };
+}
+
+function projectWardCounts(counts) {
+  return counts && typeof counts === 'object' ? pickNumbers(counts, ['observer', 'sentry']) : null;
+}
+
+function projectWards(wards) {
+  const selected = wards?.selectedPlayer;
+  return {
+    ...sectionHeader(wards, ['opendota']),
+    selectedPlayer: selected && typeof selected === 'object' ? {
+      placements: Array.isArray(selected.placements) ? selected.placements
+        .filter((placement) => ['observer', 'sentry'].includes(placement?.kind) && Number.isFinite(placement?.time))
+        .map((placement) => ({
+          ...pickNumbers(placement, ['time']), kind: placement.kind,
+          ...pickNumbers(placement, ['endedAt', 'secondsActive'], { nullable: true }),
+        })) : [],
+      ...pickNumbers(selected, ['observerCount', 'sentryCount', 'excludedCount']),
+    } : null,
+    teams: wards?.teams && typeof wards.teams === 'object' ? {
+      selectedSide: projectWardCounts(wards.teams.selectedSide),
+      opponentSide: projectWardCounts(wards.teams.opponentSide),
+    } : null,
+  };
+}
+
+function projectBuybacks(buybacks) {
+  return {
+    ...sectionHeader(buybacks, ['opendota']),
+    selectedPlayer: Array.isArray(buybacks?.selectedPlayer)
+      ? buybacks.selectedPlayer.filter((row) => Number.isFinite(row?.time)).map((row) => ({ time: row.time }))
+      : [],
+    ...pickNumbers(buybacks, ['selectedSideCount', 'opponentSideCount'], { nullable: true }),
+  };
+}
+
+function projectSkillBuild(skillBuild) {
+  return {
+    ...sectionHeader(skillBuild, ['opendota']),
+    upgrades: Array.isArray(skillBuild?.upgrades) ? skillBuild.upgrades
+      .filter((row) => Number.isInteger(row?.order))
+      .map((row) => ({ order: row.order, ability: projectEntityRef(row.ability) })) : [],
+  };
+}
+
 export function projectArtifact(model = {}) {
   const sources = Object.fromEntries(['opendota', 'stratz', 'valve', 'entityConstants']
     .filter((name) => Object.hasOwn(model.sources ?? {}, name))
@@ -326,6 +482,11 @@ export function projectArtifact(model = {}) {
     series,
     patch,
     phases,
+    teamEconomy: projectTeamEconomy(model.teamEconomy),
+    objectives: projectObjectives(model.objectives),
+    wards: projectWards(model.wards),
+    buybacks: projectBuybacks(model.buybacks),
+    skillBuild: projectSkillBuild(model.skillBuild),
     baseline: projectBaseline(model.baseline),
     deathAnalysis: {
       contexts: Array.isArray(model.deathAnalysis?.contexts) ? model.deathAnalysis.contexts.map(projectDeathContext) : [],
@@ -490,6 +651,146 @@ function deathObservationFacts(observations = {}) {
     .join('; ') || '—';
 }
 
+const TEAM_MEASURE_LABELS = new Map([
+  ['earnedGold', 'earned gold difference'],
+  ['xp', 'XP difference'],
+  ['netWorth', 'net worth difference'],
+]);
+
+function signed(value) {
+  if (!Number.isFinite(value)) return '—';
+  return value > 0 ? `+${value}` : String(value);
+}
+
+function minuteMark(minute) {
+  return Number.isInteger(minute) ? `${minute}:00` : '—';
+}
+
+function statusRows(section) {
+  return [['status', valueOf({ value: section?.status ?? 'unavailable' })], ['reason', valueOf({ value: section?.reason ?? null })]];
+}
+
+function recordedValue(value) {
+  return Number.isFinite(value) ? signed(value) : 'not recorded';
+}
+
+function teamChangeCell(change) {
+  if (!change) return '—';
+  return `${minuteMark(change.startMinute)} ${recordedValue(change.start)} → ${minuteMark(change.endMinute)} ${recordedValue(change.end)} (change ${recordedValue(change.change)})`;
+}
+
+function teamPointCell(point) {
+  return point ? `${signed(point.value)} at ${minuteMark(point.minute)}` : 'none';
+}
+
+function teamSwingCell(swing) {
+  return swing ? `${signed(swing.change)}: ${minuteMark(swing.startMinute)} ${signed(swing.start)} → ${minuteMark(swing.endMinute)} ${signed(swing.end)}` : 'none';
+}
+
+function leadChangeCell(rows) {
+  return Array.isArray(rows) && rows.length > 0
+    ? rows.map((row) => `${minuteMark(row.minute)} ${row.ahead === 'selected_side' ? 'selected side ahead' : 'opponent ahead'}`).join(', ')
+    : 'none';
+}
+
+function teamEconomyMarkdown(economy) {
+  const lines = ['## Team economy', ''];
+  const measures = TEAM_MEASURES.filter((name) => economy?.measures?.[name]);
+  if (economy?.status !== 'ready' || measures.length === 0) return [...lines, table(statusRows(economy)), ''];
+  const labels = measures.map((name) => TEAM_MEASURE_LABELS.get(name));
+  return [
+    ...lines,
+    `Per-minute team difference from the selected side's perspective (${valueOf({ value: economy.perspective })}); a positive value means the selected side is ahead. Earned gold is total gold earned, not net worth. A swing is the largest measured change within ${valueOf({ value: economy.swingWindowMinutes })} minutes; it does not identify a cause.`,
+    '',
+    `| Phase | Interval (min) | ${labels.join(' | ')} |`,
+    `| --- | --- | ${labels.map(() => '---').join(' | ')} |`,
+    ...(economy.phases ?? []).map((phase) => `| ${phase.id ?? '—'} | ${phase.interval ?? '—'} | ${measures.map((name) => teamChangeCell(phase[name])).join(' | ')} |`),
+    '',
+    '| Measure | Max lead | Max deficit | Largest adverse swing | Largest favorable swing | Leader changes |',
+    '| --- | --- | --- | --- | --- | --- |',
+    ...measures.map((name) => `| ${TEAM_MEASURE_LABELS.get(name)} | ${teamPointCell(economy.extremes?.[name]?.maxLead)} | ${teamPointCell(economy.extremes?.[name]?.maxDeficit)} | ${teamSwingCell(economy.largestSwings?.[name]?.adverse)} | ${teamSwingCell(economy.largestSwings?.[name]?.favorable)} | ${leadChangeCell(economy.leadChanges?.[name])} |`),
+    '',
+  ];
+}
+
+function actorLabel(actor) {
+  if (!actor) return 'unavailable';
+  if (actor.kind === 'non_hero') return `non-hero unit (${valueOf({ value: actor.side })})`;
+  const hero = entityLabel(actor.hero);
+  const side = actor.side ? `, ${actor.side}` : '';
+  return `${hero}${side}${actor.selectedPlayer ? ', selected player' : ''}`;
+}
+
+function buildingLabel(building) {
+  if (!building) return 'unknown building';
+  const parts = [building.side, building.lane, building.tier ? `tier ${building.tier}` : null, building.barracks, building.kind].filter(Boolean);
+  return parts.join(' ');
+}
+
+function objectiveDetails(event) {
+  switch (event.type) {
+    case 'building_destroyed':
+      return `${buildingLabel(event.building)}; last hit: ${actorLabel(event.killer)}; denied: ${observationValue(event.denied)}; selected side's building: ${observationValue(event.ownBuilding)}`;
+    case 'roshan_killed':
+    case 'tormentor_killed':
+      return `team: ${valueOf({ value: event.team })}; selected side: ${observationValue(event.bySelectedSide)}${event.participant ? `; player: ${actorLabel(event.participant)}` : ''}`;
+    case 'first_blood':
+      return `killer: ${actorLabel(event.killer)}; victim: ${actorLabel(event.victim)}`;
+    case 'courier_lost':
+      return `lost by: ${valueOf({ value: event.lostBy })}; selected side: ${observationValue(event.lostBySelectedSide)}; killer: ${event.killer ? actorLabel(event.killer) : 'unavailable'}`;
+    default:
+      return `player: ${actorLabel(event.participant)}; selected side: ${observationValue(event.bySelectedSide)}`;
+  }
+}
+
+function objectivesMarkdown(objectives) {
+  const events = Array.isArray(objectives?.events) ? objectives.events : [];
+  return [
+    '## Objectives',
+    '',
+    table([...statusRows(objectives), ['unrecognized records', valueOf({ value: objectives?.unrecognizedCount ?? null })]]),
+    '',
+    '| Time | Event | Details |',
+    '| --- | --- | --- |',
+    ...(events.length > 0 ? events.map((event) => `| ${clock(event.time)} | ${event.type.replaceAll('_', ' ')} | ${objectiveDetails(event)} |`) : ['| — | — | — |']),
+    '',
+  ];
+}
+
+function wardCountsLabel(counts) {
+  return counts ? `${counts.observer} observer / ${counts.sentry} sentry` : 'unavailable';
+}
+
+function playerActionsMarkdown(wards, buybacks, skillBuild) {
+  const placements = Array.isArray(wards?.selectedPlayer?.placements) ? wards.selectedPlayer.placements : [];
+  const upgrades = Array.isArray(skillBuild?.upgrades) ? skillBuild.upgrades : [];
+  return [
+    '## Wards, buybacks, and skill build',
+    '',
+    'Ward rows are recorded placements and the time each ward left the game; they do not establish vision, location names, or whether a ward expired or was destroyed. The skill build is the recorded upgrade order, not the hero level of each upgrade.',
+    '',
+    table([
+      ['ward logs', `${valueOf({ value: wards?.status ?? 'unavailable' })}${wards?.reason ? ` (${wards.reason})` : ''}`],
+      ['selected player placements', wards?.selectedPlayer ? `${wards.selectedPlayer.observerCount} observer / ${wards.selectedPlayer.sentryCount} sentry` : 'unavailable'],
+      ['placements without a usable match time', valueOf({ value: wards?.selectedPlayer?.excludedCount ?? null })],
+      ['selected side placements', wardCountsLabel(wards?.teams?.selectedSide)],
+      ['opponent side placements', wardCountsLabel(wards?.teams?.opponentSide)],
+      ['buyback log', `${valueOf({ value: buybacks?.status ?? 'unavailable' })}${buybacks?.reason ? ` (${buybacks.reason})` : ''}`],
+      ['selected player buybacks', buybacks?.status === 'ready' ? list((buybacks.selectedPlayer ?? []).map((row) => clock(row.time))) : 'unavailable'],
+      ['selected side / opponent side buybacks', `${valueOf({ value: buybacks?.selectedSideCount ?? null })} / ${valueOf({ value: buybacks?.opponentSideCount ?? null })}`],
+      ['skill build', `${valueOf({ value: skillBuild?.status ?? 'unavailable' })}${skillBuild?.reason ? ` (${skillBuild.reason})` : ''}`],
+      ['upgrade order', upgrades.length > 0 ? upgrades.map((row) => `${row.order}. ${entityLabel(row.ability)}`).join('; ') : '—'],
+    ]),
+    '',
+    '| Placed | Ward | Left the game | Seconds active |',
+    '| --- | --- | --- | --- |',
+    ...(placements.length > 0
+      ? placements.map((placement) => `| ${clock(placement.time)} | ${placement.kind} | ${placement.endedAt == null ? 'not recorded' : clock(placement.endedAt)} | ${valueOf({ value: placement.secondsActive ?? null })} |`)
+      : ['| — | — | — | — |']),
+    '',
+  ];
+}
+
 export function renderEvidenceMarkdown(model = {}) {
   const request = model.request ?? {};
   const match = model.match ?? {};
@@ -551,6 +852,9 @@ export function renderEvidenceMarkdown(model = {}) {
     '| --- | --- | --- | --- | --- | --- | --- | --- |',
     ...(baselineRows(model.baseline).length > 0 ? baselineRows(model.baseline) : ['| — | — | — | — | — | — | — | — |']),
     '',
+    ...teamEconomyMarkdown(model.teamEconomy),
+    ...objectivesMarkdown(model.objectives),
+    ...playerActionsMarkdown(model.wards, model.buybacks, model.skillBuild),
     '## Death contexts',
     '',
     '| Time | Facts | Observations | Unavailable |',

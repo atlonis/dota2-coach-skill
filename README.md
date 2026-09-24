@@ -12,7 +12,9 @@ The project targets only the latest exact subpatch. Older matches or matches tha
 - STRATZ GraphQL enrichment with the required `User-Agent: STRATZ_API`;
 - latest exact-subpatch verification through the Valve timeline;
 - Radiant/Dire draft, lane outcome, final metrics, purchases, and inventory;
-- four game stages, time series, and within-match extrema;
+- four game stages, time series, and within-match extrema, with every per-minute value keyed by the replay's recorded sample time;
+- team earned-gold, XP and, when recorded, net worth difference per minute, with per-stage changes, leader changes and the largest swings;
+- recorded objectives (buildings, Roshan, Aegis, Tormentor, first blood, couriers), ward placements, buybacks, and the skill build;
 - allowlisted event timeline and teamfights bounded by match duration;
 - position jumps labelled with their cause, so an ally warp is never read as a solo teleport;
 - explicit source conflicts with alternatives and provenance preserved;
@@ -100,6 +102,8 @@ The runtime writes independent `dataQuality.capabilities`:
 - `peerBaseline` — a peer sample of the same hero, position and bracket on the current patch is available;
 - `selectedTimeline` and `allPlayerPositions` — the required playback timelines are available;
 - `deathContext` and `deathPattern` — complete death contexts or a repeated confirmed signature are available;
+- `teamEconomy` and `objectiveTimeline` — the per-minute team difference and the recorded objectives are available;
+- `wardPlacements`, `buybackLog`, and `skillBuild` — the selected player's corresponding logs are available;
 - `currentPatch` — the latest exact subpatch is verified.
 
 A false capability blocks only its corresponding conclusion. `deathPattern: false` means no confirmed repeated signature was produced; check death coverage before claiming that repetition was absent.

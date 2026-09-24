@@ -6,6 +6,7 @@ import { normalizeParticipants, resolveLaneMatchup } from './lane.mjs';
 import { buildDeathAnalysis } from './deaths.mjs';
 import { computeCapabilities, qualityFromCapabilities } from './capabilities.mjs';
 import { alignMinuteSeries } from './series.mjs';
+import { buildBuybacks, buildObjectives, buildSkillBuild, buildTeamEconomy, buildWards } from './match-context.mjs';
 
 const SCHEMA_VERSION = '2.1.0';
 const PHASES = [
@@ -629,6 +630,9 @@ export function normalizeEvidence({
     scoreboardDeaths: summary.deaths.value,
   });
   const inventory = finalInventoryFor(openPlayer, stratzPlayer, warnings, catalog);
+  const phases = buildPhases(aligned.player ?? {}, stratzPlayer, duration);
+  const openMatch = openDota?.status === 'ready' ? openDota.match : null;
+  const matchContextInput = { match: openMatch, selectedOpenPlayer: openPlayer, selectedSide: side.value, durationSeconds: duration };
   const heroId = field('Hero ID', openPlayer?.hero_id, stratzPlayer?.heroId);
   const player = {
     accountId: sourced(accountId, openPlayer ? 'opendota' : 'stratz'),
@@ -681,7 +685,15 @@ export function normalizeEvidence({
       current: sourced(valve?.currentPatch, 'valve'),
       isCurrentExactPatch: sourced(valve?.status === 'ready' ? valve.isCurrentExactPatch : null, 'valve'),
     },
-    phases: buildPhases(aligned.player ?? {}, stratzPlayer, duration),
+    phases,
+    teamEconomy: buildTeamEconomy({ match: openMatch, side: side.value, durationSeconds: duration, phases }),
+    objectives: buildObjectives({
+      match: openMatch, participants, selectedAccountId: accountId, selectedSide: side.value,
+      heroConstants: entityConstants?.heroes, durationSeconds: duration,
+    }),
+    wards: buildWards(matchContextInput),
+    buybacks: buildBuybacks(matchContextInput),
+    skillBuild: buildSkillBuild({ selectedOpenPlayer: openPlayer, catalog }),
     baseline: buildBaseline({
       baseline,
       openPlayer: aligned.player,

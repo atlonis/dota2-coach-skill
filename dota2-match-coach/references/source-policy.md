@@ -7,12 +7,13 @@ The runtime supports only the current exact Dota 2 sub-patch. An older or unveri
 | Need | Evidence source | Limit |
 |---|---|---|
 | Match facts and parse state | OpenDota | a scoreboard is not replay-derived evidence |
+| Team economy, objectives, wards, buybacks, skill build | OpenDota parsed match | logged values and events locate what happened, not why |
 | Participants, lane, playback, peer baseline | STRATZ | token and each relevant capability are required |
 | Exact current sub-patch | Valve timeline | unavailable verification is not a current-patch result |
 | Mechanics | Liquipedia cross-checked with Valve | explains a fact; does not create match evidence |
 | Personal progress, when requested | runtime-validated normalized local artifacts supplied through `--history-dir` | require comparable player, hero, position, mode and current exact patch; descriptive change only |
 
-Do not add Dota2ProTracker, a raw `.dem`, wards, smoke, objectives or historical-patch analysis to the claim set. Personal comparison is permitted only through the validated local-history path above; arbitrary prior-match text, conversation memory or a profile snapshot is not a personal baseline.
+Do not add Dota2ProTracker, a raw `.dem`, smoke or historical-patch analysis to the claim set. Personal comparison is permitted only through the validated local-history path above; arbitrary prior-match text, conversation memory or a profile snapshot is not a personal baseline.
 
 ## Facts, hypotheses and unknowns
 
@@ -22,6 +23,16 @@ Do not add Dota2ProTracker, a raw `.dem`, wards, smoke, objectives or historical
 - If sources conflict, name the divergence and lower confidence; do not silently select a candidate. Preserve comparison scope: an interval aggregate is not a cumulative value at a match-time marker.
 
 Never infer intent, vision, enemy cooldowns, mana, health, an ability's readiness or certain survival from a result. An item-use event proves only the recorded use, not an unrecorded target, direction, timing quality, effect or tactical correctness. A purchase proves a recorded purchase, not a correct build. A match-specific role task needs its supporting capability and sourced task facts. Mechanics knowledge can contextualize those facts but cannot supply missing match state.
+
+## Match context
+
+The parsed match records context around the player's own facts. Each section has its own status; an unavailable section is not an empty one.
+
+- **Team economy** is the per-minute team difference from the selected side's perspective: earned gold (total gold earned, not net worth), XP, and net worth only when every participant recorded it. A leader change, extreme or largest swing is a measured change over its stated minutes. It can establish that the match situation changed and by how much; it does not establish why. Deaths, teamfights or objectives inside the same interval co-occur with the change; call one a cause only with further event evidence, and otherwise say that the cause is not recorded.
+- **Objectives** are recorded building, Roshan, Aegis, Tormentor, first-blood and courier events with their time and side. The recorded killer is the credited last hit, which for a hero may come from its illusion or controlled unit, not everyone who contributed. The selected player's participation is supported only when they are the recorded killer or carrier; absence from the record is not absence from the objective. A deny is known only when the last hit's side is known.
+- **Wards** are the selected player's recorded placements and the time each ward left the game, plus side totals when all five players' logs exist. A placement does not establish vision at a moment, what the ward revealed, whether it expired or was destroyed, or a named map location. A count is not a vision score or a quota.
+- **Buybacks** are recorded buyback times; they do not establish that a buyback was necessary or effective.
+- **Skill build** is the recorded upgrade order. The order is not the hero level of each upgrade, and a recorded choice does not establish that another choice was better.
 
 ## Language, names and ownership
 

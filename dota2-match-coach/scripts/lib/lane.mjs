@@ -9,13 +9,13 @@ function positiveInteger(value) {
   return Number.isSafeInteger(numeric) && numeric > 0 ? numeric : null;
 }
 
-function sideForOpenSlot(slot) {
+export function sideForOpenSlot(slot) {
   if (Number.isInteger(slot) && slot >= 0 && slot <= 4) return 'radiant';
   if (Number.isInteger(slot) && slot >= 128 && slot <= 132) return 'dire';
   return null;
 }
 
-function indexForOpenSlot(slot) {
+export function indexForOpenSlot(slot) {
   if (slot >= 0 && slot <= 4) return slot;
   if (slot >= 128 && slot <= 132) return slot - 123;
   return null;

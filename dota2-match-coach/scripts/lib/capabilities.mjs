@@ -23,6 +23,11 @@ export function computeCapabilities(model = {}) {
       && model.deathAnalysis?.unresolvedCount === 0
       && contexts.every((row) => row.observations?.contextIncomplete === false),
     deathPattern: Boolean(model.deathAnalysis?.patterns?.length),
+    teamEconomy: model.teamEconomy?.status === 'ready',
+    objectiveTimeline: model.objectives?.status === 'ready',
+    wardPlacements: model.wards?.status === 'ready',
+    buybackLog: model.buybacks?.status === 'ready',
+    skillBuild: model.skillBuild?.status === 'ready',
     currentPatch: model.patch?.isCurrentExactPatch?.value === true,
   };
 }
@@ -36,6 +41,11 @@ export function qualityFromCapabilities(capabilities, warnings = []) {
     selectedTimeline: 'selected-player timeline',
     allPlayerPositions: 'positions for all participants',
     deathContext: 'complete death context',
+    teamEconomy: 'team economy',
+    objectiveTimeline: 'objective timeline',
+    wardPlacements: 'ward placements',
+    buybackLog: 'buyback log',
+    skillBuild: 'skill build',
     currentPatch: 'current exact patch',
   };
   return {

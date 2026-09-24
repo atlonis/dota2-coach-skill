@@ -49,7 +49,7 @@ For an interpreted death, keep three distinct layers where applicable; a compact
 2. **Supported hypothesis:** only a cautious inference directly supported by a further event fact, explicitly labelled as a hypothesis and with a confidence level.
 3. **Unavailable:** the missing data that prevents a stronger explanation, such as vision, enemy cooldowns, a stale position, or an unresolved source conflict.
 
-Hypotheses must not smuggle in a new fact. For signature-only evidence, name the confirmed repeated observations and their death timecodes, and state naturally that their recurrence does not establish the cause of the deaths. The pattern can motivate an evidence-checking exercise without becoming a behavioural diagnosis. No stock wording or fixed “medium confidence” label is required. Additional behavioural, timing, item-effect, destination-state or counterfactual hypotheses need explicit supporting artifact evidence; repetition alone never supplies it.
+An objective or buyback recorded after a death is a separate timestamped fact; describe the sequence without asserting that the death caused a building loss or forced the buyback. Hypotheses must not smuggle in a new fact. For signature-only evidence, name the confirmed repeated observations and their death timecodes, and state naturally that their recurrence does not establish the cause of the deaths. The pattern can motivate an evidence-checking exercise without becoming a behavioural diagnosis. No stock wording or fixed “medium confidence” label is required. Additional behavioural, timing, item-effect, destination-state or counterfactual hypotheses need explicit supporting artifact evidence; repetition alone never supplies it.
 
 ## Forbidden causal language
 
