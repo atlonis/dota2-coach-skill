@@ -33,13 +33,13 @@ Weigh which enemy heroes can come back from a bad start and which cannot. Which 
 
 **Claim.** When your lanes are favourable, don't reinvent the wheel. A fight at the bounty runes for first blood cost the runes, the creep blocks and the lane wards. It also sent a teammate to lane by teleport with no mana: an easy target. Secure the runes, the wards and the blocks, and the lanes win the game for you.
 
-**Signal — partly observable.** Early kills and deaths, rune pickups (`events.runes`) and teleports (`events.repositions`). Creep blocks are not observable.
+**Signal — partly observable.** Kills and deaths per phase come from `phases`, and the player's deaths from `deathAnalysis.contexts`. Rune pickups and teleports are collected in `events.runes` and `events.repositions` but not published. Creep blocks are not observable.
 
 ### F3 · 11:21–16:30 · lane · lane control for a mid
 
 **Claim.** When you are stronger in the matchup, harass constantly and take lane control. Right after last hitting, step in for one or two hits: either the enemy gives ground or walks into your tower. Don't wait and hope. Too many enemy creeps is also bad: you then can't harass, deny and last hit all at once.
 
-**Signal — partly observable.** Last hits, denies and hero damage in the first minutes come from `series`. Creep counts and positions are not recorded.
+**Signal — partly observable.** Last hits and denies by minute come from `series`, and hero damage for the lane phase from `phases`. Creep counts and positions are not recorded.
 
 ### F4 · 16:30–18:37 · lane · stack the reasons before committing
 
@@ -50,7 +50,7 @@ Weigh which enemy heroes can come back from a bad start and which cannot. Which 
 
 Check this list before committing.
 
-**Signal — partly observable.** Deaths and teleports are recorded for the player. Other heroes' teleports appear as jumps in their position rows. Lotus timing is fixed.
+**Signal — partly observable.** The player's deaths are in `deathAnalysis.contexts`. His teleports are collected, but the artifact publishes only the last one before a death. Other heroes' teleports appear as jumps in their position rows. Lotus timing is fixed.
 
 ### F5 · 18:37–20:42 · lane · dive only on timing
 
@@ -77,13 +77,13 @@ Check this list before committing.
 - Contest a rune only with vision and at least equal strength, not when three weaker heroes face three stronger ones.
 - When everything is bad, farm one area and play around your strongest teammate.
 
-**Signal — partly observable.** Deaths, rune pickups and teamfights are observable. The resources behind a decision are not.
+**Signal — partly observable.** Deaths are observable. Rune pickups and teamfights are in the sources but not in the artifact. The resources behind a decision are not observable.
 
 ### F9 · 40:57–45:40 · midgame · be next to the action when your cooldown returns
 
 **Claim.** When your key item or ultimate comes back, be near the place you want to act, with a teleport ready. A strong window for killing the enemy offlaner with his ultimate on cooldown was missed because nobody called it. Smoke only for objectives: runes, towers, zones.
 
-**Signal — partly observable.** Teamfights and deaths are observable. Cooldowns are not.
+**Signal — partly observable.** Deaths are observable, and teamfights only around them. Cooldowns are not observable.
 
 ### F10 · 46:12–1:09:00 · second game · an "ideal" game can hide mistakes
 
@@ -96,7 +96,7 @@ Check this list before committing.
 
 The lead came from an opponent who gave up his own lane.
 
-**Signal — partly observable.** Stacks and blocks are not observable. Kills, wards and last hits are.
+**Signal — partly observable.** Stacks and blocks are not observable. Kills per phase, wards and last hits are.
 
 ## Coaching method
 

@@ -40,7 +40,7 @@ A secondary issue: repeated trips to base for mana, which a cheap regen item wou
 
 **Claim.** The time the enemies are dead is when the map is yours, "like robbing a house while nobody is home". Teleport to the waves, take the lotus, and refill resources, so you are ready when the key cooldowns return. Pushing a tier-2 tower while your own waves die to your towers is how a lead evaporates. When you have spent your ultimate or your resources, check the lanes and reset.
 
-**Signal — derivable.** From the end of each won `events.teamfights` interval, time to the player's next wave last hits or teleport, and the waves lost. Towers lost soon after a won fight come from `objectives`.
+**Signal — derivable.** From the end of each won OpenDota teamfight interval, time to the player's next wave last hits or teleport, and the waves lost. Towers lost soon after a won fight come from `objectives`.
 
 ### F5 · 33:55–36:35 · midgame · a support connects to the strongest heroes
 
@@ -70,7 +70,7 @@ A secondary issue: repeated trips to base for mana, which a cheap regen item wou
 
 **Claim.** When your own carry has just spent his BKB and is one item short, retreat and let him finish the item before attacking high ground again.
 
-**Signal — partly observable.** High-ground attempts are derivable from positions and building damage. The BKB state is not observable.
+**Signal — partly observable.** High-ground attempts are derivable from positions near the enemy's base towers. The BKB state is not observable.
 
 ## Coaching method
 

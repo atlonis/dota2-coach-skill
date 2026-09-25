@@ -34,13 +34,13 @@ The coach turns his own game plan into a running sequence of simple instructions
 
 **Claim.** Keep your distance and hit from afar until there is a clear health difference. With the lead, stand closer, harass more and push. When the enemy mid is low, push the wave and pressure the tower. Hit the enemy ranged creep whenever you are allowed to.
 
-**Signal — partly observable.** Kills and lane deaths come from events. The tower's destruction time is in `objectives`. Health difference is not observable.
+**Signal — partly observable.** Kills and deaths per phase come from `phases`, and lane deaths from `deathAnalysis.contexts`. The tower's destruction time is in `objectives`. Health difference is not observable.
 
 ### F4 · 4:09–5:11 · lane to midgame · turn a won lane into a tower, then farm
 
 **Claim.** Once the lane is won, keep the pressure until the tower falls. Then farm waves, camps and runes for about ten minutes and join only a big fight.
 
-**Signal — observable.** Tower destruction from `objectives`, rune pickups from `events.runes`, and last hits per phase from `phases`.
+**Signal — partly observable.** Tower destruction from `objectives` and last hits per phase from `phases`. Rune pickups are collected in `events.runes` but not published.
 
 ### F5 · 5:11–11:58 · midgame · after a fight, reset to farm
 

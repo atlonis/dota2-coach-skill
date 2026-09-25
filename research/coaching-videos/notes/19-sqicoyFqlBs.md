@@ -62,7 +62,7 @@ In this game the win condition was the carry's and the mid's items, and the enem
 
 **Claim.** With limited mana, cast the spell with the most impact in this situation. Defending needs the save and the resistance spell, not the damage spell. The three seconds of a teleport are the time to plan which spells to use on arrival.
 
-**Signal — partly observable.** The player's ability uses and times come from `events.abilityUses`. Mana is not observable.
+**Signal — partly observable.** The player's ability uses before each death are in `ownAbilityUses`; the full list is collected in `events.abilityUses` but not published. Mana is not observable.
 
 ### F7 · 47:31–54:20 · midgame · choose items by the role the game leaves you
 

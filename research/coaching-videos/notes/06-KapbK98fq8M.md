@@ -38,7 +38,7 @@ The coach's prescription keeps the player's appetite for good fights, with an ad
 
 **Claim.** The coach has "officially banned" hitting tier-2 towers before about 20 minutes unless every wave is cleared, every nearby camp is taken, and there is nothing else to do. After a won fight, teleport to the far wave, push it out, and loop back toward the team. Then the enemy respawns into a map they cannot contest. Lingering hands the map back in seconds.
 
-**Signal — derivable.** Time from the end of each won `events.teamfights` interval to the player's next wave last hits, and tower events in `objectives` in the same window. Not computed yet.
+**Signal — derivable.** Time from the end of each won OpenDota teamfight interval to the player's next wave last hits, and tower events in `objectives` in the same window. Not computed yet.
 
 ### F5 · 15:13–19:30 · midgame · the lanes decide whether a fight makes sense
 
@@ -50,7 +50,7 @@ The coach's prescription keeps the player's appetite for good fights, with an ad
 
 **Claim.** Teleporting to a far lane just before your teammates respawn means walking back to them for the next fight: an 80-second commitment for three creeps. Teleport only when you are sure you won't need to walk to your team for the length of the teleport cooldown.
 
-**Signal — derivable.** A teleport in `events.repositions`, then the player arriving late to the next `events.teamfights` interval. Not computed yet.
+**Signal — derivable.** A teleport in `events.repositions`, then the player arriving late to the next OpenDota teamfight interval. Not computed yet.
 
 ### F7 · 23:38–27:20 · method · grow by adding a constraint
 

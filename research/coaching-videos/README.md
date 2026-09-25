@@ -32,6 +32,14 @@ Each note lives in `notes/<n>-<video id>.md`.
    - **derivable:** the sources contain it, but the runtime does not compute it yet;
    - **partly observable:** only part of the claim can be seen in the data;
    - **not observable:** match data cannot show it, for example vision, intent, mana or cooldown state.
+
+   Signals name artifact fields where they exist. A derivable signal may instead name data the runtime already collects but does not publish:
+   - the selected player's timed events: `events.kills`, `events.cs`, `events.runes`, `events.abilityUses` and `events.itemUses`;
+   - teleports in `events.repositions`;
+   - all ten players' position rows;
+   - OpenDota's teamfights.
+
+   The artifact shows these only around each of the player's deaths, in `deathAnalysis.contexts`. Hero damage is published per phase in `phases`, not per minute.
 4. **Coaching method**, for reviews only: how the coach ran the session.
 5. **Exercises the coach gave.**
 6. **Not taken:** what was left out, and why.

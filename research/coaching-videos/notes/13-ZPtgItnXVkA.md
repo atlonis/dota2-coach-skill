@@ -31,7 +31,7 @@ The coach's verdict is that the player's decisions were individually plausible b
 
 **Claim.** Every stage has its own objectives: lotuses, lane control, the fifth-minute timings, night, towers. A fight that is neither quick nor for an objective loses to farming creeps.
 
-**Signal — derivable.** Teamfight intervals in `events.teamfights` against `objectives` and against the player's last-hit rate in the same window. It is not computed yet.
+**Signal — derivable.** OpenDota's teamfight intervals against `objectives` and against the player's last-hit rate in the same window. It is not computed yet.
 
 ### F4 · 3:30–5:10 · lane · pick the moment by resources and levels
 

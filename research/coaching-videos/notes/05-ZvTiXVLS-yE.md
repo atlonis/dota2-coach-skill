@@ -46,7 +46,7 @@ On ranged heroes, lane last hitting suffers from poor creep aggro.
 
 Being too passive locks a player in his bracket, because he never tests his limits.
 
-**Signal — partly observable.** Kills, deaths and teamfights are observable. How aggressive a position was is derivable from positions relative to enemies.
+**Signal — partly observable.** Kills and deaths per phase come from `phases`, and teamfights appear only around the player's deaths in `deathAnalysis.contexts`. How aggressive a position was is derivable from positions relative to enemies.
 
 ### F5 · 28:00–36:15 · midgame · dive to force a reaction, not to all-in
 
@@ -58,13 +58,13 @@ Being too passive locks a player in his bracket, because he never tests his limi
 
 **Claim.** For a hero with a strong and a weak phase, such as day and night, never teleport to the team's fight during the weak phase. The coach's guess is that the player would gain MMR over 500 games by never doing it. In the weak phase the only question is which waves you can farm without dying. A fight elsewhere simply means those waves are free.
 
-**Signal — derivable.** Teleports in `events.repositions` against the game clock, where the day and night cycle is fixed, and against `events.teamfights`. Not computed yet.
+**Signal — derivable.** Teleports in `events.repositions` against the game clock, where the day and night cycle is fixed, and against OpenDota's teamfights. Not computed yet.
 
 ### F7 · 42:59–46:40 · midgame · items that secure the impact you actually have
 
 **Claim.** When a hero's fight impact is one-dimensional, as in blink in and kill one target in three seconds, most of the time, buy what secures that plan: immunity first, then lockdown against escape items. Alternatives that are good in a vacuum do not serve such a hero.
 
-**Signal — observable.** `items.purchases` against the kills in `events.kills`. The fit is a review judgement.
+**Signal — partly observable.** `items.purchases` against kills per phase in `phases`. Kill times are collected in `events.kills` but not published. The fit is a review judgement.
 
 ### F8 · 49:20–53:00 · teamfight · initiate, don't counter-initiate, with an initiation hero
 

@@ -23,13 +23,13 @@ Four lucky kills masked a lane that would otherwise have left him at about 3K ne
 
 **Claim.** "There is no hero you can't beat in mid." Against a strength hero with two armour, a ranged attacker who never hits him has no lane. The player waited for his level-6 ultimate instead of trading from the start. Level the lane-winning spell early, and buy a bottle.
 
-**Signal — partly observable.** Hero damage by minute in `series`, and the skill order in `skillBuild`. The opponent's health is not recorded.
+**Signal — partly observable.** Hero damage in the lane phase from `phases`, and the skill order in `skillBuild`. The opponent's health is not recorded.
 
 ### F2 · 3:38–4:40, 9:29–10:32 · lane · push the wave for every rune timing
 
 **Claim.** For the 2, 4 and 6-minute water runes, always push the wave first. Then even an enemy support coming to contest cannot stop you. When the enemy mid leaves for water, push your own wave so he loses creeps. When waves meet and you have a setup, attack; standing idle is waste.
 
-**Signal — partly observable.** Rune pickups come from `events.runes` and last hits from `series`. Wave pushing is derivable from positions and `events.cs`.
+**Signal — partly observable.** Last hits by minute come from `series`. Rune pickups are collected in `events.runes` but not published. Wave pushing is derivable from positions and `events.cs`.
 
 ### F3 · 4:40–5:45, 10:32–12:05 · lane · don't walk under the enemy tower blind
 
@@ -53,7 +53,7 @@ Four lucky kills masked a lane that would otherwise have left him at about 3K ne
 
 **Claim.** Running around for 17 minutes with no teleport is unacceptable. It cost a kill on the enemy carry and made him miss fights.
 
-**Signal — partly observable.** Teleport uses in `events.repositions`. Teleport purchases are in `items.purchases`, but the stock at any moment is not.
+**Signal — partly observable.** Teleport purchases are in `items.purchases`. Teleport uses are collected in `events.repositions`, but the artifact publishes only the last one before a death. The stock at any moment is not recorded.
 
 ### F7 · 28:37–30:45 · midgame · buy against what can kill you
 

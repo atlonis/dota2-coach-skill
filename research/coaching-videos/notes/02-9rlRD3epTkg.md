@@ -45,7 +45,7 @@ After the lane, the player left the one uncontested wave before his farming item
 
 **Claim.** Every fight a carry joins should feel like a choice he had over farming. Plan the farming route, then look for a way to connect to a fight from it, through a teleport or a twin gate, and only if the fight looks good. By the coach's observation, 2–3K players judge well when to fight but give up their farm to get there. Before about 25–30 minutes a carry's default is to play away from the team, roughly 85:15. After 30–35 minutes the default flips: stay with the team and split off only briefly to clear a wave.
 
-**Signal — derivable.** The player's last hits in the minute before each `events.teamfights` interval, and whether he was inside the fight. `phases` gives last hits per minute around the 25–30 minute boundary.
+**Signal — derivable.** The player's last hits in the minute before each OpenDota teamfight interval, and whether he was inside the fight. `phases` gives last hits per minute around the 25–30 minute boundary.
 
 ### F6 · 50:00–54:00 · midgame · a four-step item plan for a carry
 
@@ -63,7 +63,7 @@ Kill threat depends on whether the team has disables, because a carry without st
 
 **Claim.** The three deaths at 30 minutes began with a logical move, attacking the only enemy in reach while every lane was pushed. They turned into overchasing once the goal was already met. The coach's prevention is a post-game question: why were we fighting this hero in the first place? Once the fight's purpose is achieved, go back to farming.
 
-**Signal — observable.** Deaths close together in `deathAnalysis.contexts`, and the player's kills just before them in `events.kills`.
+**Signal — partly observable.** Deaths close together come from `deathAnalysis.contexts` and `deathAnalysis.patterns`, and kills per phase from `phases`. The times of the player's kills are collected in `events.kills` but not published.
 
 ## Coaching method
 

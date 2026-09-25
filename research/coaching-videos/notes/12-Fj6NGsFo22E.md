@@ -22,7 +22,7 @@ The coach's verdict: the player understands the logic, but his execution is "a C
 
 **Claim.** As an aggressive mid, hit the enemy mid, especially on the first wave, and then hold lane control. Stand outside the creep wave against a hero with an area nuke, so he can't hit you and the creeps with one spell while you hit both.
 
-**Signal — partly observable.** Hero damage by minute from `series` and last hits from `series`. Standing position relative to the wave is not recorded.
+**Signal — partly observable.** Hero damage per phase from `phases` and last hits by minute from `series`. Standing position relative to the wave is not recorded.
 
 ### F3 · 5:45–6:46 · lane · compare resources before jumping
 
@@ -46,7 +46,7 @@ Push the first wave fast for level 2. Pushing fast lets you pull the wave or go 
 
 **Claim.** From a position of strength, take the contested rune: the one the enemy mid is likely going for. Taking the other one is hoping for luck.
 
-**Signal — observable.** Rune pickups from `events.runes`. Where the enemy mid was is derivable from his position row.
+**Signal — derivable.** Rune pickups are collected in `events.runes` but not published. Where the enemy mid was is derivable from his position row.
 
 ### F6 · 11:24–13:30 · early midgame · a gank must be fast and have an objective
 
@@ -58,7 +58,7 @@ Push the first wave fast for level 2. Pushing fast lets you pull the wave or go 
 
 **Claim.** The strongest hero on the map should press where the enemy is weakest, not farm the jungle before the lanes. Buying items without converting them is farming for its own sake. After a key item, take Roshan, buy a gem and end the game.
 
-**Signal — partly observable.** Net worth ranks in `teamEconomy` and `participants`, item timings in `items.purchases`, and Roshan and towers in `objectives`. Whether the item was "converted" into an objective is a review judgement based on those rows.
+**Signal — partly observable.** The player's net worth by minute is in `series` and the team difference in `teamEconomy`; other players' net worth is only in the sources. Item timings come from `items.purchases`, and Roshan and towers from `objectives`. Whether the item was "converted" into an objective is a review judgement based on those rows.
 
 ### F8 · 18:10–20:45 · draft · pick heroes that are hard to shut down
 
@@ -70,7 +70,7 @@ Push the first wave fast for level 2. Pushing fast lets you pull the wave or go 
 
 **Claim.** Fights at this rating happen in random places, under enemy vision, with no timing, for random targets. Everyone runs there and flips a coin. Fight under your own vision, at your ability or item timing, or at an enemy objective where you are guaranteed stronger. Otherwise the player who farmed the wave gains more, even when your side wins the fight.
 
-**Signal — derivable.** The location of `events.teamfights` against warded areas (`wards`) and the player's own item and level timings.
+**Signal — derivable.** The location of OpenDota's teamfights against warded areas (`wards`) and the player's own item and level timings.
 
 ## Coaching method
 

@@ -57,7 +57,7 @@ The session is a useful reference for what a coach considers basics. It carries 
 
 **Claim.** One lane wave gives about the gold and experience of an ancient camp. Farming the lanes beats jungling for a support early.
 
-**Signal — observable.** Lane versus neutral last hits in `events.cs`.
+**Signal — derivable.** Lane versus neutral last hits, from the `isNeutral` flag in `events.cs`, which is collected but not published.
 
 ### F7 · 46:37–53:20 · any stage · move as a team
 

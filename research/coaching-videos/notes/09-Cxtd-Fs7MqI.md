@@ -35,7 +35,7 @@ The biggest error, repeated in two games, was reacting to a losing lane instead 
 - At your own level three, use your disable at once.
 - Waiting 20 seconds to take a full wave beats contesting a camp and missing the last hits.
 
-**Signal — partly observable.** Kills and purchases are observable. Level timings are derivable from `series.xp`. Body blocking and pulls are not observable.
+**Signal — partly observable.** Kills per phase and purchases are observable. Level timings are derivable from `series.xp`. Body blocking and pulls are not observable.
 
 ### F3 · 7:18–9:21 · early midgame · protect the lane that is winning
 

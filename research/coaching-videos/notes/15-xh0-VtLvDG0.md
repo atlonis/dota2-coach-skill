@@ -18,7 +18,7 @@ The coach's frame: once ahead, advantage compounds, a domino effect. Making a mi
 
 **Claim.** In this game the power spikes were the enemy's long cooldowns: three ultimates of roughly 130–160 seconds. In the window when they are down, play as aggressively as possible in the enemy's zone. When they are back, keep pressing, but carefully and with your save support nearby. Your own team's spike was the offlaner's ultimate from about minute seven; smoke to kill the enemy offlaner with it. Leave your own farming carry alone.
 
-**Signal — not observable.** Enemy cooldowns are not recorded. Teamfights and kills around those times are observable.
+**Signal — not observable.** Enemy cooldowns are not recorded. Teamfights and kills around those times are derivable from OpenDota's teamfights and the collected kill events.
 
 ### F2 · 8:48–10:00, 14:30–15:36 · midgame · after the tower falls, take the enemy's zone
 

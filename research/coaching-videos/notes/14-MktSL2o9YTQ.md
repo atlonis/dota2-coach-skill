@@ -68,7 +68,7 @@ Each player's summary also named a build that ignored the enemy's damage type.
 - A player with the top net worth who only farms his own safe jungle creates no pressure, however rich he is.
 - Six slots full and still farming lets the enemy farm too.
 
-**Signal — partly observable.** Item and objective times come from `items.purchases` and `objectives`. Hero damage by minute from `series` shows it: at 20, 30 and 40 minutes the 7K carry had the lowest damage in the game. Cooldown use is only partly visible, through `events.abilityUses`.
+**Signal — partly observable.** Item and objective times come from `items.purchases` and `objectives`, and the player's hero damage per phase from `phases`. The coach read the carry's low damage at 20, 30 and 40 minutes from the replay's graph; other players' damage is only in the sources. Cooldown use is only partly visible, through ability uses collected in `events.abilityUses` but not published.
 
 ### F7 · 25:50–29:00, 1:10:00–1:12:00 · midgame · with the lead or the Aegis, play the enemy's side
 
@@ -83,7 +83,7 @@ Each player's summary also named a build that ignored the enemy's damage type.
 - A fight needs a reason: a tower, Roshan, Tormentor, defending your zone.
 - It also needs your own vision. With neither, just farm.
 
-**Signal — partly observable.** Purchase times against `events.teamfights`, and fight locations against `wards` placements.
+**Signal — partly observable.** Purchase times against OpenDota's teamfights, and fight locations against `wards` placements.
 
 ### F9 · 34:06–35:40, 1:13:35–1:15:40 · midgame · prepare the ground before an objective
 
@@ -111,7 +111,7 @@ Each player's summary also named a build that ignored the enemy's damage type.
 - A single-target ultimate on the enemy's key core is a good use, not a waste.
 - Without the ultimate, stay out of the fight.
 
-**Signal — partly observable.** Ability and item use times come from `events.abilityUses` and `events.itemUses`, but only for the player.
+**Signal — partly observable.** The player's ability and item uses in the window before each death come from `ownAbilityUses` and `ownItemUses` in `deathAnalysis.contexts`. The full lists are collected in `events.abilityUses` and `events.itemUses` but not published, and exist only for the player.
 
 ## Coaching method
 

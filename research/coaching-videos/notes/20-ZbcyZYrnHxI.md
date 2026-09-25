@@ -40,7 +40,7 @@ The reacting coach's frame: to improve, look only at yourself, however badly the
 
 As a routine every game it is nonsense: everyone dies there.
 
-**Signal — not observable.** Wisdom rune pickups are not in the artifact. Kills and deaths near the rune time are observable.
+**Signal — not observable.** Wisdom rune pickups are not in the artifact. The player's deaths near the rune time are observable; kills there are in the collected kill events only.
 
 ### F4 · 18:41–20:14 · early game · don't farm the mid's camps
 
@@ -52,7 +52,7 @@ As a routine every game it is nonsense: everyone dies there.
 
 **Claim.** The lane always has priority. Farm the camps next to a lane, and push the lanes while teammates fight or the enemy shows elsewhere. A carry who only farms the jungle gives almost nothing: no pressure and no information. The strong carry pushes deep and far without dying.
 
-**Signal — derivable.** Lane last hits against neutral last hits by phase, from `events.cs`, and the player's position during `events.teamfights`.
+**Signal — derivable.** Lane last hits against neutral last hits by phase, from `events.cs`, and the player's position during OpenDota's teamfights.
 
 ### F6 · 35:23–36:20 · midgame · a core can carry one observer
 

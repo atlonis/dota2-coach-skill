@@ -21,7 +21,7 @@ Fighting and farming are not a binary choice. Fighting covers any hero-to-hero i
 
 The first skill is noticing these moments, one indicator at a time.
 
-**Signal — partly observable.** Sign 4 is observable from `events.teamfights`. Sign 3 is derivable from all ten position rows when `allPlayerPositions` is true, but not computed. Sign 2 is observable from the player's kills and the team's objectives. Sign 1 is not observable: we have no vision data and no wave positions.
+**Signal — partly observable.** Sign 2 is partly observable: objectives are in `objectives`, while kill times are collected but not published. Sign 3 is derivable from all ten position rows, but not computed. Sign 4 is derivable from OpenDota's teamfights; the artifact shows a fight only around the player's deaths. Sign 1 is not observable: we have no vision data and no wave positions.
 
 ### F2 · 6:40–9:45 · any stage · readiness check before deciding
 
@@ -51,7 +51,7 @@ The first skill is noticing these moments, one indicator at a time.
 
 **Claim.** After a kill inside a fight, keep chasing only if your key spell and health are still available. Otherwise go back to farming.
 
-**Signal — not observable.** Resources are not recorded. The kill and the player's position after it are.
+**Signal — not observable.** Resources are not recorded. The kill and the player's position after it are in the collected events, not in the artifact.
 
 ## Exercises the coach gave
 

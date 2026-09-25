@@ -23,7 +23,7 @@ The coach judged the support's macro as mostly fine for his rating. He blamed th
 
 For a pull, be at the creeps by the 15th and 45th second of the minute.
 
-**Signal — partly observable.** Ward times come from `wards`, and rune pickups from `events.runes`. Pulls are not observable.
+**Signal — partly observable.** Ward times come from `wards`. Rune pickups are collected in `events.runes` but not published. Pulls are not observable.
 
 ### F2 · 4:10–5:44 · lane · keep the small camp open against a lane-pusher
 
@@ -47,7 +47,7 @@ For a pull, be at the creeps by the 15th and 45th second of the minute.
 
 **Claim.** A defensive spell belongs on the ally who is being focused or taking heavy damage, at that moment. Using it on yourself, or not at all, cost the carry his life more than once. Watch for an ally's key item on cooldown, such as immunity, and tell the team. Time a channel-breaking ultimate to interrupt the enemy's cast, not before it.
 
-**Signal — partly observable.** The carry's deaths are observable per participant. The player's ability uses come from `events.abilityUses`, but their targets are not recorded.
+**Signal — derivable.** The carry's deaths are in the sources for every player, but the artifact shows other players' deaths only near the player's own deaths. The player's ability uses are collected in `events.abilityUses`, without targets, and not published.
 
 ### F6 · 18:55–20:58 · midgame · buy what the team is missing
 

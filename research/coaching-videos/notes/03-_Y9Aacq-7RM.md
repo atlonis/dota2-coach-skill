@@ -16,13 +16,13 @@ The coach judged the player's game sense as better than his bracket. The gaps we
 
 **Claim.** The player tended to hit the enemy only when he felt ahead and never when he felt behind. The coach's fix is to name the specific threat. For example, "the enemy's stun" replaces "I can't take ranged creeps", and the restriction becomes "don't stand in melee range of that hero". A named reason gives an accurate decision instead of a blanket one.
 
-**Signal — partly observable.** Per-minute hero damage in `series`, and in `phases` for the lane, shows whether the player traded at all. Individual hits on heroes and the threat itself are not observable.
+**Signal — partly observable.** Hero damage per phase in `phases`, including the lane phase, shows whether the player traded at all. Individual hits on heroes and the threat itself are not observable.
 
 ### F2 · 14:25–18:40 · lane · when the reason is absent, act at once
 
 **Claim.** Not hitting the tower against a mid who defends it well is usually right. But the rule has an exception: when that mid is dead with no teleport, the reason is gone. That window is the only chance, so urgency should jump. The coach's image: every enemy hero holds up a wall, and you cross when the wall is down.
 
-**Signal — partly observable.** The kills and the tower's destruction time come from `events.kills` and `objectives`. Hits on a tower over time are not recorded.
+**Signal — partly observable.** Kills per phase come from `phases` and the tower's destruction time from `objectives`. Kill times are collected in `events.kills` but not published. Hits on a tower over time are not recorded.
 
 ### F3 · 20:07–23:45 · lane to midgame · when a mid should leave to gank
 
@@ -40,7 +40,7 @@ The coach judged the player's game sense as better than his bracket. The gaps we
 
 **Claim.** When a fight is over and spells are spent, the first check is the lane waves, not Roshan or another fight. "However long it takes you to teleport to that free wave is your MMR." Waves are the state of the game; keeping lane equilibrium is what enables towers and Roshan.
 
-**Signal — derivable.** From the end of each `events.teamfights` interval to the player's next wave last hits in `events.cs` or next teleport in `events.repositions`. Not computed yet.
+**Signal — derivable.** From the end of each OpenDota teamfight interval to the player's next wave last hits in `events.cs` or next teleport in `events.repositions`. Not computed yet.
 
 ### F6 · 38:35–41:45 · midgame · against a teamfight lineup, push and choose
 
