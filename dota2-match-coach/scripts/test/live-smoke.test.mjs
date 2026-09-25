@@ -8,6 +8,7 @@ import { createOpenDotaClient } from '../lib/opendota.mjs';
 import { createStratzClient } from '../lib/stratz.mjs';
 import { createValveClient } from '../lib/valve.mjs';
 import { createBaselineClient } from '../lib/baseline.mjs';
+import { createDatafeedClient } from '../lib/datafeed.mjs';
 import { normalizeEvidence } from '../lib/normalize.mjs';
 import { writeArtifacts } from '../lib/report.mjs';
 
@@ -33,6 +34,7 @@ test('live current-patch match emits a valid v2 artifact', { skip: !enabled, tim
       stratzClient: createStratzClient({ apiKey: process.env.STRATZ_API_KEY }),
       valveClient: createValveClient(),
       baselineClient: createBaselineClient({ apiKey: process.env.STRATZ_API_KEY }),
+      datafeedClient: createDatafeedClient(),
       normalize: normalizeEvidence,
       write: writeArtifacts,
     });
@@ -48,6 +50,12 @@ test('live current-patch match emits a valid v2 artifact', { skip: !enabled, tim
     assert.ok(Number.isInteger(unresolvedCount));
     assert.ok(Number.isInteger(artifact.player?.deaths?.value));
     assert.equal(contexts.length + unresolvedCount, artifact.player.deaths.value);
+    // A current-patch match has the selected hero in the datafeed; single records may
+    // still fail, which leaves the section partial rather than unavailable.
+    assert.ok(['ready', 'partial'].includes(artifact.mechanics?.status), `mechanics ${artifact.mechanics?.status}`);
+    for (const [name, series] of Object.entries(artifact.series ?? {})) {
+      if (Array.isArray(series?.values) && series.values.length > 0) assert.equal(series.minuteBasis, 'recorded_times', name);
+    }
   } finally {
     await rm(outputDir, { recursive: true, force: true });
   }
