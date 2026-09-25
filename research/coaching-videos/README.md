@@ -106,9 +106,9 @@ node research/coaching-videos/tools/index.mjs
 | 43 | [How to Maintain Lane Equilibrium (Last Hitting AND Denying Creeps) - Dota 2 Fundamentals (Episode 3)](https://youtu.be/Fj4Mw-oF4jQ) | BSJ | 2021-03 | 7.28c | EN | micro and laning | [note](notes/43-Fj4Mw-oF4jQ.md) |
 | 44 | [How a High MMR Support Thinks / Dota 2](https://youtu.be/krokxuAKtXA) | Support Heaven | 2026-09 | 7.41f | EN | role | [note](notes/44-krokxuAKtXA.md) |
 | 45 | [Тебя неправильно учили играть на керри](https://youtu.be/fVO29u48dB8) | Common Sense Dota | 2026-09 | 7.41e | RU | role | [note](notes/45-fVO29u48dB8.md) |
-| 46 | [КАК ВЫБРАТЬСЯ С ЛОУ ММР НА МИДЕ](https://youtu.be/CcYJvrPlNRI) | Ueio | 2026-05 | 7.41c | RU | role | pending |
-| 47 | [КАК ВЫБРАТЬСЯ С ЛОУ ММР НА КЕРРИ](https://youtu.be/DTXP_T5Z80s) | Ueio | 2026-05 | 7.41c | RU | role | pending |
-| 48 | [How to Play Offlane after LOSING Lane - Offlane Guide Dota 2](https://youtu.be/kWOSCJv0BJM) | BalloonDota | 2026-01 | 7.40b | EN | role | pending |
-| 49 | [Dota 2 Is WAY Easier Than You Think (No BS Guide)](https://youtu.be/PrPEWVHNkPw) | BalloonDota | 2026-03 | 7.40c | EN | role | pending |
-| 50 | [ГАЙД НА САППОРТОВ от 10К ММР ТРЕНЕРА](https://youtu.be/cm0OiAd2d48) | Dimen | 2024-09 | 7.37c | RU | role | pending |
+| 46 | [КАК ВЫБРАТЬСЯ С ЛОУ ММР НА МИДЕ](https://youtu.be/CcYJvrPlNRI) | Ueio | 2026-05 | 7.41c | RU | role | [note](notes/46-CcYJvrPlNRI.md) |
+| 47 | [КАК ВЫБРАТЬСЯ С ЛОУ ММР НА КЕРРИ](https://youtu.be/DTXP_T5Z80s) | Ueio | 2026-05 | 7.41c | RU | role | [note](notes/47-DTXP_T5Z80s.md) |
+| 48 | [How to Play Offlane after LOSING Lane - Offlane Guide Dota 2](https://youtu.be/kWOSCJv0BJM) | BalloonDota | 2026-01 | 7.40b | EN | role | [note](notes/48-kWOSCJv0BJM.md) |
+| 49 | [Dota 2 Is WAY Easier Than You Think (No BS Guide)](https://youtu.be/PrPEWVHNkPw) | BalloonDota | 2026-03 | 7.40c | EN | role | [note](notes/49-PrPEWVHNkPw.md) |
+| 50 | [ГАЙД НА САППОРТОВ от 10К ММР ТРЕНЕРА](https://youtu.be/cm0OiAd2d48) | Dimen | 2024-09 | 7.37c | RU | role | [note](notes/50-cm0OiAd2d48.md) |
 <!-- index:end -->
