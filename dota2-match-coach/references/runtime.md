@@ -27,6 +27,8 @@ The shell wrapper remains positional on macOS/Linux:
 ./scripts/analyze-match.sh 8970339828 123456 --parse-timeout-ms 120000 --output-dir ./output
 ```
 
+When OpenDota has not parsed the replay yet, the runtime requests a parse and polls it every five seconds until the parse timeout. OpenDota's free tier allows 60 requests a minute, so leave about a minute between runs when analysing several matches; a rate-limited run still writes an artifact, with the OpenDota facts it could not fetch marked unavailable.
+
 An account ID or exact English hero name is required. If both are passed, they must resolve to the same participant. Hero-only selection is for a player whose account is not known; it does not establish that the match belongs to the requester.
 
 ## Optional personal history

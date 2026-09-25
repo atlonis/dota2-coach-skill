@@ -257,6 +257,29 @@ for (const retryAfter of ['nonsense', '10']) {
   });
 }
 
+test('polls the parse job every five seconds by default, within the free rate limit', async () => {
+  const sleeps = [];
+  let now = 0;
+  const replies = [
+    jsonResponse({ players: [{ account_id: 7 }] }),
+    jsonResponse({ jobId: 'job-1' }),
+    jsonResponse({ state: 'pending' }),
+    jsonResponse({ state: 'completed' }),
+    jsonResponse({ version: 22, players: [{ account_id: 7, gold_t: [0, 1] }] }),
+  ];
+  const client = createOpenDotaClient({
+    fetchImpl: async () => replies.shift(),
+    now: () => now,
+    sleep: async (ms) => { sleeps.push(ms); now += ms; },
+  });
+
+  const result = await client.loadMatch(123, { parseTimeoutMs: 60_000 });
+
+  assert.equal(result.status, 'ready');
+  assert.equal(result.parse.state, 'completed');
+  assert.deepEqual(sleeps, [5_000, 5_000]);
+});
+
 test('requests parse, polls job, then reloads the match', async () => {
   const calls = [];
   const replies = [

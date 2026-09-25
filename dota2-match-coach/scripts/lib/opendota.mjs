@@ -3,6 +3,8 @@ import { SourceError, requestJson } from './http.mjs';
 const DEFAULT_BASE_URL = 'https://api.opendota.com/api';
 const TERMINAL_STATES = new Set(['completed', 'failed', 'error']);
 const HERO_ERROR_CODE = Symbol('heroErrorCode');
+// OpenDota's free tier allows 60 requests a minute; polling every second exhausts it within a single parse.
+const DEFAULT_POLL_INTERVAL_MS = 5_000;
 const ENTITY_CONSTANT_PATHS = [
   ['heroes', '/constants/heroes'],
   ['items', '/constants/items'],
@@ -109,7 +111,7 @@ export function createOpenDotaClient({
       return { status: 'failed', error: { code: constants[HERO_ERROR_CODE] ?? 'invalid_response' } };
     },
 
-    async loadMatch(matchId, { parseTimeoutMs = 30_000, pollIntervalMs = 1_000 } = {}) {
+    async loadMatch(matchId, { parseTimeoutMs = 30_000, pollIntervalMs = DEFAULT_POLL_INTERVAL_MS } = {}) {
       const notRequested = { requested: false, state: 'not_requested', jobId: undefined };
       let match;
       try {
