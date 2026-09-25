@@ -93,19 +93,19 @@ node research/coaching-videos/tools/index.mjs
 | 30 | [Your Idea of Farming is Outdated](https://youtu.be/iSRPQwrQFww) | BSJ | 2026-06 | 7.41d | EN | macro | [note](notes/30-iSRPQwrQFww.md) |
 | 31 | [КАК ПРАВИЛЬНО ФАРМИТЬ / ГАЙД ОТ 15К ТРЕНЕРА (.ft ⁨@ueioueio⁩ )](https://youtu.be/s6Ruehc5ocE) | NVGATO | 2026-07 | 7.41d | RU | macro | [note](notes/31-s6Ruehc5ocE.md) |
 | 32 | [КАК НАУЧИТЬСЯ ДУМАТЬ В ДОТЕ?/гайд как обыграть всех на своём рейтинге](https://youtu.be/C2hn-YR3a9w) | Gostix | 2026-01 | 7.40b | RU | macro | [note](notes/32-C2hn-YR3a9w.md) |
-| 33 | [ТЕМП И ТАЙМИНГ — САМЫЙ ВАЖНЫЙ ГАЙД в жизни любого ИГРОКА](https://youtu.be/SLbn2nL2Jh8) | Samorodok | 2025-12 | 7.39e | RU | macro | pending |
-| 34 | [Все МАКРО ФИШКИ для МИДА от 13к тренера / МИД UEIO](https://youtu.be/D1zCgUuAllA) | Ueio | 2025-02 | 7.37e | RU | macro | pending |
-| 35 | [ТЫ Играешь по МИКРО И МАКРО НЕ ПРАВИЛЬНО, и вот почему..](https://youtu.be/pHwJav9qIWk) | mugetsu | 2025-03 | 7.38b | RU | macro | pending |
-| 36 | [ПОЧЕМУ БУСТЕРЫ АПАЮТ ММР, А ТЫ НЕТ? Дота 2 гайд.](https://youtu.be/zfmiV7Rsl-s) | str | 2024-10 | 7.37d | RU | macro | pending |
-| 37 | [Why You SUCK at LANING (And How to Fix It) - Dota 2](https://youtu.be/Wlj-oNzVZ78) | BalloonDota | 2026-09 | 7.41f | EN | micro and laning | pending |
-| 38 | [I Coached 100+ Supports. This Is Why They Lose Lanes.](https://youtu.be/8xYPk9qhPDA) | Support Heaven | 2026-09 | 7.41e | EN | micro and laning | pending |
-| 39 | [Your Laning Phase Is Keeping You Stuck in Low MMR - Dota 2 Carry Guide](https://youtu.be/J6m5LDaP_B0) | BalloonDota | 2026-08 | 7.41e | EN | micro and laning | pending |
-| 40 | [Understanding Creep Aggro / Dota 2 Guide](https://youtu.be/Bcg3VVuPsXs) | ZQuixotix | 2023-12 | 7.34e | EN | micro and laning | pending |
-| 41 | [How to Micro - Fundamentals, Tips, & Tricks / Dota 2 Guide](https://youtu.be/RqP7MTqotJE) | ZQuixotix | 2023-04 | 7.32e | EN | micro and laning | pending |
-| 42 | [МИКРОСКИЛЛ. Как улучшить Ластхит, Реакцию, Мапконтроль, Тайминги. Карты для повышения скилла ДОТА](https://youtu.be/lUgaYe2VAxQ) | Свит | 2023-01 | 7.32d | RU | micro and laning | pending |
-| 43 | [How to Maintain Lane Equilibrium (Last Hitting AND Denying Creeps) - Dota 2 Fundamentals (Episode 3)](https://youtu.be/Fj4Mw-oF4jQ) | BSJ | 2021-03 | 7.28c | EN | micro and laning | pending |
-| 44 | [How a High MMR Support Thinks / Dota 2](https://youtu.be/krokxuAKtXA) | Support Heaven | 2026-09 | 7.41f | EN | role | pending |
-| 45 | [Тебя неправильно учили играть на керри](https://youtu.be/fVO29u48dB8) | Common Sense Dota | 2026-09 | 7.41e | RU | role | pending |
+| 33 | [ТЕМП И ТАЙМИНГ — САМЫЙ ВАЖНЫЙ ГАЙД в жизни любого ИГРОКА](https://youtu.be/SLbn2nL2Jh8) | Samorodok | 2025-12 | 7.39e | RU | macro | [note](notes/33-SLbn2nL2Jh8.md) |
+| 34 | [Все МАКРО ФИШКИ для МИДА от 13к тренера / МИД UEIO](https://youtu.be/D1zCgUuAllA) | Ueio | 2025-02 | 7.37e | RU | macro | [note](notes/34-D1zCgUuAllA.md) |
+| 35 | [ТЫ Играешь по МИКРО И МАКРО НЕ ПРАВИЛЬНО, и вот почему..](https://youtu.be/pHwJav9qIWk) | mugetsu | 2025-03 | 7.38b | RU | macro | [note](notes/35-pHwJav9qIWk.md) |
+| 36 | [ПОЧЕМУ БУСТЕРЫ АПАЮТ ММР, А ТЫ НЕТ? Дота 2 гайд.](https://youtu.be/zfmiV7Rsl-s) | str | 2024-10 | 7.37d | RU | macro | [note](notes/36-zfmiV7Rsl-s.md) |
+| 37 | [Why You SUCK at LANING (And How to Fix It) - Dota 2](https://youtu.be/Wlj-oNzVZ78) | BalloonDota | 2026-09 | 7.41f | EN | micro and laning | [note](notes/37-Wlj-oNzVZ78.md) |
+| 38 | [I Coached 100+ Supports. This Is Why They Lose Lanes.](https://youtu.be/8xYPk9qhPDA) | Support Heaven | 2026-09 | 7.41e | EN | micro and laning | [note](notes/38-8xYPk9qhPDA.md) |
+| 39 | [Your Laning Phase Is Keeping You Stuck in Low MMR - Dota 2 Carry Guide](https://youtu.be/J6m5LDaP_B0) | BalloonDota | 2026-08 | 7.41e | EN | micro and laning | [note](notes/39-J6m5LDaP_B0.md) |
+| 40 | [Understanding Creep Aggro / Dota 2 Guide](https://youtu.be/Bcg3VVuPsXs) | ZQuixotix | 2023-12 | 7.34e | EN | micro and laning | [note](notes/40-Bcg3VVuPsXs.md) |
+| 41 | [How to Micro - Fundamentals, Tips, & Tricks / Dota 2 Guide](https://youtu.be/RqP7MTqotJE) | ZQuixotix | 2023-04 | 7.32e | EN | micro and laning | [note](notes/41-RqP7MTqotJE.md) |
+| 42 | [МИКРОСКИЛЛ. Как улучшить Ластхит, Реакцию, Мапконтроль, Тайминги. Карты для повышения скилла ДОТА](https://youtu.be/lUgaYe2VAxQ) | Свит | 2023-01 | 7.32d | RU | micro and laning | [note](notes/42-lUgaYe2VAxQ.md) |
+| 43 | [How to Maintain Lane Equilibrium (Last Hitting AND Denying Creeps) - Dota 2 Fundamentals (Episode 3)](https://youtu.be/Fj4Mw-oF4jQ) | BSJ | 2021-03 | 7.28c | EN | micro and laning | [note](notes/43-Fj4Mw-oF4jQ.md) |
+| 44 | [How a High MMR Support Thinks / Dota 2](https://youtu.be/krokxuAKtXA) | Support Heaven | 2026-09 | 7.41f | EN | role | [note](notes/44-krokxuAKtXA.md) |
+| 45 | [Тебя неправильно учили играть на керри](https://youtu.be/fVO29u48dB8) | Common Sense Dota | 2026-09 | 7.41e | RU | role | [note](notes/45-fVO29u48dB8.md) |
 | 46 | [КАК ВЫБРАТЬСЯ С ЛОУ ММР НА МИДЕ](https://youtu.be/CcYJvrPlNRI) | Ueio | 2026-05 | 7.41c | RU | role | pending |
 | 47 | [КАК ВЫБРАТЬСЯ С ЛОУ ММР НА КЕРРИ](https://youtu.be/DTXP_T5Z80s) | Ueio | 2026-05 | 7.41c | RU | role | pending |
 | 48 | [How to Play Offlane after LOSING Lane - Offlane Guide Dota 2](https://youtu.be/kWOSCJv0BJM) | BalloonDota | 2026-01 | 7.40b | EN | role | pending |
