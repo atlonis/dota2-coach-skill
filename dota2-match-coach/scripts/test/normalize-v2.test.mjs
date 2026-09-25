@@ -6,7 +6,7 @@ import { mergeWeeklyCurves } from '../lib/baseline.mjs';
 
 test('normalizes a full match into schema v2', () => {
   const model = normalizeEvidence(fullMatchFixture());
-  assert.equal(model.schemaVersion, '2.1.0');
+  assert.equal(model.schemaVersion, '2.2.0');
   assert.equal(model.participants.length, 10);
   assert.equal(model.player.heroName.value, 'Keeper of the Light');
   assert.equal(model.lane.status, 'ready');

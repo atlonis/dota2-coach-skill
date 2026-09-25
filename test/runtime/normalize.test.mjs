@@ -71,7 +71,7 @@ test('builds the pinned canonical evidence schema with provenance', () => {
     },
   });
 
-  assert.equal(model.schemaVersion, '2.1.0');
+  assert.equal(model.schemaVersion, '2.2.0');
   assert.deepEqual(model.match.startTime, { value: 1785400000, source: 'opendota' });
   assert.deepEqual(model.match.lobbyType, { value: 7, label: 'Ranked', source: 'opendota' });
   assert.deepEqual(model.match.gameMode, {
@@ -85,6 +85,7 @@ test('builds the pinned canonical evidence schema with provenance', () => {
   assert.deepEqual(model.match.averageRank, { value: 60, label: 'Ancient', source: 'stratz' });
   assert.deepEqual(model.lane, {
     selectedLane: 'mid', opponents: [], status: 'unknown', reason: 'opponents_unknown',
+    outcome: { value: 'RADIANT_VICTORY', source: 'stratz' },
   });
   assert.deepEqual(model.summary.kda, { kills: 4, deaths: 2, assists: 6, source: 'opendota' });
   assert.deepEqual(model.summary.denies, { value: 1, source: 'opendota' });
@@ -93,6 +94,19 @@ test('builds the pinned canonical evidence schema with provenance', () => {
   assert.deepEqual(model.series.denies, { values: [0, 0, 1], source: 'opendota', minuteBasis: 'array_index' });
   assert.deepEqual(model.events.deaths[0], { time: 100, attacker: 8, positionX: 10, positionY: 20, timeDead: 12, source: 'stratz' });
   assert.deepEqual(model.events.teamfights, []);
+});
+
+test('reads the lane outcome of the physical lane, not of the role name', () => {
+  const outcomes = { topLaneOutcome: 'RADIANT_VICTORY', midLaneOutcome: 'TIE', bottomLaneOutcome: 'DIRE_VICTORY' };
+  const laneOf = (lane) => normalize({
+    stratz: { status: 'ready', match: { ...outcomes, players: [{ steamAccountId: accountId, heroId: 107, isRadiant: true, lane }] } },
+  }).lane;
+
+  // The Radiant safe lane is the bottom lane; its off lane is the top lane.
+  assert.deepEqual([laneOf('SAFE_LANE').selectedLane, laneOf('SAFE_LANE').outcome], ['bottom', { value: 'DIRE_VICTORY', source: 'stratz' }]);
+  assert.deepEqual(laneOf('OFF_LANE').outcome, { value: 'RADIANT_VICTORY', source: 'stratz' });
+  assert.deepEqual(laneOf('ROAMING').outcome, { value: null, source: null });
+  assert.deepEqual(normalize().lane.outcome, { value: null, source: null });
 });
 
 test('keeps the rank label null when no source reports a medal or the code is unknown', () => {

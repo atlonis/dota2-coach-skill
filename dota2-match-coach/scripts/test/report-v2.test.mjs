@@ -21,7 +21,7 @@ test('projectArtifact preserves the v2 tactical facts and capability values verb
 
   const artifact = projectArtifact(model);
 
-  assert.equal(artifact.schemaVersion, '2.1.0');
+  assert.equal(artifact.schemaVersion, '2.2.0');
   assert.deepEqual(Object.keys(artifact.sources).sort(), ['entityConstants', 'opendota', 'stratz', 'valve']);
   assert.equal(artifact.player.heroName.value, 'Keeper of the Light');
   assert.equal(artifact.participants.length, 10);
@@ -29,6 +29,8 @@ test('projectArtifact preserves the v2 tactical facts and capability values verb
   assert.equal(artifact.lane.selectedLane, 'bottom');
   assert.equal(artifact.lane.opponents.length, 2);
   assert.ok(artifact.lane.opponents.every((opponent) => opponent.lane === 'bottom'));
+  assert.deepEqual(artifact.lane.outcome, { value: 'DIRE_VICTORY', source: 'stratz' });
+  assert.match(renderEvidenceMarkdown(artifact), /\| lane outcome \| DIRE_VICTORY \(source: stratz\) \|/);
   assert.equal(artifact.deathAnalysis.contexts[0].observations.isolated, null);
   assert.ok(artifact.deathAnalysis.contexts[0].unavailable.includes('participant_positions'));
   assert.deepEqual(artifact.deathAnalysis.patterns, model.deathAnalysis.patterns);

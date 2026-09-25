@@ -581,6 +581,7 @@ export function projectArtifact(model = {}) {
       opponents: Array.isArray(model.lane?.opponents) ? model.lane.opponents.map((opponent) => projectParticipant(opponent, null)) : [],
       status: typeof model.lane?.status === 'string' ? model.lane.status : 'unknown',
       reason: typeof model.lane?.reason === 'string' ? model.lane.reason : null,
+      outcome: projectSourced(model.lane?.outcome),
     },
     summary,
     items: {
@@ -998,6 +999,7 @@ export function renderEvidenceMarkdown(model = {}) {
       ['selectedLane', valueOf({ value: model.lane?.selectedLane })],
       ['lane status', valueOf({ value: model.lane?.status })],
       ['lane reason', valueOf({ value: model.lane?.reason })],
+      ['lane outcome', `${valueOf(model.lane?.outcome)} (source: ${sourceOf(model.lane?.outcome)})`],
       ['actual opponents', list(laneOpponents.map((opponent) => entityLabel(opponent.hero)))],
     ]),
     '',

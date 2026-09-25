@@ -9,7 +9,7 @@ import { alignMinuteSeries } from './series.mjs';
 import { buildBuybacks, buildObjectives, buildSkillBuild, buildTeamEconomy, buildWards } from './match-context.mjs';
 import { buildMechanics, mechanicsEntityNames } from './mechanics.mjs';
 
-const SCHEMA_VERSION = '2.1.0';
+const SCHEMA_VERSION = '2.2.0';
 const PHASES = [
   { id: 'lane', start: 0, end: 600 },
   { id: 'transition', start: 600, end: 900 },
@@ -419,12 +419,16 @@ function minuteAlignedPlayer(openPlayer, warnings) {
   return { player, basis };
 }
 
-function laneOutcomeFor(stratzPlayer, stratz) {
-  const lane = String(stratzPlayer?.lane ?? '').toLowerCase();
-  if (lane.includes('top')) return stratz?.match?.topLaneOutcome;
-  if (lane.includes('mid')) return stratz?.match?.midLaneOutcome;
-  if (lane.includes('bottom') || lane.includes('bot')) return stratz?.match?.bottomLaneOutcome;
-  return null;
+// STRATZ records one outcome per physical lane. The selected lane is already placed
+// on the map through the player's own side, so a safe or off lane reads its own
+// outcome instead of the one across the map. A lane in source conflict reads none.
+const LANE_OUTCOME_FIELDS = new Map([['top', 'topLaneOutcome'], ['mid', 'midLaneOutcome'], ['bottom', 'bottomLaneOutcome']]);
+
+function laneOutcomeFor(lane, stratz) {
+  const field = LANE_OUTCOME_FIELDS.get(lane.selectedLane);
+  if (!field || lane.reason === 'source_conflict' || stratz?.status !== 'ready') return sourced(null, null);
+  const outcome = stratz.match?.[field];
+  return sourced(typeof outcome === 'string' ? outcome : null, 'stratz');
 }
 
 // An empty slot is 0 in OpenDota and null in STRATZ. Both mean no item, so neither
@@ -683,7 +687,7 @@ export function normalizeEvidence({
     player,
     participants,
     draft: draft.draft,
-    lane,
+    lane: { ...lane, outcome: laneOutcomeFor(lane, stratz) },
     deathAnalysis,
     summary,
     items: { purchases: purchasesFor(openPlayer, stratzPlayer, duration, catalog, entityConstants), ...inventory },

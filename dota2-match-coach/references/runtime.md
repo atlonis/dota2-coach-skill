@@ -63,15 +63,15 @@ Remove-Item Env:DOTA2_COACH_LIVE_ACCOUNT_ID -ErrorAction SilentlyContinue
 Remove-Item Env:DOTA2_COACH_LIVE_HERO -ErrorAction SilentlyContinue
 ```
 
-Without `STRATZ_API_KEY`, an account-based current-patch smoke is still useful as a degraded gate: it proves the live source path, exact-patch guard, schema `2.1.0`, ten participant slots, and death accounting. It does not prove STRATZ-only playback, death contexts, or peer baseline. The full release gate requires one additional fresh current-subpatch smoke with a session-only STRATZ token, followed by the two Windows wrapper commands (account and hero selectors) against the same match. Neither gate permits old or historical patches.
+Without `STRATZ_API_KEY`, an account-based current-patch smoke is still useful as a degraded gate: it proves the live source path, exact-patch guard, schema `2.2.0`, ten participant slots, and death accounting. It does not prove STRATZ-only playback, death contexts, or peer baseline. The full release gate requires one additional fresh current-subpatch smoke with a session-only STRATZ token, followed by the two Windows wrapper commands (account and hero selectors) against the same match. Neither gate permits old or historical patches.
 
 ## Read the v2 artifact
 
-The successful JSON has `schemaVersion: "2.1.0"`. Inspect these sections before writing a review:
+The successful JSON has `schemaVersion: "2.2.0"`. Inspect these sections before writing a review:
 
 - `sources`, `warnings`, and `dataQuality.capabilities`: what source evidence exists and which classes of conclusion are supported;
 - `participants`: ten deterministic match slots with `{ id, name }` hero references, side, position, lane, role, rank, and playback availability; unknown values remain `null`;
-- `lane`: selected lane, verified physical opponents, and a safe unknown reason when no matchup can be established;
+- `lane`: selected lane, verified physical opponents, and a safe unknown reason when no matchup can be established. `outcome` is STRATZ's own label for that physical lane, named from the Radiant and Dire sides (for example `DIRE_VICTORY`) rather than from the selected side; the runtime does not recompute it. It is `null` without STRATZ, for an unplaced lane such as roaming, or on a source conflict;
 - `items`: recorded purchases with time and source, and the final inventory. Starting items are bought before the horn and carry negative times; purchases are kept from 300 seconds before the horn, while every other event family starts at zero;
 - `deathAnalysis`: every selected-player death context, confirmed observations, unavailable prerequisites, same-match patterns, and priority death time;
 - `series`: the selected player's per-minute OpenDota values, where `values[m]` is the value at minute `m`. `minuteBasis` records whether minutes come from the replay's recorded sample times or, only when none were recorded, from array position. `netWorth` is present only when the parse recorded per-minute net worth; cumulative `gold` is collected gold, not net worth.
