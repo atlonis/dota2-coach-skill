@@ -53,24 +53,24 @@ node research/coaching-videos/tools/index.mjs
 <!-- index:start -->
 | # | Video | Channel | Published | Patch | Lang | Kind | Note |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | [BSJ Dota 2 Coaching 5500, Carry](https://youtu.be/cZcAjAqiQtE) | Dota Dojo | 2026-06 | 7.41c | EN | review | pending |
+| 1 | [BSJ Dota 2 Coaching 5500, Carry](https://youtu.be/cZcAjAqiQtE) | Dota Dojo | 2026-06 | 7.41c | EN | review | [note](notes/01-cZcAjAqiQtE.md) |
 | 2 | [BSJ Dota 2 Coaching 2200, Carry](https://youtu.be/9rlRD3epTkg) | Dota Dojo | 2026-05 | 7.41c | EN | review | [note](notes/02-9rlRD3epTkg.md) |
-| 3 | [BSJ Dota 2 Coaching 2200, Mid](https://youtu.be/_Y9Aacq-7RM) | Dota Dojo | 2026-04 | 7.41b | EN | review | pending |
-| 4 | [BSJ Dota 2 Coaching 3880 Support](https://youtu.be/auFX6W2kCRg) | Dota Dojo | 2026-04 | 7.41b | EN | review | pending |
-| 5 | [BSJ Dota 2 Coaching 2700, Offlane](https://youtu.be/ZvTiXVLS-yE) | Dota Dojo | 2026-06 | 7.41c | EN | review | pending |
-| 6 | [BSJ Dota 2 Replay Analysis: 5100, Mid](https://youtu.be/KapbK98fq8M) | Dota Dojo | 2026-04 | 7.41b | EN | review | pending |
-| 7 | [Ex Pro replay review of top 500 OFFLANE PLAYER - Dota 2 Coaching](https://youtu.be/8MhRNyixcOU) | Khezu Dota Coaching | 2026-04 | 7.41a | EN | review | pending |
-| 8 | [I turned a 2k MMR player into SMURF](https://youtu.be/b-AzCh2YkH8) | BalloonDota | 2026-09 | 7.41e | EN | review | pending |
-| 9 | [Reviewing My Own Replays: Laning Mistakes & Early Game Decisions / DuBu Dota2](https://youtu.be/Cxtd-Fs7MqI) | DuBu | 2026-09 | 7.41f | EN | review | pending |
-| 10 | [I coached Jenkins on my favorite dota hero](https://youtu.be/ftxKQgYa_VI) | BSJ | 2025-12 | 7.39e | EN | review | pending |
-| 11 | [@Dendi COACHES GRUBBY IN DOTA 2!](https://youtu.be/mbnvE74XG_o) | Grubby | 2022-08 | 7.32 | EN | review | pending |
-| 12 | [КАК ВЫБРАТЬСЯ С 2К ПТС / РАЗБОР ОТ ДАХАКА](https://youtu.be/Fj6NGsFo22E) | Daxak Dota | 2026-06 | 7.41d | RU | review | pending |
+| 3 | [BSJ Dota 2 Coaching 2200, Mid](https://youtu.be/_Y9Aacq-7RM) | Dota Dojo | 2026-04 | 7.41b | EN | review | [note](notes/03-_Y9Aacq-7RM.md) |
+| 4 | [BSJ Dota 2 Coaching 3880 Support](https://youtu.be/auFX6W2kCRg) | Dota Dojo | 2026-04 | 7.41b | EN | review | [note](notes/04-auFX6W2kCRg.md) |
+| 5 | [BSJ Dota 2 Coaching 2700, Offlane](https://youtu.be/ZvTiXVLS-yE) | Dota Dojo | 2026-06 | 7.41c | EN | review | [note](notes/05-ZvTiXVLS-yE.md) |
+| 6 | [BSJ Dota 2 Replay Analysis: 5100, Mid](https://youtu.be/KapbK98fq8M) | Dota Dojo | 2026-04 | 7.41b | EN | review | [note](notes/06-KapbK98fq8M.md) |
+| 7 | [Ex Pro replay review of top 500 OFFLANE PLAYER - Dota 2 Coaching](https://youtu.be/8MhRNyixcOU) | Khezu Dota Coaching | 2026-04 | 7.41a | EN | review | [note](notes/07-8MhRNyixcOU.md) |
+| 8 | [I turned a 2k MMR player into SMURF](https://youtu.be/b-AzCh2YkH8) | BalloonDota | 2026-09 | 7.41e | EN | review | [note](notes/08-b-AzCh2YkH8.md) |
+| 9 | [Reviewing My Own Replays: Laning Mistakes & Early Game Decisions / DuBu Dota2](https://youtu.be/Cxtd-Fs7MqI) | DuBu | 2026-09 | 7.41f | EN | review | [note](notes/09-Cxtd-Fs7MqI.md) |
+| 10 | [I coached Jenkins on my favorite dota hero](https://youtu.be/ftxKQgYa_VI) | BSJ | 2025-12 | 7.39e | EN | review | [note](notes/10-ftxKQgYa_VI.md) |
+| 11 | [@Dendi COACHES GRUBBY IN DOTA 2!](https://youtu.be/mbnvE74XG_o) | Grubby | 2022-08 | 7.32 | EN | review | [note](notes/11-mbnvE74XG_o.md) |
+| 12 | [КАК ВЫБРАТЬСЯ С 2К ПТС / РАЗБОР ОТ ДАХАКА](https://youtu.be/Fj6NGsFo22E) | Daxak Dota | 2026-06 | 7.41d | RU | review | [note](notes/12-Fj6NGsFo22E.md) |
 | 13 | [РАЗБОР 5.000 КЕРРИ](https://youtu.be/ZPtgItnXVkA) | Daxak Dota | 2026-07 | 7.41d | RU | review | [note](notes/13-ZPtgItnXVkA.md) |
-| 14 | [ЕСТЬ ЛИ РАЗНИЦА МЕЖДУ 1К И 7К ММР? (минимальная) / РАЗБОР ОТ ТОП-30 ТРЕНЕРА](https://youtu.be/MktSL2o9YTQ) | Common Sense Dota | 2026-06 | 7.41d | RU | review | pending |
-| 15 | [Выиграл мид? Красавчик, а слабо реализовать преимущество?](https://youtu.be/xh0-VtLvDG0) | Common Sense Dota | 2026-08 | 7.41e | RU | review | pending |
-| 16 | [ЭТО ТОЧНО ЕГО ММР?! 10к ТРЕНЕР РАЗБИРАЕТ игру подписчика на 4000 ММР / Treant Protector 7.41d](https://youtu.be/hZe6LlQtuqk) | SERGGEICH | 2026-06 | 7.41d | RU | review | pending |
-| 17 | [НАНЯЛ 13К ТРЕНЕРА ЧТОБЫ ОН РАЗОБРАЛ САМУЮ ГЛУПУЮ ИГРУ](https://youtu.be/KHurOMCy43c) | Daxak Dota | 2026-03 | 7.40c | RU | review | pending |
-| 18 | [И ЭТО ВАШ ТРЕНЕР? ДАХАК УЧИТ ИГРАТЬ 15К ТРЕНЕРА ПО ДОТЕ (ft. @ueioueio)](https://youtu.be/K9JRV6lQDis) | Daxak Dota | 2026-01 | 7.40b | RU | review | pending |
+| 14 | [ЕСТЬ ЛИ РАЗНИЦА МЕЖДУ 1К И 7К ММР? (минимальная) / РАЗБОР ОТ ТОП-30 ТРЕНЕРА](https://youtu.be/MktSL2o9YTQ) | Common Sense Dota | 2026-06 | 7.41d | RU | review | [note](notes/14-MktSL2o9YTQ.md) |
+| 15 | [Выиграл мид? Красавчик, а слабо реализовать преимущество?](https://youtu.be/xh0-VtLvDG0) | Common Sense Dota | 2026-08 | 7.41e | RU | review | [note](notes/15-xh0-VtLvDG0.md) |
+| 16 | [ЭТО ТОЧНО ЕГО ММР?! 10к ТРЕНЕР РАЗБИРАЕТ игру подписчика на 4000 ММР / Treant Protector 7.41d](https://youtu.be/hZe6LlQtuqk) | SERGGEICH | 2026-06 | 7.41d | RU | review | [note](notes/16-hZe6LlQtuqk.md) |
+| 17 | [НАНЯЛ 13К ТРЕНЕРА ЧТОБЫ ОН РАЗОБРАЛ САМУЮ ГЛУПУЮ ИГРУ](https://youtu.be/KHurOMCy43c) | Daxak Dota | 2026-03 | 7.40c | RU | review | [note](notes/17-KHurOMCy43c.md) |
+| 18 | [И ЭТО ВАШ ТРЕНЕР? ДАХАК УЧИТ ИГРАТЬ 15К ТРЕНЕРА ПО ДОТЕ (ft. @ueioueio)](https://youtu.be/K9JRV6lQDis) | Daxak Dota | 2026-01 | 7.40b | RU | review | [note](notes/18-K9JRV6lQDis.md) |
 | 19 | [Как правильно саппортить? 14к тренер ДУШНО разбирает каждую свою ошибку](https://youtu.be/sqicoyFqlBs) | Common Sense Dota | 2026-03 | 7.40c | RU | review | pending |
 | 20 | [РЕАКЦИЯ ТРЕНЕРА на ДАХАК РАЗОБРАЛ СКУФА 2К ММР](https://youtu.be/ZbcyZYrnHxI) | BlazzerFox Dota | 2026-02 | 7.40c | RU | review | pending |
 | 21 | [ТРЕНЕР РАЗОБРАЛ ОШИБКИ НОВИЧКА DOTA 2](https://youtu.be/WAcK_bDcb3o) | Folzygenius | 2026-01 | 7.40c | RU | review | pending |
