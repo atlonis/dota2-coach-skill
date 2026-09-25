@@ -42,7 +42,7 @@ test('live current-patch match emits a valid v2 artifact', { skip: !enabled, tim
     const contexts = artifact.deathAnalysis?.contexts;
     const unresolvedCount = artifact.deathAnalysis?.unresolvedCount;
 
-    assert.equal(artifact.schemaVersion, '2.2.0');
+    assert.equal(artifact.schemaVersion, '2.3.0');
     assert.equal(artifact.dataQuality?.capabilities?.currentPatch, true);
     assert.ok(Array.isArray(artifact.participants));
     assert.equal(artifact.participants.length, 10);

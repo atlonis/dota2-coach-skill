@@ -9,7 +9,7 @@ import { alignMinuteSeries } from './series.mjs';
 import { buildBuybacks, buildObjectives, buildSkillBuild, buildTeamEconomy, buildWards } from './match-context.mjs';
 import { buildMechanics, mechanicsEntityNames } from './mechanics.mjs';
 
-const SCHEMA_VERSION = '2.2.0';
+const SCHEMA_VERSION = '2.3.0';
 const PHASES = [
   { id: 'lane', start: 0, end: 600 },
   { id: 'transition', start: 600, end: 900 },
@@ -431,6 +431,22 @@ function laneOutcomeFor(lane, stratz) {
   return sourced(typeof outcome === 'string' ? outcome : null, 'stratz');
 }
 
+// The outcome names the winning side, so one label reads opposite for the two teams.
+// It is restated from the selected side; an unknown side or an unlisted value stays
+// null rather than guessed.
+const SELECTED_SIDE_LANE_OUTCOMES = new Map([
+  ['TIE', { radiant: 'tie', dire: 'tie' }],
+  ['RADIANT_VICTORY', { radiant: 'won', dire: 'lost' }],
+  ['RADIANT_STOMP', { radiant: 'won_by_stomp', dire: 'lost_by_stomp' }],
+  ['DIRE_VICTORY', { radiant: 'lost', dire: 'won' }],
+  ['DIRE_STOMP', { radiant: 'lost_by_stomp', dire: 'won_by_stomp' }],
+]);
+
+function laneWithOutcome(lane, stratz, side) {
+  const outcome = laneOutcomeFor(lane, stratz);
+  return { ...lane, outcome, selectedSideOutcome: SELECTED_SIDE_LANE_OUTCOMES.get(outcome.value)?.[side] ?? null };
+}
+
 // An empty slot is 0 in OpenDota and null in STRATZ. Both mean no item, so neither
 // becomes an unnamed item or a false disagreement between the two inventories.
 function finalInventoryFor(openPlayer, stratzPlayer, warnings, catalog) {
@@ -687,7 +703,7 @@ export function normalizeEvidence({
     player,
     participants,
     draft: draft.draft,
-    lane: { ...lane, outcome: laneOutcomeFor(lane, stratz) },
+    lane: laneWithOutcome(lane, stratz, side.value),
     deathAnalysis,
     summary,
     items: { purchases: purchasesFor(openPlayer, stratzPlayer, duration, catalog, entityConstants), ...inventory },

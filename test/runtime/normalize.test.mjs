@@ -71,7 +71,7 @@ test('builds the pinned canonical evidence schema with provenance', () => {
     },
   });
 
-  assert.equal(model.schemaVersion, '2.2.0');
+  assert.equal(model.schemaVersion, '2.3.0');
   assert.deepEqual(model.match.startTime, { value: 1785400000, source: 'opendota' });
   assert.deepEqual(model.match.lobbyType, { value: 7, label: 'Ranked', source: 'opendota' });
   assert.deepEqual(model.match.gameMode, {
@@ -86,6 +86,7 @@ test('builds the pinned canonical evidence schema with provenance', () => {
   assert.deepEqual(model.lane, {
     selectedLane: 'mid', opponents: [], status: 'unknown', reason: 'opponents_unknown',
     outcome: { value: 'RADIANT_VICTORY', source: 'stratz' },
+    selectedSideOutcome: 'won',
   });
   assert.deepEqual(model.summary.kda, { kills: 4, deaths: 2, assists: 6, source: 'opendota' });
   assert.deepEqual(model.summary.denies, { value: 1, source: 'opendota' });
@@ -107,6 +108,22 @@ test('reads the lane outcome of the physical lane, not of the role name', () => 
   assert.deepEqual(laneOf('OFF_LANE').outcome, { value: 'RADIANT_VICTORY', source: 'stratz' });
   assert.deepEqual(laneOf('ROAMING').outcome, { value: null, source: null });
   assert.deepEqual(normalize().lane.outcome, { value: null, source: null });
+});
+
+test('restates the lane outcome from the selected side', () => {
+  const laneFor = (outcome, { dire = false } = {}) => normalize({
+    player: openDotaPlayer(dire ? { player_slot: 130 } : {}),
+    stratz: { status: 'ready', match: { midLaneOutcome: outcome, players: [{ steamAccountId: accountId, heroId: 107, isRadiant: !dire, lane: 'MID_LANE' }] } },
+  }).lane;
+
+  // One label reads opposite for the two teams.
+  assert.equal(laneFor('RADIANT_STOMP').selectedSideOutcome, 'won_by_stomp');
+  assert.equal(laneFor('RADIANT_STOMP', { dire: true }).selectedSideOutcome, 'lost_by_stomp');
+  assert.equal(laneFor('DIRE_VICTORY', { dire: true }).selectedSideOutcome, 'won');
+  assert.equal(laneFor('DIRE_VICTORY').selectedSideOutcome, 'lost');
+  assert.equal(laneFor('TIE', { dire: true }).selectedSideOutcome, 'tie');
+  assert.equal(laneFor('UNLISTED_VALUE').selectedSideOutcome, null);
+  assert.equal(normalize().lane.selectedSideOutcome, null);
 });
 
 test('keeps the rank label null when no source reports a medal or the code is unknown', () => {

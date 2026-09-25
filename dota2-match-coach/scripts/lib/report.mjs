@@ -582,6 +582,7 @@ export function projectArtifact(model = {}) {
       status: typeof model.lane?.status === 'string' ? model.lane.status : 'unknown',
       reason: typeof model.lane?.reason === 'string' ? model.lane.reason : null,
       outcome: projectSourced(model.lane?.outcome),
+      selectedSideOutcome: typeof model.lane?.selectedSideOutcome === 'string' ? model.lane.selectedSideOutcome : null,
     },
     summary,
     items: {
@@ -1000,6 +1001,7 @@ export function renderEvidenceMarkdown(model = {}) {
       ['lane status', valueOf({ value: model.lane?.status })],
       ['lane reason', valueOf({ value: model.lane?.reason })],
       ['lane outcome', `${valueOf(model.lane?.outcome)} (source: ${sourceOf(model.lane?.outcome)})`],
+      ['lane outcome for the selected side', valueOf({ value: model.lane?.selectedSideOutcome })],
       ['actual opponents', list(laneOpponents.map((opponent) => entityLabel(opponent.hero)))],
     ]),
     '',
