@@ -45,7 +45,7 @@ He ends with "you get stronger every game" after two losses.
 
 - A fixed script with no link to the match is not a review.
 - Instructions must come with the reason, so the player can apply them without the coach.
-- Blaming teammates gives the player nothing fixable. Our review contract already requires a finding the player controls.
+- Blaming teammates gives the player nothing fixable. Our decision stack prefers an actionable finding, but it does not say explicitly that the finding must be one the player controls.
 
 ## Not taken
 

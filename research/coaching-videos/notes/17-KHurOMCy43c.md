@@ -34,7 +34,7 @@ The coach noticed neither. He rated the game six or seven out of ten, blamed the
 
 **Signal — partly observable.** `teamEconomy`, and the player's position against where enemies are, which is derivable.
 
-### F4 · the whole video · what a review must not miss
+### F4 · whole video · review · what a review must not miss
 
 **Claim.** The planted mistakes were concrete and checkable. Levelling attributes instead of abilities shows directly in the skill build. Blaming teammates and the draft gives the player nothing to change.
 

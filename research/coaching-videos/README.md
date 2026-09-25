@@ -8,6 +8,8 @@ Distilled notes from 50 public Dota 2 coaching videos. This is repository resear
 - **What to check.** Each coach claim is tied to the signal in our match artifact that could detect it, or marked as not observable. Across all notes this becomes a checklist and a map of the data the runtime does not collect yet.
 - **Exercises.** The drills and homework coaches give, with their source, as material for the review's training task.
 
+[SYNTHESIS.md](SYNTHESIS.md) groups the findings of all notes: the principles coaches repeat, where they disagree, what the reviews pick as the main problem, how good reviews are run, the exercise library, and the data the artifact would need.
+
 ## Rules for the notes
 
 - Claims are the coach's opinions, paraphrased. They are not verified facts, and nothing here can support a conclusion about a match without that match's own evidence.
@@ -29,7 +31,7 @@ Each note lives in `notes/<n>-<video id>.md`.
 2. **Main finding** for a review, or **Core idea** for a guide.
 3. **Findings.** Each one is a heading `F<k> · <video time> · <stage> · <topic>`, then the claim, then its signal tagged with one of four categories:
    - **observable:** the current artifact already contains it;
-   - **derivable:** the sources contain it, but the runtime does not compute it yet;
+   - **derivable:** the sources contain it, but the artifact does not expose it yet;
    - **partly observable:** only part of the claim can be seen in the data;
    - **not observable:** match data cannot show it, for example vision, intent, mana or cooldown state.
 
@@ -52,9 +54,10 @@ Transcripts are kept locally in `transcripts/`, which git ignores. To rebuild th
 yt-dlp --skip-download --write-auto-subs --sub-langs "<lang>-orig" --sub-format vtt -o "research/coaching-videos/transcripts/%(id)s.%(ext)s" -- <video id>
 node research/coaching-videos/tools/vtt-to-text.mjs research/coaching-videos/transcripts
 node research/coaching-videos/tools/index.mjs
+node research/coaching-videos/tools/stats.mjs
 ```
 
-`<lang>` is the video's own language, `ru` or `en`, as listed in `videos.json`. `index.mjs` rewrites the index below from `videos.json` and the notes present.
+`<lang>` is the video's own language, `ru` or `en`, as listed in `videos.json`. `index.mjs` rewrites the index below from `videos.json` and the notes present. `stats.mjs` checks each note's header and signal lines against `videos.json` and the note format, exits with an error on a mismatch, and prints the counts used in the synthesis.
 
 ## Index
 

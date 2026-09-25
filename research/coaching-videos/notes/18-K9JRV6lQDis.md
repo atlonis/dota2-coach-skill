@@ -85,7 +85,7 @@ Check this list before committing.
 
 **Signal — partly observable.** Deaths are observable, and teamfights only around them. Cooldowns are not observable.
 
-### F10 · 46:12–1:09:00 · second game · an "ideal" game can hide mistakes
+### F10 · 46:12–1:09:00 · any stage · an "ideal" game can hide mistakes
 
 **Claim.** In the second game the student thought his play was nearly perfect. The coach found:
 

@@ -91,7 +91,7 @@ Whether to trade instead of last hitting depends on the distance to the towers a
 
 **Signal — observable.** Tormentor kills and times come from `objectives`.
 
-### F10 · 25:24–26:56 · summary · late farm is the root cause
+### F10 · 25:24–26:56 · any stage · late farm is the root cause
 
 **Claim.** The coach traced the loss to one cause: the late first item. It delayed the next item by four minutes; without it the player died twice; those deaths cost more net worth and a level; later fights were lost by a level and an item. With the first item at 11 minutes, he believes the game ends 20:0.
 

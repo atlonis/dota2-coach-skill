@@ -1,6 +1,6 @@
 # 33 · Samorodok: tempo as a timeline of objectives
 
-- **Video:** [ТЕМП И ТАЙМИНГ — САМЫЙ ВАЖНЫЙ ГАЙД в жизни любого ИГРОКА](https://youtu.be/SLbn2nL2Jh8) · Samorodok · 2026-12-06 · 15 min · Russian
+- **Video:** [ТЕМП И ТАЙМИНГ — САМЫЙ ВАЖНЫЙ ГАЙД в жизни любого ИГРОКА](https://youtu.be/SLbn2nL2Jh8) · Samorodok · 2025-12-06 · 15 min · Russian
 - **Patch at publication:** 7.39e. The minute marks depend on the map and rune timings of that patch; they are kept as the coach's example plan, not as current facts.
 - **Type:** scripted macro guide
 - **Source:** auto-generated captions only; includes a sponsored segment
