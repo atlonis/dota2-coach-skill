@@ -29,7 +29,7 @@ The project targets only the latest exact subpatch. Older matches or matches tha
 
 Deep raw `.dem` analysis is intentionally outside runtime v1: without it, the skill cannot reliably explain every input or missed creep. The baseline runtime collects is a peer sample — same hero, position and bracket on the current patch — reported as a mean with its sample size, not as a percentile.
 
-The statistical draft model, stronger peer distributions and strong-player baselines, and deep `.dem` analysis are tracked in [ROADMAP.md](ROADMAP.md). Personal progress from saved normalized matches is available now.
+Further work is chosen from a benchmark on real matches: see [ROADMAP.md](ROADMAP.md). The statistical draft model and deep `.dem` analysis are frozen there until the benchmark shows a need. Personal progress from saved normalized matches is available now.
 
 ## Requirements
 
@@ -131,9 +131,12 @@ dota2-match-coach/          the installed skill bundle
   references/              runtime, source policy, review template, decision stack
   scripts/                 runtime, platform wrappers, and v2 tests
 test/runtime/              offline node:test suite
+test/coaching/             synthetic evaluation of the coaching answer
+test/benchmark/            benchmark protocol on real matches
+research/coaching-videos/  distilled notes from 50 coaching videos and their synthesis
 docs/superpowers/          design spec and implementation plan
 RESEARCH.md                source and design research
-ROADMAP.md                 features the data gates anticipate but the runtime does not collect yet
+ROADMAP.md                 development plan driven by the benchmark
 ```
 
 Local `output/`, secrets, and process-specific `.superpowers/` artifacts are excluded from the repository.
