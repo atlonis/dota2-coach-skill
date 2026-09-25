@@ -45,7 +45,7 @@ The first skill is noticing these moments, one indicator at a time.
 
 **Claim.** When the enemy is missing from the map, do not push a lane alone. Either join your team or stay somewhere safe.
 
-**Signal — partly observable.** The player's distance from allies and from their own side's towers, from positions. Whether the enemy is missing is not observable.
+**Signal — derivable.** The player's distance from allies and from their own side's towers, from the position rows. Not computed yet. Whether the enemy is missing is not observable.
 
 ### F6 · 15:36–17:10 · teamfight · chase only with resources left
 

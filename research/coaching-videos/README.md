@@ -83,16 +83,16 @@ node research/coaching-videos/tools/index.mjs
 | 20 | [РЕАКЦИЯ ТРЕНЕРА на ДАХАК РАЗОБРАЛ СКУФА 2К ММР](https://youtu.be/ZbcyZYrnHxI) | BlazzerFox Dota | 2026-02 | 7.40c | RU | review | [note](notes/20-ZbcyZYrnHxI.md) |
 | 21 | [ТРЕНЕР РАЗОБРАЛ ОШИБКИ НОВИЧКА DOTA 2](https://youtu.be/WAcK_bDcb3o) | Folzygenius | 2026-01 | 7.40c | RU | review | [note](notes/21-WAcK_bDcb3o.md) |
 | 22 | [ДАХАК РАЗБИРАЕТ ИГРУ 8К ММР БУСТЕРА С 8300 ОТЗЫВАМИ / DAXAK DOTA 2](https://youtu.be/KBAegvY8Z48) | Лучшее с Дахаком | 2026-05 | 7.41b | RU | review | [note](notes/22-KBAegvY8Z48.md) |
-| 23 | [Я ЗАКАЗАЛ 15К ММР ТРЕНЕРА ПО ДОТЕ И НЕ БЫЛ ГОТОВ...](https://youtu.be/5xia5xLiurE) | Lemchanskiy | 2025-08 | 7.39d | RU | review | pending |
-| 24 | [ТРЕНЕР ОФИГЕЛ ОТ СКИЛЛА СЕРЕГИ ПИРАТА НА АНТИМАГЕ / РАЗБОР ИГРЫ](https://youtu.be/JtBA92S72Io) | BlazzerFox Dota | 2024-09 | 7.37c | RU | review | pending |
-| 25 | [ГОЛОВАЧ РАЗБОР ИГРЫ ОТ 11К ММР ТРЕНЕРА! ОН НИКОГДА НЕ ОШИБАЕТСЯ!? LenaGolovach DOTA 2](https://youtu.be/Ut1jpLrOdi4) | Shergarat (Vladimir) | 2024-07 | 7.36c | RU | review | pending |
-| 26 | [Тренер Дота 2 / Разбор игры за Zeus Дота 2 / Обучение Дота 2](https://youtu.be/KW0e2hShp3w) | Дота 2 Тренер | 2024-04 | 7.35d | RU | review | pending |
-| 27 | [Why You Keep Throwing Winning Games / Dota 2](https://youtu.be/jc3GfKioTGw) | Support Heaven | 2026-09 | 7.41f | EN | macro | pending |
-| 28 | [Why You Struggle With Low Farm But Pros Don't](https://youtu.be/f6IGul_HEms) | PainDota | 2026-09 | 7.41f | EN | macro | pending |
+| 23 | [Я ЗАКАЗАЛ 15К ММР ТРЕНЕРА ПО ДОТЕ И НЕ БЫЛ ГОТОВ...](https://youtu.be/5xia5xLiurE) | Lemchanskiy | 2025-08 | 7.39d | RU | review | [note](notes/23-5xia5xLiurE.md) |
+| 24 | [ТРЕНЕР ОФИГЕЛ ОТ СКИЛЛА СЕРЕГИ ПИРАТА НА АНТИМАГЕ / РАЗБОР ИГРЫ](https://youtu.be/JtBA92S72Io) | BlazzerFox Dota | 2024-09 | 7.37c | RU | review | [note](notes/24-JtBA92S72Io.md) |
+| 25 | [ГОЛОВАЧ РАЗБОР ИГРЫ ОТ 11К ММР ТРЕНЕРА! ОН НИКОГДА НЕ ОШИБАЕТСЯ!? LenaGolovach DOTA 2](https://youtu.be/Ut1jpLrOdi4) | Shergarat (Vladimir) | 2024-07 | 7.36c | RU | review | [note](notes/25-Ut1jpLrOdi4.md) |
+| 26 | [Тренер Дота 2 / Разбор игры за Zeus Дота 2 / Обучение Дота 2](https://youtu.be/KW0e2hShp3w) | Дота 2 Тренер | 2024-04 | 7.35d | RU | review | [note](notes/26-KW0e2hShp3w.md) |
+| 27 | [Why You Keep Throwing Winning Games / Dota 2](https://youtu.be/jc3GfKioTGw) | Support Heaven | 2026-09 | 7.41f | EN | macro | [note](notes/27-jc3GfKioTGw.md) |
+| 28 | [Why You Struggle With Low Farm But Pros Don't](https://youtu.be/f6IGul_HEms) | PainDota | 2026-09 | 7.41f | EN | macro | [note](notes/28-f6IGul_HEms.md) |
 | 29 | [Why 'Farm or Fight' Is the Wrong Question](https://youtu.be/CyliAPTgmGQ) | BSJ | 2026-08 | 7.41e | EN | macro | [note](notes/29-CyliAPTgmGQ.md) |
-| 30 | [Your Idea of Farming is Outdated](https://youtu.be/iSRPQwrQFww) | BSJ | 2026-06 | 7.41d | EN | macro | pending |
-| 31 | [КАК ПРАВИЛЬНО ФАРМИТЬ / ГАЙД ОТ 15К ТРЕНЕРА (.ft ⁨@ueioueio⁩ )](https://youtu.be/s6Ruehc5ocE) | NVGATO | 2026-07 | 7.41d | RU | macro | pending |
-| 32 | [КАК НАУЧИТЬСЯ ДУМАТЬ В ДОТЕ?/гайд как обыграть всех на своём рейтинге](https://youtu.be/C2hn-YR3a9w) | Gostix | 2026-01 | 7.40b | RU | macro | pending |
+| 30 | [Your Idea of Farming is Outdated](https://youtu.be/iSRPQwrQFww) | BSJ | 2026-06 | 7.41d | EN | macro | [note](notes/30-iSRPQwrQFww.md) |
+| 31 | [КАК ПРАВИЛЬНО ФАРМИТЬ / ГАЙД ОТ 15К ТРЕНЕРА (.ft ⁨@ueioueio⁩ )](https://youtu.be/s6Ruehc5ocE) | NVGATO | 2026-07 | 7.41d | RU | macro | [note](notes/31-s6Ruehc5ocE.md) |
+| 32 | [КАК НАУЧИТЬСЯ ДУМАТЬ В ДОТЕ?/гайд как обыграть всех на своём рейтинге](https://youtu.be/C2hn-YR3a9w) | Gostix | 2026-01 | 7.40b | RU | macro | [note](notes/32-C2hn-YR3a9w.md) |
 | 33 | [ТЕМП И ТАЙМИНГ — САМЫЙ ВАЖНЫЙ ГАЙД в жизни любого ИГРОКА](https://youtu.be/SLbn2nL2Jh8) | Samorodok | 2025-12 | 7.39e | RU | macro | pending |
 | 34 | [Все МАКРО ФИШКИ для МИДА от 13к тренера / МИД UEIO](https://youtu.be/D1zCgUuAllA) | Ueio | 2025-02 | 7.37e | RU | macro | pending |
 | 35 | [ТЫ Играешь по МИКРО И МАКРО НЕ ПРАВИЛЬНО, и вот почему..](https://youtu.be/pHwJav9qIWk) | mugetsu | 2025-03 | 7.38b | RU | macro | pending |
