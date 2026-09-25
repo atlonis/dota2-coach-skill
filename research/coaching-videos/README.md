@@ -71,10 +71,10 @@ node research/coaching-videos/tools/index.mjs
 | 16 | [ЭТО ТОЧНО ЕГО ММР?! 10к ТРЕНЕР РАЗБИРАЕТ игру подписчика на 4000 ММР / Treant Protector 7.41d](https://youtu.be/hZe6LlQtuqk) | SERGGEICH | 2026-06 | 7.41d | RU | review | [note](notes/16-hZe6LlQtuqk.md) |
 | 17 | [НАНЯЛ 13К ТРЕНЕРА ЧТОБЫ ОН РАЗОБРАЛ САМУЮ ГЛУПУЮ ИГРУ](https://youtu.be/KHurOMCy43c) | Daxak Dota | 2026-03 | 7.40c | RU | review | [note](notes/17-KHurOMCy43c.md) |
 | 18 | [И ЭТО ВАШ ТРЕНЕР? ДАХАК УЧИТ ИГРАТЬ 15К ТРЕНЕРА ПО ДОТЕ (ft. @ueioueio)](https://youtu.be/K9JRV6lQDis) | Daxak Dota | 2026-01 | 7.40b | RU | review | [note](notes/18-K9JRV6lQDis.md) |
-| 19 | [Как правильно саппортить? 14к тренер ДУШНО разбирает каждую свою ошибку](https://youtu.be/sqicoyFqlBs) | Common Sense Dota | 2026-03 | 7.40c | RU | review | pending |
-| 20 | [РЕАКЦИЯ ТРЕНЕРА на ДАХАК РАЗОБРАЛ СКУФА 2К ММР](https://youtu.be/ZbcyZYrnHxI) | BlazzerFox Dota | 2026-02 | 7.40c | RU | review | pending |
-| 21 | [ТРЕНЕР РАЗОБРАЛ ОШИБКИ НОВИЧКА DOTA 2](https://youtu.be/WAcK_bDcb3o) | Folzygenius | 2026-01 | 7.40c | RU | review | pending |
-| 22 | [ДАХАК РАЗБИРАЕТ ИГРУ 8К ММР БУСТЕРА С 8300 ОТЗЫВАМИ / DAXAK DOTA 2](https://youtu.be/KBAegvY8Z48) | Лучшее с Дахаком | 2026-05 | 7.41b | RU | review | pending |
+| 19 | [Как правильно саппортить? 14к тренер ДУШНО разбирает каждую свою ошибку](https://youtu.be/sqicoyFqlBs) | Common Sense Dota | 2026-03 | 7.40c | RU | review | [note](notes/19-sqicoyFqlBs.md) |
+| 20 | [РЕАКЦИЯ ТРЕНЕРА на ДАХАК РАЗОБРАЛ СКУФА 2К ММР](https://youtu.be/ZbcyZYrnHxI) | BlazzerFox Dota | 2026-02 | 7.40c | RU | review | [note](notes/20-ZbcyZYrnHxI.md) |
+| 21 | [ТРЕНЕР РАЗОБРАЛ ОШИБКИ НОВИЧКА DOTA 2](https://youtu.be/WAcK_bDcb3o) | Folzygenius | 2026-01 | 7.40c | RU | review | [note](notes/21-WAcK_bDcb3o.md) |
+| 22 | [ДАХАК РАЗБИРАЕТ ИГРУ 8К ММР БУСТЕРА С 8300 ОТЗЫВАМИ / DAXAK DOTA 2](https://youtu.be/KBAegvY8Z48) | Лучшее с Дахаком | 2026-05 | 7.41b | RU | review | [note](notes/22-KBAegvY8Z48.md) |
 | 23 | [Я ЗАКАЗАЛ 15К ММР ТРЕНЕРА ПО ДОТЕ И НЕ БЫЛ ГОТОВ...](https://youtu.be/5xia5xLiurE) | Lemchanskiy | 2025-08 | 7.39d | RU | review | pending |
 | 24 | [ТРЕНЕР ОФИГЕЛ ОТ СКИЛЛА СЕРЕГИ ПИРАТА НА АНТИМАГЕ / РАЗБОР ИГРЫ](https://youtu.be/JtBA92S72Io) | BlazzerFox Dota | 2024-09 | 7.37c | RU | review | pending |
 | 25 | [ГОЛОВАЧ РАЗБОР ИГРЫ ОТ 11К ММР ТРЕНЕРА! ОН НИКОГДА НЕ ОШИБАЕТСЯ!? LenaGolovach DOTA 2](https://youtu.be/Ut1jpLrOdi4) | Shergarat (Vladimir) | 2024-07 | 7.36c | RU | review | pending |
