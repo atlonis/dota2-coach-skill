@@ -29,3 +29,6 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# Coaching video transcripts: copyrighted source text, kept local; only distilled notes are committed
+research/coaching-videos/transcripts/
