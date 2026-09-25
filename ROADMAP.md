@@ -38,9 +38,9 @@ Definition of done for the remainder: every comparison carries a percentile and 
 
 ## 3. Match context and mechanics follow-ups
 
-The runtime now records team economy, objectives, ward placements, buybacks, the skill build and current-patch Valve datafeed mechanics. What remains:
+The runtime now records team economy, objectives, ward placements, buybacks, the skill build and current-patch Valve datafeed mechanics. A live current-subpatch run confirmed the OpenDota and datafeed parsers against live responses. What remains:
 
-- live confirmation: the parsers were checked against published OpenDota test data and a public dump of the Valve datafeed, not against live responses; a fresh current-subpatch smoke must confirm both;
+- death context per death rather than per match: the `deathContext` capability opens only when every death has a complete context, so one participant position older than 3 seconds closes it for the whole match. In the live run 1 of 11 deaths was incomplete, and the other ten complete contexts stayed behind the closed capability;
 - ward coverage at a death: ward coordinates stay out of the artifact until OpenDota's ward grid is verified against the STRATZ position grid used by death contexts;
 - a turning window for the priority death from the largest team-economy swing, which the death analysis already accepts;
 - objective participation beyond the credited last hit, from positions near the building or pit at the event time;
