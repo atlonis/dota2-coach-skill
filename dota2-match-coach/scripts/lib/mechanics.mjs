@@ -281,22 +281,40 @@ function patchNotesFor(notes, { heroIds, itemIds, heroRecords, itemRecords, cata
 
 // What the runtime asks the datafeed for: every hero in the match with the selected
 // hero first, and the selected player's purchased items without recipes, in order
-// of first purchase.
-export function mechanicsRequest(model, { recipeItemIds = new Set() } = {}) {
+// of first purchase. A long game can hold more items than one run requests; the
+// final inventory is kept first and then the most expensive purchases, because
+// starting consumables and components would otherwise crowd out the finished
+// items. The ones left out are named, so a review never fills them in from memory.
+export function mechanicsRequest(model, { recipeItemIds = new Set(), itemCosts = new Map() } = {}) {
   const selectedHeroId = model?.player?.heroId?.value;
   const heroIds = [selectedHeroId, ...(model?.participants ?? []).map((participant) => participant?.hero?.id)]
     .filter((id, index, all) => Number.isSafeInteger(id) && id > 0 && all.indexOf(id) === index);
-  const itemIds = (model?.items?.purchases ?? [])
+  const purchased = (model?.items?.purchases ?? [])
     .map((purchase) => purchase?.item?.id)
-    .filter((id, index, all) => Number.isSafeInteger(id) && id > 0 && !recipeItemIds.has(id) && all.indexOf(id) === index)
-    .slice(0, MAX_ITEMS);
-  return { selectedHeroId: Number.isSafeInteger(selectedHeroId) ? selectedHeroId : null, heroIds, itemIds };
+    .filter((id, index, all) => Number.isSafeInteger(id) && id > 0 && !recipeItemIds.has(id) && all.indexOf(id) === index);
+  const inventory = new Set((model?.items?.finalInventory ?? []).map((item) => item?.value?.id));
+  const cost = (id) => itemCosts.get(id) ?? 0;
+  const kept = new Set([...purchased]
+    .sort((left, right) => Number(inventory.has(right)) - Number(inventory.has(left)) || cost(right) - cost(left))
+    .slice(0, MAX_ITEMS));
+  return {
+    selectedHeroId: Number.isSafeInteger(selectedHeroId) ? selectedHeroId : null,
+    heroIds,
+    itemIds: purchased.filter((id) => kept.has(id)),
+    omittedItemIds: purchased.filter((id) => !kept.has(id)),
+  };
 }
 
 export function recipeItemIds(itemConstants) {
   return new Set(Object.entries(itemConstants ?? {})
     .filter(([key, item]) => key.startsWith('recipe_') && Number.isSafeInteger(item?.id))
     .map(([, item]) => item.id));
+}
+
+export function itemCosts(itemConstants) {
+  return new Map(Object.values(itemConstants ?? {})
+    .filter((item) => Number.isSafeInteger(item?.id) && Number.isFinite(item?.cost))
+    .map((item) => [item.id, item.cost]));
 }
 
 // Display names from the datafeed, keyed like entity constants, so the whole
@@ -338,6 +356,7 @@ export function buildMechanics(input, { catalog } = {}) {
   }).map((row) => row.record);
   const heroRecords = readyRecords(fetched.heroes, 'hero');
   const itemRecords = readyRecords(fetched.items, 'item');
+  for (const id of request?.omittedItemIds ?? []) failed.push({ kind: 'item', id, reason: 'item_limit' });
   const selected = heroRecords.find((hero) => hero.id === request?.selectedHeroId) ?? null;
   if (!selected) return { ...unavailable('selected_hero_unavailable'), unavailable: failed };
 

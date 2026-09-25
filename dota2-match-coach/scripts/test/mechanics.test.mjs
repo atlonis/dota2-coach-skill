@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  buildMechanics, mechanicsEntityNames, mechanicsRequest, plainText, recipeItemIds, resolveDescription, talentName,
+  buildMechanics, itemCosts, mechanicsEntityNames, mechanicsRequest, plainText, recipeItemIds, resolveDescription, talentName,
 } from '../lib/mechanics.mjs';
 
 function specialValue(name, values, heading = '', extra = {}) {
@@ -190,6 +190,38 @@ test('requests every match hero with the selected hero first and bought items wi
   assert.deepEqual(request.itemIds.slice(0, 3), [267, 42, 1000]);
   assert.equal(request.itemIds.length, 30);
   assert.equal(mechanicsRequest({ player: { heroId: { value: null } } }).selectedHeroId, null);
+});
+
+test('keeps the final inventory and the costliest items when a long game exceeds the item limit', () => {
+  // Starting consumables come first in purchase order; a late finished item must still be requested.
+  const cheap = Array.from({ length: 30 }, (_, index) => ({ item: { id: 1000 + index } }));
+  const model = {
+    player: { heroId: { value: 107 } },
+    items: {
+      purchases: [...cheap, { item: { id: 116 } }, { item: { id: 63 } }, { item: { id: 1030 } }],
+      finalInventory: [{ value: { id: 63 } }],
+    },
+  };
+  const costs = itemCosts({
+    ...Object.fromEntries(cheap.map((_, index) => [`cheap_${index}`, { id: 1000 + index, cost: 50 + index }])),
+    black_king_bar: { id: 116, cost: 4050 },
+    power_treads: { id: 63, cost: 1400 },
+    cheap_last: { id: 1030, cost: 10 },
+  });
+
+  const request = mechanicsRequest(model, { itemCosts: costs });
+
+  assert.equal(request.itemIds.length, 30);
+  assert.ok(request.itemIds.includes(63) && request.itemIds.includes(116));
+  // The output keeps purchase order; the three cheapest purchases are the ones left out.
+  assert.deepEqual(request.itemIds.slice(-2), [116, 63]);
+  assert.deepEqual(request.omittedItemIds, [1000, 1001, 1030]);
+
+  const input = fetched();
+  input.request = { ...input.request, omittedItemIds: request.omittedItemIds };
+  const mechanics = buildMechanics(input);
+  assert.equal(mechanics.status, 'partial');
+  assert.deepEqual(mechanics.unavailable.filter((row) => row.reason === 'item_limit').map((row) => row.id), [1000, 1001, 1030]);
 });
 
 test('exposes datafeed display names for the entity catalog', () => {

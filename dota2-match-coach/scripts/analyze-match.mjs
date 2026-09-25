@@ -4,7 +4,7 @@ import { createOpenDotaClient } from './lib/opendota.mjs';
 import { createStratzClient } from './lib/stratz.mjs';
 import { createValveClient } from './lib/valve.mjs';
 import { createDatafeedClient } from './lib/datafeed.mjs';
-import { mechanicsRequest, recipeItemIds } from './lib/mechanics.mjs';
+import { itemCosts, mechanicsRequest, recipeItemIds } from './lib/mechanics.mjs';
 import { bracketBasicFor, createBaselineClient, fullWeeksWithin, positionEnumFor } from './lib/baseline.mjs';
 import { resolveAccountIdByHero } from './lib/heroes.mjs';
 import { NormalizationError, normalizeEvidence } from './lib/normalize.mjs';
@@ -115,7 +115,10 @@ async function loadBaseline(model, valve, baselineClient, nowSeconds) {
 // purchased items are known only after the first normalization. A datafeed failure
 // leaves mechanics unavailable and never cancels the match facts.
 async function loadMechanics(model, valve, datafeedClient, entityConstants) {
-  const request = mechanicsRequest(model, { recipeItemIds: recipeItemIds(entityConstants?.items) });
+  const request = mechanicsRequest(model, {
+    recipeItemIds: recipeItemIds(entityConstants?.items),
+    itemCosts: itemCosts(entityConstants?.items),
+  });
   if (request.selectedHeroId == null) return { request, reason: 'hero_unknown' };
   try {
     const fetched = await datafeedClient.loadMechanics({ heroIds: request.heroIds, itemIds: request.itemIds, patch: valve?.currentPatch ?? null });
