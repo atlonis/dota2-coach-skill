@@ -11,7 +11,7 @@ The project targets only the latest exact subpatch. Older matches or matches tha
 - OpenDota parse-first collection with scoreboard fallback when replay data is unavailable;
 - STRATZ GraphQL enrichment with the required `User-Agent: STRATZ_API`;
 - latest exact-subpatch verification through the Valve timeline;
-- Radiant/Dire draft, lane outcome, final metrics, purchases, and inventory;
+- Radiant/Dire draft, lane outcome, final metrics, purchases from the pre-game window on, and inventory;
 - four game stages, time series, and within-match extrema, with every per-minute value keyed by the replay's recorded sample time;
 - team earned-gold, XP and, when recorded, net worth difference per minute, with per-stage changes, leader changes and the largest swings;
 - recorded objectives (buildings, Roshan, Aegis, Tormentor, first blood, couriers), ward placements, buybacks, and the skill build;

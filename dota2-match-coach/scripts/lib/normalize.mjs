@@ -65,6 +65,11 @@ const REPOSITION_MIN_DISTANCE = 15;
 const REPOSITION_MIN_SPEED = 6;
 const REPOSITION_CAUSE_WINDOW = 15;
 
+// Purchases start before the horn: the starting items are bought in the pre-game
+// window at negative timestamps. Dropping them made a complete item build read as if
+// the player had entered the lane with no boots and no starting regeneration at all.
+export const PREGAME_PURCHASE_WINDOW_SECONDS = 300;
+
 const EXTREMA_METRICS = SERIES_METRICS.map(([, , rate]) => rate).concat(EVENT_METRICS.map(([metric]) => metric));
 
 export class NormalizationError extends Error {
@@ -283,9 +288,9 @@ function draftFor(openDota, stratz, catalog) {
   return { draft, warnings };
 }
 
-function safeEvent(event, fields, source, duration, timeField = 'time') {
+function safeEvent(event, fields, source, duration, timeField = 'time', minTime = 0) {
   if (!event || !finiteNumber(event[timeField]) || !finiteNumber(duration)
-    || event[timeField] < 0 || event[timeField] > duration) return null;
+    || event[timeField] < minTime || event[timeField] > duration) return null;
   const projected = { [timeField]: event[timeField] };
   for (const field of fields) {
     const value = event[field];
@@ -297,8 +302,10 @@ function safeEvent(event, fields, source, duration, timeField = 'time') {
   return projected;
 }
 
-function timedEvents(events, fields, duration) {
-  return Array.isArray(events) ? events.map((event) => safeEvent(event, fields, 'stratz', duration)).filter(Boolean) : [];
+function timedEvents(events, fields, duration, minTime = 0) {
+  return Array.isArray(events)
+    ? events.map((event) => safeEvent(event, fields, 'stratz', duration, 'time', minTime)).filter(Boolean)
+    : [];
 }
 
 function eventTimeline(openDota, stratzPlayer, duration) {
@@ -314,7 +321,7 @@ function eventTimeline(openDota, stratzPlayer, duration) {
     deaths: timedEvents(playback.deathEvents, ['attacker', 'byAbility', 'byItem', 'positionX', 'positionY', 'timeDead', 'isFeed'], duration),
     assists: timedEvents(playback.assistEvents, ['target', 'positionX', 'positionY'], duration),
     cs: timedEvents(playback.csEvents, ['npcId', 'byAbility', 'byItem', 'gold', 'xp', 'positionX', 'positionY', 'isCreep', 'isNeutral', 'isAncient'], duration),
-    purchases: timedEvents(playback.purchaseEvents, ['itemId'], duration),
+    purchases: timedEvents(playback.purchaseEvents, ['itemId'], duration, -PREGAME_PURCHASE_WINDOW_SECONDS),
     runes: timedEvents(playback.runeEvents, ['rune', 'action', 'gold', 'positionX', 'positionY'], duration),
     abilityUses: timedEvents(playback.abilityUsedEvents, ['abilityId'], duration),
     itemUses: timedEvents(playback.itemUsedEvents, ['itemId'], duration),
@@ -445,13 +452,14 @@ function purchaseItemRef(entry, catalog, entityConstants) {
 }
 
 function purchasesFor(openPlayer, stratzPlayer, duration, catalog, entityConstants) {
-  const inMatch = (time) => finiteNumber(duration) && finiteNumber(time) && time >= 0 && time <= duration;
+  const inWindow = (time) => finiteNumber(duration) && finiteNumber(time)
+    && time >= -PREGAME_PURCHASE_WINDOW_SECONDS && time <= duration;
   const open = Array.isArray(openPlayer?.purchase_log) ? openPlayer.purchase_log
-    .filter((entry) => inMatch(entry?.time) && (typeof entry?.key === 'string' || finiteNumber(entry?.item_id)))
+    .filter((entry) => inWindow(entry?.time) && (typeof entry?.key === 'string' || finiteNumber(entry?.item_id)))
     .map((entry) => ({ time: entry.time, item: purchaseItemRef(entry, catalog, entityConstants), source: 'opendota' })) : [];
   const stratz = Array.isArray(stratzPlayer?.playbackData?.purchaseEvents)
     ? stratzPlayer.playbackData.purchaseEvents
-      .filter((event) => inMatch(event?.time) && finiteNumber(event?.itemId))
+      .filter((event) => inWindow(event?.time) && finiteNumber(event?.itemId))
       .map((event) => ({ time: event.time, item: entityRef(catalog, 'item', event.itemId), source: 'stratz' }))
     : [];
   return [...open, ...stratz]

@@ -414,11 +414,29 @@ test('bounds every STRATZ playback family and OpenDota teamfight to match durati
     }] } },
   });
 
-  for (const family of ['kills', 'deaths', 'assists', 'cs', 'purchases', 'runes', 'abilityUses', 'itemUses', 'positions']) {
+  for (const family of ['kills', 'deaths', 'assists', 'cs', 'runes', 'abilityUses', 'itemUses', 'positions']) {
     assert.deepEqual(model.events[family].map((event) => event.time), [0, 120], family);
   }
+  // Purchases are the one family that starts before the horn, so they keep the pre-game window.
+  assert.deepEqual(model.events.purchases.map((event) => event.time), [-1, 0, 120]);
   assert.deepEqual(model.events.teamfights, [{ start: 0, end: 120, source: 'opendota' }]);
-  assert.deepEqual(model.items.purchases.filter((purchase) => purchase.source === 'stratz').map((purchase) => purchase.time), [0, 120]);
+  assert.deepEqual(model.items.purchases.filter((purchase) => purchase.source === 'stratz').map((purchase) => purchase.time), [-1, 0, 120]);
+});
+
+test('keeps purchases made before the horn and drops the ones outside the pre-game window', () => {
+  const model = normalize({
+    player: openDotaPlayer({
+      purchase_log: [
+        { time: -400, key: 'tango' },
+        { time: -300, key: 'branches' },
+        { time: -90, key: 'boots' },
+        { time: 80, key: 'magic_stick' },
+        { time: 121, key: 'blink' },
+      ],
+    }),
+  });
+
+  assert.deepEqual(model.items.purchases.map((purchase) => purchase.time), [-300, -90, 80]);
 });
 
 test('drops an out-of-match teamfight while opening selected timeline from an in-match death', () => {
