@@ -394,6 +394,21 @@ test('preserves both final inventory candidates with provenance on conflict', ()
   assert.match(model.dataQuality.warnings.join(' '), /final inventory conflict/i);
 });
 
+test('reads an empty inventory slot as no item in both sources', () => {
+  const model = normalize({
+    player: openDotaPlayer({ item_4: 0 }),
+    stratz: { status: 'ready', match: { players: [{
+      steamAccountId: accountId,
+      heroId: 107,
+      item0Id: 50, item1Id: 60, item2Id: 70, item3Id: 80, item4Id: null, item5Id: 100,
+    }] } },
+  });
+
+  assert.deepEqual(model.items.finalInventory.map((item) => item.value.id), [50, 60, 70, 80, 100]);
+  assert.equal(model.items.finalInventoryCandidates, undefined);
+  assert.doesNotMatch(model.warnings.join(' '), /final inventory conflict/i);
+});
+
 test('bounds every STRATZ playback family and OpenDota teamfight to match duration inclusively', () => {
   const timed = () => [{ time: -1 }, { time: 0 }, { time: 120 }, { time: 121 }];
   const model = normalize({

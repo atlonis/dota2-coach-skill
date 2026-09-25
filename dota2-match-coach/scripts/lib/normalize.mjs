@@ -427,9 +427,12 @@ function laneOutcomeFor(stratzPlayer, stratz) {
   return null;
 }
 
+// An empty slot is 0 in OpenDota and null in STRATZ. Both mean no item, so neither
+// becomes an unnamed item or a false disagreement between the two inventories.
 function finalInventoryFor(openPlayer, stratzPlayer, warnings, catalog) {
-  const openItems = Array.from({ length: 6 }, (_, index) => openPlayer?.[`item_${index}`]).filter(finiteNumber);
-  const stratzItems = Array.from({ length: 6 }, (_, index) => stratzPlayer?.[`item${index}Id`]).filter(finiteNumber);
+  const itemId = (value) => finiteNumber(value) && value > 0;
+  const openItems = Array.from({ length: 6 }, (_, index) => openPlayer?.[`item_${index}`]).filter(itemId);
+  const stratzItems = Array.from({ length: 6 }, (_, index) => stratzPlayer?.[`item${index}Id`]).filter(itemId);
   const conflict = openItems.length > 0 && stratzItems.length > 0 && !sameValue(openItems, stratzItems);
   if (conflict) warnings.push('Final inventory conflict between opendota and stratz.');
   const values = openItems.length > 0 ? openItems : stratzItems;
