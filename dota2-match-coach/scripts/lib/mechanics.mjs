@@ -285,23 +285,32 @@ function patchNotesFor(notes, { heroIds, itemIds, heroRecords, itemRecords, cata
 // final inventory is kept first and then the most expensive purchases, because
 // starting consumables and components would otherwise crowd out the finished
 // items. The ones left out are named, so a review never fills them in from memory.
+// Items to explain, at most MAX_ITEMS, in this order: the selected player's final
+// inventory, items that killed the selected player, the rest of their purchases by
+// cost, then the enemies' final items by cost. Recipes are never requested.
 export function mechanicsRequest(model, { recipeItemIds = new Set(), itemCosts = new Map() } = {}) {
   const selectedHeroId = model?.player?.heroId?.value;
   const heroIds = [selectedHeroId, ...(model?.participants ?? []).map((participant) => participant?.hero?.id)]
     .filter((id, index, all) => Number.isSafeInteger(id) && id > 0 && all.indexOf(id) === index);
-  const purchased = (model?.items?.purchases ?? [])
-    .map((purchase) => purchase?.item?.id)
-    .filter((id, index, all) => Number.isSafeInteger(id) && id > 0 && !recipeItemIds.has(id) && all.indexOf(id) === index);
-  const inventory = new Set((model?.items?.finalInventory ?? []).map((item) => item?.value?.id));
+  const usable = (id) => Number.isSafeInteger(id) && id > 0 && !recipeItemIds.has(id);
+  const unique = (ids) => ids.filter((id, index, all) => usable(id) && all.indexOf(id) === index);
   const cost = (id) => itemCosts.get(id) ?? 0;
-  const kept = new Set([...purchased]
-    .sort((left, right) => Number(inventory.has(right)) - Number(inventory.has(left)) || cost(right) - cost(left))
-    .slice(0, MAX_ITEMS));
+  const byCost = (ids) => [...ids].sort((left, right) => cost(right) - cost(left));
+  const purchased = unique((model?.items?.purchases ?? []).map((purchase) => purchase?.item?.id));
+  const inventory = unique((model?.items?.finalInventory ?? []).map((item) => item?.value?.id)).filter((id) => purchased.includes(id));
+  const killing = unique((model?.deathAnalysis?.contexts ?? []).map((context) => context?.killingItem?.id));
+  const selectedSide = model?.player?.side?.value;
+  const enemyItems = unique((model?.players ?? [])
+    .filter((row) => selectedSide != null && row?.side != null && row.side !== selectedSide)
+    .flatMap((row) => (row?.finalItems ?? []).map((item) => item?.id)));
+  const ordered = unique([...inventory, ...killing, ...byCost(purchased), ...byCost(enemyItems)]);
+  const kept = new Set(ordered.slice(0, MAX_ITEMS));
+  const candidates = unique([...purchased, ...killing, ...enemyItems]);
   return {
     selectedHeroId: Number.isSafeInteger(selectedHeroId) ? selectedHeroId : null,
     heroIds,
-    itemIds: purchased.filter((id) => kept.has(id)),
-    omittedItemIds: purchased.filter((id) => !kept.has(id)),
+    itemIds: candidates.filter((id) => kept.has(id)),
+    omittedItemIds: candidates.filter((id) => !kept.has(id)),
   };
 }
 

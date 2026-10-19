@@ -1,4 +1,4 @@
-import { SourceError, requestJson } from './http.mjs';
+import { SourceError, requestJson, withRetry } from './http.mjs';
 
 // Valve's dota2.com datafeed: the backend of the official hero, item and patch
 // pages. It is undocumented and unversioned, so every response is checked for the
@@ -55,12 +55,15 @@ export function createDatafeedClient({
   concurrency = DEFAULT_CONCURRENCY,
   budgetMs = DEFAULT_BUDGET_MS,
   now = () => Date.now(),
+  sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 } = {}) {
   async function get(endpoint, params, deadline) {
-    const remaining = deadline - now();
-    if (remaining <= 0) throw new SourceError('timeout', 'Datafeed budget exhausted');
     const query = new URLSearchParams({ language, ...params });
-    const response = await requestJson(`${baseUrl}/${endpoint}?${query}`, { fetchImpl, timeoutMs: Math.min(REQUEST_TIMEOUT_MS, remaining) });
+    const response = await withRetry(() => {
+      const remaining = deadline - now();
+      if (remaining <= 0) throw new SourceError('timeout', 'Datafeed budget exhausted');
+      return requestJson(`${baseUrl}/${endpoint}?${query}`, { fetchImpl, timeoutMs: Math.min(REQUEST_TIMEOUT_MS, remaining) });
+    }, { delaysMs: [1_000], sleep, now, deadline });
     return response.data;
   }
 

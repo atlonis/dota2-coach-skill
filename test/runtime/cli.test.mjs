@@ -7,7 +7,7 @@ import { parseArgs } from '../../dota2-match-coach/scripts/analyze-match.mjs';
 import { fileURLToPath } from 'node:url';
 import { runAnalysis as runAnalysisRaw } from '../../dota2-match-coach/scripts/analyze-match.mjs';
 import * as cli from '../../dota2-match-coach/scripts/analyze-match.mjs';
-import { NormalizationError } from '../../dota2-match-coach/scripts/lib/normalize.mjs';
+import { NormalizationError, normalizeEvidence } from '../../dota2-match-coach/scripts/lib/normalize.mjs';
 
 const runtimeDirectory = path.dirname(fileURLToPath(import.meta.url));
 const scriptsDirectory = path.resolve(runtimeDirectory, '../../dota2-match-coach/scripts');
@@ -80,6 +80,15 @@ test('accepts an explicit history directory and rejects empty or repeated histor
   }
 });
 
+test('parses a match-clock episode anchor without accepting malformed times', () => {
+  const base = ['--match-id', '1', '--account-id', '2'];
+  assert.equal(parseArgs([...base, '--at', '23:40']).at, 1420);
+  assert.equal(parseArgs([...base, '--at', '0']).at, 0);
+  for (const at of ['-1', '23:60', '1:2', '1.5', 'Infinity', '']) {
+    assert.throws(() => parseArgs([...base, '--at', at]), /invalid_arguments/);
+  }
+});
+
 test('rejects missing, duplicate, fractional, zero, and unknown CLI arguments', () => {
   for (const argv of [
     ['--match-id', '1'],
@@ -96,53 +105,94 @@ test('rejects missing, duplicate, fractional, zero, and unknown CLI arguments', 
   }
 });
 
-test('resolves account ID from an unambiguous hero name before normalization', async () => {
+const earthSpirit = { 107: { id: 107, name: 'npc_dota_hero_earth_spirit', localized_name: 'Earth Spirit' } };
+
+function heroSelection(players, options) {
+  return runAnalysis(options, {
+    openDotaClient: {
+      loadMatch: async () => ({ status: 'ready', match: { start_time: 123, duration: 1, players } }),
+      loadEntityConstants: async () => readyEntityConstants(earthSpirit),
+    },
+    valveClient: { resolvePatch: async () => readyValve() },
+    stratzClient: { loadMatch: async () => ({ status: 'unavailable', reason: 'missing_token' }) },
+    normalize: normalizeEvidence,
+    write: async () => ({ jsonPath: '1.json', markdownPath: '1.md' }),
+  });
+}
+
+test('passes a hero name to normalization as a hero ID, which selects the hero slot', async () => {
   const calls = [];
   const result = await runAnalysis({ matchId: 1, accountId: null, heroName: 'Earth Spirit' }, {
     openDotaClient: {
-      loadMatch: async () => ({ status: 'ready', match: { start_time: 123, duration: 1, players: [{ account_id: 55, hero_id: 107 }] } }),
+      loadMatch: async () => ({ status: 'ready', match: { start_time: 123, duration: 1, players: [{ player_slot: 0, account_id: 55, hero_id: 107 }] } }),
       loadEntityConstants: async () => {
         calls.push('heroes');
-        return readyEntityConstants({ 107: { id: 107, name: 'npc_dota_hero_earth_spirit', localized_name: 'Earth Spirit' } });
+        return readyEntityConstants(earthSpirit);
       },
     },
     valveClient: { resolvePatch: async () => readyValve() },
     stratzClient: { loadMatch: async () => ({ status: 'unavailable', reason: 'missing_token' }) },
     normalize: (input) => {
-      calls.push(['normalize', input.accountId]);
-      return { request: { matchId: 1, accountId: input.accountId }, sources: {}, dataQuality: { mode: 'degraded' } };
+      calls.push(['normalize', input.heroId, input.accountId]);
+      return normalizeEvidence(input);
     },
     write: async () => ({ jsonPath: '1.json', markdownPath: '1.md' }),
   });
 
-  assert.deepEqual(calls, ['heroes', ['normalize', 55]]);
+  assert.deepEqual(calls, ['heroes', ['normalize', 107, null]]);
   assert.equal(result.model.request.accountId, 55);
+  assert.equal(result.model.request.slot, 0);
+});
+
+test('selects a player who hides their account ID by hero or by slot', async () => {
+  const players = [{ player_slot: 0, hero_id: 1 }, { player_slot: 128, hero_id: 107, kills: 3 }];
+  const byHero = await heroSelection(players, { matchId: 1, accountId: null, heroName: 'Earth Spirit' });
+  const bySlot = await heroSelection(players, { matchId: 1, accountId: null, heroName: null, slot: 5 });
+
+  for (const { model } of [byHero, bySlot]) {
+    assert.equal(model.request.slot, 5);
+    assert.equal(model.request.accountId, null);
+    assert.equal(model.player.side.value, 'dire');
+    assert.equal(model.summary.kills.value, 3);
+  }
 });
 
 test('rejects an account ID that conflicts with the requested hero', async () => {
-  await assert.rejects(() => runAnalysis({ matchId: 1, accountId: 2, heroName: 'Earth Spirit' }, {
-    openDotaClient: {
-      loadMatch: async () => ({ status: 'ready', match: { start_time: 123, duration: 1, players: [{ account_id: 2, hero_id: 1 }, { account_id: 55, hero_id: 107 }] } }),
-      loadEntityConstants: async () => readyEntityConstants({ 107: { id: 107, localized_name: 'Earth Spirit' } }),
-    },
-    valveClient: { resolvePatch: async () => readyValve() },
-    stratzClient: { loadMatch: async () => ({ status: 'unavailable', reason: 'missing_token' }) },
-    normalize: () => ({ request: {}, sources: {}, dataQuality: {} }),
-    write: async () => ({ jsonPath: '1.json', markdownPath: '1.md' }),
-  }), (error) => error?.code === 'selector_conflict');
+  await assert.rejects(() => heroSelection(
+    [{ player_slot: 0, account_id: 2, hero_id: 1 }, { player_slot: 1, account_id: 55, hero_id: 107 }],
+    { matchId: 1, accountId: 2, heroName: 'Earth Spirit' },
+  ), (error) => error?.code === 'selector_conflict');
 });
 
 test('rejects an ambiguous duplicated hero selector', async () => {
-  await assert.rejects(() => runAnalysis({ matchId: 1, accountId: null, heroName: 'Earth Spirit' }, {
-    openDotaClient: {
-      loadMatch: async () => ({ status: 'ready', match: { start_time: 123, duration: 1, players: [{ account_id: 55, hero_id: 107 }, { account_id: 56, hero_id: 107 }] } }),
-      loadEntityConstants: async () => readyEntityConstants({ 107: { id: 107, localized_name: 'Earth Spirit' } }),
-    },
-    valveClient: { resolvePatch: async () => readyValve() },
-    stratzClient: { loadMatch: async () => ({ status: 'unavailable', reason: 'missing_token' }) },
-    normalize: () => ({ request: {}, sources: {}, dataQuality: {} }),
-    write: async () => ({ jsonPath: '1.json', markdownPath: '1.md' }),
-  }), (error) => error?.code === 'hero_ambiguous');
+  await assert.rejects(() => heroSelection(
+    [{ player_slot: 0, account_id: 55, hero_id: 107 }, { player_slot: 1, account_id: 56, hero_id: 107 }],
+    { matchId: 1, accountId: null, heroName: 'Earth Spirit' },
+  ), (error) => error?.code === 'hero_ambiguous');
+});
+
+test('rejects a hero that nobody picked in the match', async () => {
+  await assert.rejects(() => heroSelection(
+    [{ player_slot: 0, account_id: 55, hero_id: 1 }],
+    { matchId: 1, accountId: null, heroName: 'Earth Spirit' },
+  ), (error) => error?.code === 'hero_not_in_match');
+});
+
+test('reads match links, Steam64 IDs and profile links as IDs', () => {
+  const parsed = (argv) => parseArgs(argv);
+  assert.equal(parsed(['--match-id', 'https://www.dotabuff.com/matches/9048031561', '--hero', 'Doom']).matchId, 9048031561);
+  assert.equal(parsed(['--match-id', 'https://www.opendota.com/matches/9048031561/overview', '--hero', 'Doom']).matchId, 9048031561);
+  assert.equal(parsed(['--match-id', 'https://stratz.com/matches/9048031561', '--hero', 'Doom']).matchId, 9048031561);
+  assert.equal(parsed(['--match-id', '1', '--account-id', '76561198016652228']).accountId, 56386500);
+  assert.equal(parsed(['--match-id', '1', '--account-id', 'https://steamcommunity.com/profiles/76561198016652228/']).accountId, 56386500);
+  assert.equal(parsed(['--match-id', '1', '--account-id', 'https://www.dotabuff.com/players/56386500']).accountId, 56386500);
+  assert.equal(parsed(['--match-id', '1', '--account-id', 'https://www.opendota.com/players/56386500/matches']).accountId, 56386500);
+  assert.equal(parsed(['--match-id', '1', '--slot', '7']).slot, 7);
+  assert.throws(() => parsed(['--match-id', '1', '--account-id', 'https://steamcommunity.com/id/somebody']), /account_vanity_unsupported/);
+  for (const bad of [['--slot', '10'], ['--slot', '-1'], ['--account-id', '4294967296'], ['--match-id', 'https://example.com/matches/1']]) {
+    const argv = bad[0] === '--match-id' ? [...bad, '--slot', '1'] : ['--match-id', '1', ...bad];
+    assert.throws(() => parsed(argv), /invalid_arguments/);
+  }
 });
 
 test('orchestrates OpenDota before patch and STRATZ then writes normalized artifacts', async () => {
@@ -274,9 +324,21 @@ test('classifies unusable source data without normalizing or writing', async () 
     stratzClient: { loadMatch: async () => { calls.push('stratz'); return { status: 'failed', error: { code: 'network' } }; } },
     normalize: () => { calls.push('normalize'); },
     write: async () => { calls.push('write'); },
-  }), (error) => error?.code === 'no_usable_source_data');
+  }), (error) => error?.code === 'source_unreachable');
   assert.deepEqual(calls, ['stratz']);
 });
+
+for (const [openDotaCode, expected] of [['rate_limited', 'source_rate_limited'], ['timeout', 'source_unreachable'], ['invalid_response', 'no_usable_source_data']]) {
+  test(`names an OpenDota ${openDotaCode} failure as ${expected} when no source is usable`, async () => {
+    await assert.rejects(() => runAnalysis({ matchId: 1, accountId: 2 }, {
+      openDotaClient: { loadMatch: async () => ({ status: 'failed', error: { code: openDotaCode } }) },
+      valveClient: { resolvePatch: async () => readyValve() },
+      stratzClient: { loadMatch: async () => ({ status: 'unavailable', reason: 'missing_token' }) },
+      normalize: () => {},
+      write: async () => {},
+    }), (error) => error?.code === expected);
+  });
+}
 
 test('PowerShell wrapper returns exit 2 for an invalid numeric ID without network access', async (context) => {
   if (process.platform !== 'win32') return context.skip('The PowerShell wrapper is executed on Windows hosts only.');
@@ -372,7 +434,8 @@ for (const [name, normalize, expectedExitCode] of [
 
     assert.equal(exitCode, expectedExitCode);
     assert.deepEqual(stdout, []);
-    assert.deepEqual(stderr, [`error: ${name === 'account not found' ? 'account_not_found' : 'account_ambiguous'}`]);
+    assert.equal(stderr[0], `error: ${name === 'account not found' ? 'account_not_found' : 'account_ambiguous'}`);
+    assert.doesNotMatch(stderr.join('\n'), /raw-response-token/);
   });
 }
 
@@ -386,7 +449,7 @@ test('CLI boundary returns 3 and emits no raw source data for an OpenDota match 
 
   assert.equal(exitCode, 3);
   assert.deepEqual(stdout, []);
-  assert.deepEqual(stderr, ['error: match_not_found']);
+  assert.deepEqual(stderr, ['error: match_not_found', 'hint: OpenDota does not know this match ID; check it, or wait a few minutes if the match just ended.']);
 });
 
 test('CLI boundary returns 4 and emits no raw source data when neither match source is usable', async () => {
@@ -402,7 +465,9 @@ test('CLI boundary returns 4 and emits no raw source data when neither match sou
 
   assert.equal(exitCode, 4);
   assert.deepEqual(stdout, []);
-  assert.deepEqual(stderr, ['error: no_usable_source_data']);
+  assert.equal(stderr[0], 'error: source_unreachable');
+  assert.match(stderr[1], /^hint: /);
+  assert.doesNotMatch(stderr.join('\n'), /raw-response-token/);
 });
 
 test('CLI boundary emits only a fixed allowlisted diagnostic for unexpected exceptions', async () => {

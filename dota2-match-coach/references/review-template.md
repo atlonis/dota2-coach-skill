@@ -1,78 +1,75 @@
-# Review contract
+# Review template
 
-The review answers the user's requested topic and links **one main finding → its key episode or measurement → one practical exercise**. Start with a concise `TL;DR:` containing the main finding and any limitation that changes it. Follow with one match line: selected hero, known role/position, result, duration and K/D/A. Use only available values.
+A review links **one main finding → its key episode or number → coach's advice → one drill**. It reads like a coach talking to a player, not like a data report.
 
-Write in the requested language, otherwise the last substantive-message language. The Russian headings below are examples to localize semantically, not a closed list. Preserve entity and source names from the artifact; apply the source policy's ownership and display rules.
+## Shape
 
-## Response modes
+1. `TL;DR:` one or two sentences: the main problem and what to do about it.
+2. One match line: hero, position, result, duration, K/D/A (only known values).
+3. **Main finding**: what happened, with its numbers and timecodes from the artifact.
+4. **Key episode**: the death, interval or comparison that shows it best, with each event at its own time.
+5. **Совет тренера / Coach's advice**: what a coach would tell this player about this finding (see below).
+6. **Упражнение / Drill**: one drill for the next 1–3 games.
+7. Full mode only: compact **deaths** list, then **draft and items** in two or three lines when they say something, then **limits** only when one changes a conclusion.
 
-| Mode | When | Contents | Length guidance |
-|---|---|---|---|
-| **full** | General review, the default | Main finding and match line; compact accounting for all deaths; key evidence; one exercise; draft, task and items; relevant stages, progress and limits | Normally 450–750 words; at most 900 |
-| **brief** | User requests a short summary | Main finding and match line; strongest supporting fact or episode; one exercise; material limitations | Normally 150–250 words; at most 350 |
-| **focused** | User names a topic such as lane, items, deaths or progress | Main finding and match line; evidence answering that topic; one connected exercise; material limitations | Normally 200–450 words; at most 600 |
+**Brief** keeps only: TL;DR (which carries the main finding), the match line, the one fact or episode that proves it, coach's advice, the drill. **Focused** keeps the TL;DR, the match line, the evidence on the topic, the advice and the drill; deaths, draft and items appear only when they are the topic.
 
-A short focused request uses the focused contents and brief length limit. More detail explicitly requested by the user can exceed these default limits. Sparse evidence needs no minimum length; do not add filler to reach a range. Review all available selected-player death contexts in every mode; full mode displays complete compact accounting, while brief/focused modes display only relevant deaths. Omission from prose never means the death did not occur, and all death evidence remains in the artifacts.
+Headings are examples; localize them. Without a supported finding, give a short factual review, say what is missing, and make the drill about collecting it (for example, rerun after the parse, or note three things in the next game).
 
-## Main finding
+## Modes
 
-Use the decision stack to select one supported priority. State the evidence and why it matters to the requested topic, distinguishing a factual observation from any labelled hypothesis. A hypothesis needs its own stated evidence and confidence; a confirmed value does not need to be relabelled as a hypothesis. Do not force an error diagnosis when the data supports only a question for further review.
+| Mode | When | Length |
+| --- | --- | --- |
+| full | general review, the default | 400–700 words, at most 900 |
+| brief | "short", "in a nutshell" | 120–250 words, at most 350 |
+| focused | a named topic: lane, deaths, items, farm, draft, progress | 200–450 words, at most 600 |
 
-## Смерти
+A short focused request uses the focused content and the brief length. Aim inside the normal range; the maximum is for an unusually rich match. Sparse evidence needs no filler. The user can ask for more detail.
 
-In full mode, account for every death with compact timecoded facts. Group deaths sharing the same non-empty confirmed signature and retain every timecode. State a shared feature only when every grouped context confirms it. Render at most five informative rows plus one uninterpreted row listing any remaining death timecodes. Include a death used for the main finding or key episode among the informative rows; then prefer confirmed repeated-signature rows, fuller timestamped evidence, and later time as a final tie-breaker.
+## Main finding and episode
 
-Brief and focused modes may show only the deaths relevant to the selected finding. A focused death review may use the full compact table when useful within its length limit. For an interpreted death, distinguish facts, any supported hypothesis and material missing evidence according to the death policy. A signature alone establishes a repeated observation to inspect, not the cause of a death or an item-use verdict; express that limitation naturally without a required stock phrase.
+Choose with the decision stack. State the fact with its source time: "4 of 5 deaths to Silencer, two of them first deaths of your team in a fight (11:35, 21:07)". Copy every number and timecode from its own field. Counts, sums and ranges you compute from those values ("9 of 14", "3,700 gold lost on those deaths", "499–663 gold each") are welcome when exact; say what they add up. An interval figure is labelled as one ("XP 0–10 min"), a value at a marker as a value at that marker ("last hits at 10:00").
 
-## Ключевой эпизод
+An episode is not automatically a turning point. Call it one only when the team economy changed over the stated minutes, and say what changed. Events inside the same interval happened at the same time; a cause needs its own evidence.
 
-Choose a confirmed episode relevant to the main finding. Copy each event's own timecode from its artifact field: a TP use, reposition, nearby-unit observation, item use and death are separate facts. Nearby units at one recorded time do not establish the state at an earlier arrival.
+## Coach's advice
 
-An episode is not automatically a turning point. Use that stronger description only when evidence establishes a change in the match situation, and state exactly what changed without inventing a cause. A team-economy swing or leader change establishes such a change over its stated minutes; deaths, fights and objectives inside that interval co-occur with it unless further evidence links them. When only a cumulative measure or aggregate is supported, give its recorded marker or interval and say a specific episode cannot be localized. In brief/focused mode, this evidence may sit directly under the relevant topic without its own heading.
+Advice is the point of the review. It turns the finding into what to do differently, using the [coaching playbook](coaching-playbook.md) and ordinary Dota knowledge. Rules:
 
-## Упражнение
+- Label it: **Совет тренера:** / **Coach's advice:**. Keep it apart from the facts, never mixed into the same sentence as a measured number.
+- Tie it to a stated fact. General role advice without a fact from this match does not belong in the review.
+- It may state a condition and an alternative: "before a TP to a lane, two seconds on the minimap; if two enemies from that lane are missing, TP to an ally or under the tier-2 tower".
+- It never claims what the data cannot show: what the player saw, intended, or whether a spell was ready. Say "if", not "you didn't see".
+- No invented numbers for this match. A coach's rule of thumb from the playbook may appear as advice with its condition ("a coach rule of thumb for farming carries is ~80 last hits by 10–11 minutes"), never as a norm the player failed. A target the player "should" hit needs a ready peer comparison, the lane opponents' numbers or the player's own history.
+- Mechanics (cooldowns, costs, effects) come from the artifact's current-patch mechanics, not from memory. Without them, describe the idea without numbers.
 
-Give **one practical exercise** addressing the main finding. Use one short paragraph or a compact checklist describing the supported trigger/context, the action to practice or inspect, and an observable completion criterion. All steps serve the same goal. Select one family:
+## Drill
 
-- **Episode review:** inspect the identified episode or confirmed repeated signature, record the relevant observed sequence, and mark the precise missing context. Completion means the selected question is answered from evidence or explicitly remains unresolved. Do not require a conclusion that the death was avoidable.
-- **Metric tracking:** record the same supported metric at the same recorded match-time marker and compare it with a relevant ready peer row or validated personal history. State the actual comparison scope. Completion means the measure and comparison are recorded, not that the player reaches an invented target.
-- **Decision observation:** for a sourced match-specific item, lane or task finding, record the observed decision and its available context at the relevant trigger in a subsequent comparable match or replay. Completion means that decision and context are recorded. Do not prescribe an unsupported build, role task, timing or guaranteed outcome.
+One drill, chosen from these families:
 
-Organizational counts such as reviewing two episodes or tracking three upcoming games are allowed as a **proposed practice plan**, even without a peer baseline. They specify workload, not a performance norm, statistically sufficient sample or proven training dose. Do not introduce an unsourced game-time threshold, target number of last hits, death quota, percentage improvement or other performance target disguised as a practice count. Numeric performance targets follow the stricter source policy.
+- **Next-game drill** (the default): a trigger, an action and a self-check the player can count after the game without a replay. Take or adapt one from the playbook's catalogue. "Before every TP to a lane: two seconds on the minimap. After the game, count TPs that ended in your death within 15 seconds."
+- **Replay check**: when one fact needs the replay to confirm, a specific timestamp and a specific question. Use it only when the finding cannot become a next-game drill yet.
+- **Metric tracking**: the same supported number at the same marker over the next 3–5 games (last hits at 10:00, deaths before 10:00), compared with the lane opponent, a peer mean or the player's history.
 
-Use only the exercise family that fits the selected finding. A farming baseline does not justify a farming exercise in a focused item review. If relevant comparison data is mismatched or unavailable, choose a qualitative observation or episode review; do not copy an unrelated comparison or generic record-everything instruction. With insufficient evidence for the requested topic, make the exercise a specific check for the missing evidence and state that it is unresolved.
+Counts such as "the next three games" are a workload, not a statistical claim. The drill must concern the main finding.
 
-## Драфт, задача и предметы
+## Deaths (full mode)
 
-Required in full mode; in focused mode cover the requested category. Keep the full-mode passage compact and cover each category:
+Account for every death in a compact list: time, killer (hero or "tower", "creeps"…), whether it was in a big fight, gold lost, and any confirmed observation. A row may be a group (by killer, fight status or phase) that keeps every timecode. Show at most five rows plus one line with the remaining timecodes. Brief and focused modes show only the deaths that matter for the finding. Rules for interpreting deaths: [death analysis](death-analysis.md).
 
-- **Draft:** state the relevant verified draft fact when supported and names are resolved; otherwise state that draft evidence is unavailable.
-- **Match-specific task:** state sourced task facts with their confidence when supported; otherwise state that the hero's match-specific task is unavailable.
-- **Items:** state recorded item decisions and supported context; otherwise state that item-decision evidence is unavailable.
+## Draft, items, lane
 
-When relevant, add the recorded skill build or objectives the player took part in; neither is required in every review.
+Mention them when they support the finding or answer the request: "your Medusa opponent finished Manta at 22:20, before your team's first BKB" is a fact from the all-players table; "buy BKB earlier" is advice. A recorded purchase does not prove a choice was right or wrong; the advice can still say what a coach would buy against this lineup, labelled as advice. Lane: compare the player with the lane opponents at 10:00 from the artifact; describe a STRATZ lane result from the selected side's outcome.
 
-An unavailable category does not license generic hero, role, item or ability advice. Recorded purchase or use alone does not prove the choice was tactically correct or incorrect. Current-patch mechanics may explain a recorded item or ability, such as what an active does, its cost or cooldown; they never stand in for a missing match fact.
+## Stages and progress
 
-## Стадии and progress
-
-Include stages only when they clarify the finding or answer the request. Label each figure as an interval aggregate or a cumulative value at a stated marker, including when used in prose. Team economy may accompany the stages: quote its start and end values with their minutes and name the measure, since earned gold is not net worth. Use a compact table for several intervals. Assign events by half-open intervals `[start,end)`: an event at 15:00 belongs to the interval starting at 15:00; the final match endpoint may belong to the final interval. Keep repeated figures and intervals consistent throughout the response.
-
-Include personal progress only when requested or explicitly enabled by the supplied history directory, following the separately loaded progress reference. A change between comparable matches is descriptive; it does not establish the effect of an exercise.
-
-## Ограничения данных
-
-State only limits, conflicts, unknowns or comparison mismatches that change an interpretation. Place them beside the affected finding; use a separate compact section when several need explanation. Do not hide a material limitation because a heading was omitted.
+Include stages only when they explain the finding; label interval aggregates and cumulative values. Team economy: quote start and end values with their minutes and name the measure (earned gold is not net worth). Progress: only when asked, following [progress](progress.md); a change between matches is descriptive, not proof that a drill worked.
 
 ## Final audit
 
-- The mode, length and topic fit the request; the `TL;DR:` states the single main finding.
-- The supporting episode or measurement and the one exercise concern that same finding.
-- All available deaths were reviewed; full mode accounts for every timecode, and other modes do not imply omitted deaths were absent.
-- Facts, hypotheses and unavailable evidence remain distinct; a repeated signature is not a causal diagnosis, permanent habit or item-use verdict.
-- A team-economy change, objective or ward placement is described as measured or recorded; its cause, vision or participation is claimed only with supporting evidence.
-- Every stated mechanic comes from the artifact's current-patch mechanics and explains a recorded fact; none is used as evidence of readiness, affordability or effect.
-- Factual numbers and event times match their own artifact fields; cumulative and interval quantities are labelled correctly.
-- A performance target has the required relevant, matching ready comparison. Organizational counts are clearly proposed practice workload.
-- Material source conflicts, comparison mismatches and unknowns are explicit; local progress claims use validated comparable artifacts and assert no causal training effect.
-- Language and ownership rules hold. Resolved names retain artifact spelling; unresolved names remain neutral. No internal identifiers or unfilled authoring placeholders reach coaching prose.
+- Mode, length and topic fit the request; the TL;DR states the one main finding.
+- Every number and timecode matches its artifact field; `check-review.mjs` reports no problem.
+- Facts, labelled advice and unknowns are separate; nothing unknown is written as "no" or "none".
+- The advice and the drill concern the main finding; the drill has a countable self-check.
+- No internal field names, capability or error codes, internal IDs or template placeholders in coaching prose. Source names (OpenDota, STRATZ) are fine.
+- Language and ownership are right; hero and item names as the artifact spells them.

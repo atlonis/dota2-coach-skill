@@ -50,7 +50,7 @@ test('redacts GraphQL errors to invalid field names', async () => {
 
 for (const [status, code] of [[401, 'auth'], [403, 'auth'], [429, 'rate_limited']]) {
   test(`returns a safe ${code} result for HTTP ${status}`, async () => {
-    const client = createStratzClient({ apiKey: 'secret', fetchImpl: async () => jsonResponse({}, status) });
+    const client = createStratzClient({ apiKey: 'secret', fetchImpl: async () => jsonResponse({}, status), sleep: async () => {} });
 
     const result = await client.loadMatch(123);
 

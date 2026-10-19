@@ -1,4 +1,4 @@
-import { SourceError, requestJson } from './http.mjs';
+import { SourceError, requestJson, withRetry } from './http.mjs';
 
 const DEFAULT_ENDPOINT = 'https://www.dota2.com/datafeed/patchnoteslist?language=english';
 
@@ -16,11 +16,11 @@ export function resolveTimeline(patches, startTime) {
   };
 }
 
-export function createValveClient({ fetchImpl = fetch, endpoint = DEFAULT_ENDPOINT } = {}) {
+export function createValveClient({ fetchImpl = fetch, endpoint = DEFAULT_ENDPOINT, sleep } = {}) {
   return {
     async resolvePatch(startTime) {
       try {
-        const { data } = await requestJson(endpoint, { fetchImpl });
+        const { data } = await withRetry(() => requestJson(endpoint, { fetchImpl }), sleep ? { sleep } : {});
         if (!Array.isArray(data?.patches)) {
           throw new SourceError('invalid_response', 'Malformed Valve patch timeline');
         }

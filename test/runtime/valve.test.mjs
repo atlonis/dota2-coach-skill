@@ -61,7 +61,7 @@ test('closes the patch gate when Valve returns invalid JSON', async () => {
 });
 
 test('closes the patch gate when Valve returns an HTTP error', async () => {
-  const client = createValveClient({ fetchImpl: async () => jsonResponse({}, 503) });
+  const client = createValveClient({ fetchImpl: async () => jsonResponse({}, 503), sleep: async () => {} });
 
   const result = await client.resolvePatch(1785400000);
 

@@ -1,23 +1,49 @@
 ---
 name: dota2-match-coach
-description: Use when a user asks for a current-patch Dota 2 post-match review by match ID and account ID or hero, a focused review of draft, lane, items, deaths or efficiency, or progress across comparable local match artifacts.
+description: Use when a user asks for a Dota 2 post-match review on the current patch, by match ID, match link or "my last game", with an account ID, Steam/Dotabuff/OpenDota profile, hero name or slot; a focused review of lane, deaths, items, farm or draft; or progress across saved reviews.
 ---
 
 # Dota 2 Match Coach
 
-Produce an evidence-backed review for the **current exact Dota 2 sub-patch**, using a match ID and an account ID or unambiguous English hero name. **Поддержка старых патчей не реализуется и не входит в будущий roadmap этого навыка.**
+Review one current-patch match the way a coach would: **one main problem → the moment or number that shows it → coach's advice → one thing to practise next game.** Facts come only from the runtime artifact. Advice is welcome, and is always labelled as advice. Matches from earlier patches are out of scope, now and later.
 
-## Workflow
+## 1. Find the match and the player
 
-1. Read [runtime](references/runtime.md), run its wrapper, and inspect the normalized JSON and evidence Markdown. Check source status, warnings, nulls and `dataQuality.capabilities` before interpreting a result.
-2. Apply [source policy](references/source-policy.md). A closed capability prevents the corresponding conclusion, while supported facts still permit a narrower review. Keep provenance, source conflicts and material unknowns visible. Explain abilities and items from the artifact's current-patch mechanics, not from memory.
-3. Choose the response mode from the request: **full** by default, **brief** for a short summary, **focused** for a named topic. A request for both brevity and a topic uses a short focused review. Follow [review template](references/review-template.md) for mode contents and limits.
-4. Review every selected-player death when death evidence exists, following [death policy](references/death-analysis.md). Keep complete death evidence in the artifacts; the response mode controls how much to display.
-5. Use [decision stack](references/decision-stack.md) to choose one supported priority relevant to the request. Connect the main finding, its key episode or measurement, and **one practical exercise**. Repeated deaths do not automatically outrank better-supported, relevant evidence.
-6. Read [progress](references/progress.md) **only when the user requests progress or a comparison with previous matches**, or when an explicitly supplied `--history-dir` asks for that comparison. Use only runtime-validated comparable local artifacts. A change between matches does not prove a training effect.
+- **Match:** a match ID or a Dotabuff/OpenDota/STRATZ match link. Without one, list recent matches and take the newest on the current patch (ask only when the user's words don't decide):
+  `node scripts/recent-matches.mjs --account-id <ID | Steam64 | profile link>`
+- **Player:** `--account-id` (a friend ID, Steam64 ID or Dotabuff/OpenDota/STRATZ/Steam profile link), or `--hero "<exact English name>"`, or `--slot 0-9` (0–4 Radiant, 5–9 Dire). A hero or slot works even when the player hides their account. A custom Steam profile URL (`/id/<name>`) cannot be resolved: ask for the numeric ID or a Dotabuff link.
 
-Use the requested language, or the user's last substantive-message language. Preserve artifact spelling for named entities. Hero-only selection uses neutral third person; second person requires explicit match ownership. Keep implementation identifiers out of coaching prose.
+## 2. Run the runtime (from the skill root)
 
-## Before sending
+```sh
+node scripts/analyze-match.mjs --match-id <ID or link> --account-id <ID or link> --output-dir ./output
+```
 
-Apply the final audit in the review template. Verify that the selected mode and topic match the request, the exercise addresses the main finding, and all factual quantities and timecodes match their sources. Organizational practice counts are proposed plans; performance norms need the supported comparison required by source policy. A repeated signature alone never explains a death, item effectiveness, intent or a guaranteed alternative outcome.
+- An unparsed match takes up to 2–4 minutes while OpenDota parses the replay. **Run it in the background or with a command timeout of at least 300000 ms**; a 120-second default kills it before the artifact is written.
+- Read stdout. A `hint:` line says what to do. If the replay is still parsing, tell the player in one line and offer a short scoreboard-only review now or a full one after a rerun in 5–10 minutes.
+- On failure stderr has `error: <code>` and a `hint:`; tell the player the hint in plain words. Codes and artifact fields: [runtime](references/runtime.md).
+- Optional keys, set in the environment and never asked for in chat: `STRATZ_API_KEY` (positions, item and ability uses, peer means), `OPENDOTA_API_KEY` (higher rate limit).
+
+## 3. Read the evidence
+
+Open the JSON artifact (the facts) and skim the evidence Markdown next to it. Check `warnings`, `dataQuality.capabilities` and source status first. Then read:
+
+- always: [review template](references/review-template.md), [source policy](references/source-policy.md), [coaching playbook](references/coaching-playbook.md);
+- when deaths are in scope: [death analysis](references/death-analysis.md);
+- when several findings compete: [decision stack](references/decision-stack.md);
+- only when the user asks about progress or passes a history directory: [progress](references/progress.md);
+- for a model of the finished answer: [examples](references/examples.md).
+
+## 4. Write the review
+
+Pick the mode from the request: **full** by default, **brief** for a short answer, **focused** for a named topic. Follow the review template. Write in the user's language; in Russian, use the players' vocabulary from the playbook. Use "you" only when the user said the match is theirs; otherwise "the player on <Hero>".
+
+## 5. Check before sending
+
+Save the draft to a temporary file and run:
+
+```sh
+node scripts/check-review.mjs --artifact ./output/<match>.json --review <draft.md> --mode <full|brief|focused>
+```
+
+Pass the mode you chose (a short request about one topic is `brief`). Fix every reported problem (a timecode not in the artifact, an internal field name, a missing section, a length over the limit) and consider every note, then apply the final audit in the review template.

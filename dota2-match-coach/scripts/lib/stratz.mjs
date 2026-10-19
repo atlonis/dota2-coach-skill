@@ -1,4 +1,4 @@
-import { SourceError, requestJson } from './http.mjs';
+import { SourceError, requestJson, withRetry } from './http.mjs';
 
 const DEFAULT_ENDPOINT = 'https://api.stratz.com/graphql';
 
@@ -42,13 +42,13 @@ function isMatch(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-export function createStratzClient({ apiKey, fetchImpl = fetch, endpoint = DEFAULT_ENDPOINT } = {}) {
+export function createStratzClient({ apiKey, fetchImpl = fetch, endpoint = DEFAULT_ENDPOINT, sleep } = {}) {
   return {
     async loadMatch(matchId) {
       if (!apiKey) return { status: 'unavailable', reason: 'missing_token' };
 
       try {
-        const response = await requestJson(endpoint, {
+        const response = await withRetry(() => requestJson(endpoint, {
           fetchImpl,
           method: 'POST',
           headers: {
@@ -57,7 +57,7 @@ export function createStratzClient({ apiKey, fetchImpl = fetch, endpoint = DEFAU
             Authorization: `Bearer ${apiKey}`,
           },
           body: JSON.stringify({ query: MATCH_RUNTIME_QUERY, variables: { matchId } }),
-        });
+        }), sleep ? { sleep } : {});
         const payload = response.data;
         if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
           throw new SourceError('invalid_response', 'Malformed GraphQL response');

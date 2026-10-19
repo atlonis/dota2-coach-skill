@@ -1,9 +1,20 @@
 import { entityRef } from './entities.mjs';
+import { selectedParticipantFor } from './lane.mjs';
+import {
+  EARLIEST_EVENT_TIME, heroUnitMaps, openDotaDeaths, recordedTeamfightAt, sideDeathTimes,
+} from './opendota-deaths.mjs';
 
 export const DEATH_WINDOW_BEFORE = 15;
 export const DEATH_WINDOW_AFTER = 5;
 export const POSITION_MAX_AGE = 3;
+// STRATZ positions are replay map cells of 128 game units, so 20 cells is about
+// 2,560 units: the same area of the map, wider than most cast ranges. A position
+// may be up to three seconds old, and at 550 movement speed a hero covers about
+// 13 cells in that time, so a narrower radius would turn stale points into
+// false absences.
 export const NEARBY_RADIUS = 20;
+// A STRATZ death and an OpenDota death this close in time are the same death.
+const SAME_DEATH_SECONDS = 2;
 const LOCAL_TRADE_WINDOW = 10;
 const DEFENSIVE_ITEM_WINDOW = 5;
 
@@ -33,13 +44,7 @@ function selectedPlayer(stratzPlayers, accountId) {
     : null;
 }
 
-function selectedParticipant(participants, accountId) {
-  return Array.isArray(participants)
-    ? participants.find((participant) => participant?.accountId === accountId) ?? null
-    : null;
-}
-
-function stratzPlayerForParticipant(stratzPlayers, participant) {
+export function stratzPlayerForParticipant(stratzPlayers, participant) {
   if (!Array.isArray(stratzPlayers) || !participant) return null;
   if (participant.accountId != null) {
     const byAccount = stratzPlayers.filter((player) => player?.steamAccountId === participant.accountId);
@@ -60,28 +65,20 @@ function addUnavailable(unavailable, reason) {
   if (!unavailable.includes(reason)) unavailable.push(reason);
 }
 
+// Deaths before the horn count: a pre-game kill is often the player's own first blood.
 function validDeaths(deaths, durationSeconds) {
   if (!finite(durationSeconds) || durationSeconds < 0) return [];
   return Array.isArray(deaths)
-    ? deaths.filter((death) => finite(death?.time) && death.time >= 0 && death.time <= durationSeconds)
+    ? deaths.filter((death) => finite(death?.time) && death.time >= EARLIEST_EVENT_TIME && death.time <= durationSeconds)
     : [];
 }
 
-function teamfightAt(teamfights, time) {
-  if (!Array.isArray(teamfights)) return { inFight: null, start: null, end: null };
-  const fight = teamfights.find((candidate) => finite(candidate?.start)
-    && finite(candidate?.end)
-    && candidate.start <= candidate.end
-    && time >= candidate.start
-    && time <= candidate.end);
-  return fight ? { inFight: true, start: fight.start, end: fight.end } : { inFight: false, start: null, end: null };
-}
-
-function unavailableFor({ playback, position, death, teamfights, selectedRepositions }) {
+function unavailableFor({ playback, position, death, teamfights, teamfight, selectedRepositions }) {
   const unavailable = [];
   if (position == null) unavailable.push('death_position_unavailable');
   if (!finite(death?.timeDead)) unavailable.push('death_time_dead_unavailable');
   if (!Array.isArray(teamfights)) unavailable.push('teamfights_unavailable');
+  else if (teamfight?.inFight == null) unavailable.push('teamfight_status_unknown_near_match_end');
   if (!Array.isArray(playback?.abilityUsedEvents)) unavailable.push('selected_ability_uses_unavailable');
   if (!Array.isArray(playback?.itemUsedEvents)) unavailable.push('selected_item_uses_unavailable');
   if (!Array.isArray(selectedRepositions)) unavailable.push('selected_repositions_unavailable');
@@ -107,7 +104,7 @@ function livingAt(playback, time) {
 function participantProximity({
   participants,
   stratzPlayers,
-  selectedAccountId,
+  isSelected,
   selectedSide,
   position,
   time,
@@ -120,7 +117,7 @@ function participantProximity({
   const nearbyAllies = [];
   const nearbyEnemies = [];
   for (const participant of participants) {
-    if (!participant || participant.accountId === selectedAccountId) continue;
+    if (!participant || isSelected(participant)) continue;
     const player = stratzPlayerForParticipant(stratzPlayers, participant);
     const alive = livingAt(player?.playbackData, time);
     if (alive == null) {
@@ -182,10 +179,30 @@ function completeDeathTimeline(playback) {
     && playback.deathEvents.every((death) => finite(death?.time));
 }
 
+// The allied death timeline comes from OpenDota when all five allies logged their
+// deaths, and otherwise from each ally's STRATZ playback.
+function alliedDeathTimeline({ participants, stratzPlayers, openPlayers, selectedSide, unavailable }) {
+  const fromOpen = sideDeathTimes(openPlayers, selectedSide);
+  if (fromOpen) return fromOpen;
+  const alliedDeaths = [];
+  let complete = true;
+  for (const participant of participants.filter((row) => row?.side === selectedSide)) {
+    const player = stratzPlayerForParticipant(stratzPlayers, participant);
+    if (!completeDeathTimeline(player?.playbackData)) {
+      complete = false;
+      addUnavailable(unavailable, `allied_deaths_unavailable:${participantKey(participant)}`);
+      continue;
+    }
+    for (const death of player.playbackData.deathEvents) alliedDeaths.push({ time: death.time, slot: participant.slot });
+  }
+  return complete ? alliedDeaths : null;
+}
+
 function firstAlliedDeathObservation({
   participants,
   stratzPlayers,
-  selectedAccountId,
+  openPlayers,
+  selectedSlot,
   selectedSide,
   teamfight,
   time,
@@ -200,27 +217,15 @@ function firstAlliedDeathObservation({
     addUnavailable(unavailable, `participant_side_unavailable:${participantKey(participantWithoutSide)}`);
     return null;
   }
-  const alliedDeaths = [];
-  let complete = true;
-  for (const participant of participants.filter((row) => row?.side === selectedSide)) {
-    const player = stratzPlayerForParticipant(stratzPlayers, participant);
-    if (!completeDeathTimeline(player?.playbackData)) {
-      complete = false;
-      addUnavailable(unavailable, `allied_deaths_unavailable:${participantKey(participant)}`);
-      continue;
-    }
-    for (const death of player.playbackData.deathEvents) {
-      alliedDeaths.push({ time: death.time, participant });
-    }
-  }
-  if (!complete || teamfight.inFight == null) return null;
+  const alliedDeaths = alliedDeathTimeline({ participants, stratzPlayers, openPlayers, selectedSide, unavailable });
+  if (!alliedDeaths || teamfight.inFight == null) return null;
   if (!teamfight.inFight) return false;
   const inFight = alliedDeaths
     .filter((death) => death.time >= teamfight.start && death.time <= teamfight.end)
     .sort((left, right) => left.time - right.time);
   return inFight.length > 0
     && inFight[0].time === time
-    && inFight.some((death) => death.time === time && death.participant.accountId === selectedAccountId);
+    && inFight.some((death) => death.time === time && death.slot === selectedSlot);
 }
 
 function positionForEvent(event, playback) {
@@ -240,7 +245,7 @@ function participantForKillTarget(participants, event, selectedSide) {
 function localEvents({
   participants,
   stratzPlayers,
-  selectedAccountId,
+  isSelected,
   selectedSide,
   playback,
   position,
@@ -253,7 +258,7 @@ function localEvents({
   let tradedLocally = false;
 
   for (const participant of Array.isArray(participants) ? participants : []) {
-    if (!participant || participant.accountId === selectedAccountId) continue;
+    if (!participant || isSelected(participant)) continue;
     const player = stratzPlayerForParticipant(stratzPlayers, participant);
     const deathEvents = player?.playbackData?.deathEvents;
     const isEnemy = participant.side != null && participant.side !== selectedSide;
@@ -379,29 +384,90 @@ export function selectPriorityDeath({ contexts = [], patterns = [], turningWindo
   return selected?.time ?? null;
 }
 
+function killerUnitRef(killer) {
+  return killer?.kind === 'non_hero'
+    ? { kind: 'non_hero', unitClass: killer.unitClass, side: killer.side ?? null, label: killer.label ?? null }
+    : killer?.kind === 'hero' ? { kind: 'hero', unitClass: 'hero', side: killer.side ?? null, label: null } : null;
+}
+
+// A death that only OpenDota recorded: its time, killer, seconds dead, gold lost
+// and fight. Positions, item and ability uses need STRATZ playback, so they stay
+// unavailable and the context is never complete.
+function openDotaContext({ death, catalog, teamfight, observations }) {
+  const unavailable = ['stratz_playback_unavailable'];
+  const position = teamfight.position == null ? null
+    : { time: null, x: teamfight.position.x, y: teamfight.position.y, ageSeconds: null, source: teamfight.position.source };
+  if (position == null) unavailable.push('death_position_unavailable');
+  if (death.timeDead == null) unavailable.push('death_time_dead_unavailable');
+  if (teamfight.inFight == null && teamfight.start == null) unavailable.push('teamfight_status_unknown');
+  return {
+    time: death.time,
+    source: death.source,
+    contextReady: false,
+    position,
+    killerHero: entityRef(catalog, 'hero', death.killer?.kind === 'hero' ? death.killer.heroId : null),
+    killerUnit: killerUnitRef(death.killer),
+    killingAbility: { id: null, name: null },
+    killingItem: { id: null, name: null },
+    timeDead: death.timeDead,
+    goldLost: death.goldLost,
+    teamfight: { inFight: teamfight.inFight, start: teamfight.start, end: teamfight.end, involvement: teamfight.involvement },
+    proximityComplete: false,
+    nearbyAllies: [],
+    nearbyEnemies: [],
+    ownAbilityUses: [],
+    ownItemUses: [],
+    recentReposition: null,
+    nearbyDeaths: [],
+    nearbyKills: [],
+    observations: { ...observations, contextIncomplete: true },
+    unavailable,
+  };
+}
+
 export function buildDeathContexts({
   selectedAccountId,
+  selectedSlot,
   participants = [],
   stratzPlayers = [],
+  openPlayers = [],
+  heroConstants = null,
   teamfights = null,
   selectedRepositions = null,
   durationSeconds,
   catalog,
   scoreboardDeaths = null,
 } = {}) {
-  const selected = selectedPlayer(stratzPlayers, selectedAccountId);
-  const participant = selectedParticipant(participants, selectedAccountId);
+  const participant = selectedParticipantFor(participants, { selectedSlot, selectedAccountId });
+  const slot = participant?.slot ?? (Number.isInteger(selectedSlot) ? selectedSlot : null);
+  const isSelected = (row) => (slot != null ? row?.slot === slot : row?.accountId === selectedAccountId);
+  const selected = participant
+    ? stratzPlayerForParticipant(stratzPlayers, participant)
+    : selectedPlayer(stratzPlayers, selectedAccountId);
   const selectedSide = participant?.side ?? null;
   const playback = selected?.playbackData;
-  const contexts = validDeaths(playback?.deathEvents, durationSeconds).map((death) => {
+  const heroMaps = heroUnitMaps(heroConstants);
+  const open = openDotaDeaths({ openPlayers, selectedSlot: slot, participants, heroMaps, durationSeconds });
+  const stratzDeaths = validDeaths(playback?.deathEvents, durationSeconds);
+  const selectedDeathTimes = (stratzDeaths.length >= open.deaths.length ? stratzDeaths : open.deaths).map((death) => death.time);
+  const matchedOpen = new Set();
+  const teamfightFor = (time) => recordedTeamfightAt({
+    teamfights, time, durationSeconds, participants, selectedSlot: slot, selectedSide, selectedDeathTimes,
+  });
+
+  const contexts = stratzDeaths.map((death) => {
+    const openIndex = open.deaths.findIndex((row, index) => !matchedOpen.has(index) && Math.abs(row.time - death.time) <= SAME_DEATH_SECONDS);
+    if (openIndex !== -1) matchedOpen.add(openIndex);
+    const openDeath = openIndex === -1 ? null : open.deaths[openIndex];
     const position = latestPositionAt(playback?.playerUpdatePositionEvents, death.time);
-    const teamfight = teamfightAt(teamfights, death.time);
-    const unavailable = unavailableFor({ playback, position, death, teamfights, selectedRepositions });
+    const teamfight = teamfightFor(death.time);
+    const timeDead = finite(death.timeDead) ? death.timeDead : openDeath?.timeDead ?? null;
+    const unavailable = unavailableFor({ playback, position, death: { ...death, timeDead }, teamfights, teamfight, selectedRepositions });
     if (!participant) addUnavailable(unavailable, 'selected_participant_unavailable');
     const proximity = participantProximity({
       participants,
       stratzPlayers,
-      selectedAccountId,
+      isSelected,
       selectedSide,
       position,
       time: death.time,
@@ -411,7 +477,7 @@ export function buildDeathContexts({
     const local = localEvents({
       participants,
       stratzPlayers,
-      selectedAccountId,
+      isSelected,
       selectedSide,
       playback,
       position,
@@ -431,7 +497,8 @@ export function buildDeathContexts({
       firstAlliedDeathInFight: firstAlliedDeathObservation({
         participants,
         stratzPlayers,
-        selectedAccountId,
+        openPlayers,
+        selectedSlot: slot,
         selectedSide,
         teamfight,
         time: death.time,
@@ -444,12 +511,17 @@ export function buildDeathContexts({
     observations.contextIncomplete = unavailable.length > 0;
     return {
       time: death.time,
+      source: 'stratz',
+      contextReady: !observations.contextIncomplete,
       position,
       killerHero: entityRef(catalog, 'hero', death.attacker),
+      killerUnit: openDeath ? killerUnitRef(openDeath.killer) : null,
       killingAbility: entityRef(catalog, 'ability', death.byAbility),
       killingItem: entityRef(catalog, 'item', death.byItem),
-      timeDead: finite(death.timeDead) ? death.timeDead : null,
-      teamfight,
+      timeDead,
+      goldLost: openDeath?.goldLost ?? null,
+      teamfight: { inFight: teamfight.inFight, start: teamfight.start, end: teamfight.end, involvement: teamfight.involvement },
+      proximityComplete: proximity.complete,
       nearbyAllies: proximity.nearbyAllies,
       nearbyEnemies: proximity.nearbyEnemies,
       ownAbilityUses: ownEntityUses(playback?.abilityUsedEvents, death.time - DEATH_WINDOW_BEFORE, death.time + DEATH_WINDOW_AFTER, 'ability', catalog),
@@ -461,8 +533,48 @@ export function buildDeathContexts({
       unavailable,
     };
   });
+
+  open.deaths.forEach((death, index) => {
+    if (matchedOpen.has(index)) return;
+    const teamfight = teamfightFor(death.time);
+    const scratch = [];
+    const observations = {
+      isolated: null,
+      afterConfirmedTeleport: null,
+      firstAlliedDeathInFight: firstAlliedDeathObservation({
+        participants, stratzPlayers, openPlayers, selectedSlot: slot, selectedSide, teamfight, time: death.time, unavailable: scratch,
+      }),
+      tradedLocally: null,
+      ownDefensiveItemUsed: null,
+    };
+    contexts.push(openDotaContext({ death, catalog, teamfight, observations }));
+  });
+  contexts.sort((left, right) => left.time - right.time);
+
   const knownScoreboardDeaths = Number.isInteger(scoreboardDeaths) ? scoreboardDeaths : 0;
-  return { contexts, unresolvedCount: Math.max(0, knownScoreboardDeaths - contexts.length) };
+  return {
+    contexts,
+    unresolvedCount: Math.max(0, knownScoreboardDeaths - contexts.length),
+    timelineSource: Array.isArray(playback?.deathEvents) ? 'stratz' : open.method ? `opendota_${open.method}` : null,
+  };
+}
+
+// Deaths grouped by who or what landed the killing blow: a hero by name, a
+// non-hero by its class. A count of facts, not a cause.
+export function deathsByKiller(contexts = []) {
+  const counts = new Map();
+  for (const context of contexts) {
+    const label = context?.killerHero?.name
+      ?? (context?.killerUnit?.kind === 'non_hero' ? context.killerUnit.unitClass : null)
+      ?? 'unknown';
+    const kind = context?.killerHero?.name ? 'hero' : context?.killerUnit?.kind === 'non_hero' ? 'non_hero' : 'unknown';
+    const key = `${kind}:${label}`;
+    const row = counts.get(key) ?? { kind, label, count: 0, times: [] };
+    row.count += 1;
+    row.times.push(context.time);
+    counts.set(key, row);
+  }
+  return [...counts.values()].sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
 }
 
 export function buildDeathAnalysis(input = {}) {
@@ -470,6 +582,7 @@ export function buildDeathAnalysis(input = {}) {
   const patterns = buildDeathPatterns(base.contexts);
   return {
     ...base,
+    byKiller: deathsByKiller(base.contexts),
     patterns,
     priorityDeathTime: selectPriorityDeath({
       contexts: base.contexts,

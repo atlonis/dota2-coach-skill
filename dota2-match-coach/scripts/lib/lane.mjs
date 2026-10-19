@@ -45,6 +45,8 @@ function emptyParticipant(slot) {
     side: slot < 5 ? 'radiant' : 'dire',
     position: null,
     lane: null,
+    laneSource: null,
+    isRoaming: null,
     role: null,
     rank: null,
     playbackAvailable: false,
@@ -53,22 +55,42 @@ function emptyParticipant(slot) {
   };
 }
 
+// OpenDota estimates the lane from the hero's positions in the first ten minutes
+// (`getLaneFromPosData` in odota/core): 1 is the bottom lane, 2 mid, 3 top, 4 and
+// 5 the Radiant and Dire jungles. `is_roaming` means the hero spent less than 45%
+// of that time in its most frequent lane.
+const OPEN_LANES = new Map([[1, 'bottom'], [2, 'mid'], [3, 'top'], [4, 'jungle'], [5, 'jungle']]);
+
+export function laneForOpenPlayer(player) {
+  return OPEN_LANES.get(player?.lane) ?? null;
+}
+
 function participantFromOpen(slot, player, catalog) {
+  const lane = laneForOpenPlayer(player);
+  const position = Number.isInteger(player?.position_est) && player.position_est >= 1 && player.position_est <= 5 ? player.position_est : null;
   return {
     ...emptyParticipant(slot),
     accountId: positiveInteger(player?.account_id),
     hero: entityRef(catalog, 'hero', player?.hero_id),
     rank: player?.rank_tier ?? null,
+    position,
+    lane,
+    laneSource: lane == null ? null : 'opendota',
+    isRoaming: typeof player?.is_roaming === 'boolean' ? player.is_roaming : null,
   };
 }
 
+// STRATZ, when present, names the position and lane; OpenDota's own estimates
+// fill in only what STRATZ leaves empty.
 function stratzFields(player, participant) {
   const stratzSide = sideForStratz(player);
   const heroId = positiveInteger(player?.heroId);
+  const stratzLane = canonicalLane(player?.lane, participant.side);
   return {
     accountId: positiveInteger(player?.steamAccountId) ?? participant.accountId,
-    position: positionFor(player),
-    lane: canonicalLane(player?.lane, participant.side),
+    position: positionFor(player) ?? participant.position,
+    lane: stratzLane ?? participant.lane,
+    laneSource: stratzLane != null ? 'stratz' : participant.laneSource,
     role: player?.roleBasic ?? null,
     rank: player?.steamAccount?.seasonRank ?? participant.rank,
     playbackAvailable: player?.playbackData != null,
@@ -134,11 +156,17 @@ export function normalizeParticipants({ openPlayers = [], stratzPlayers = [], ca
   return participants;
 }
 
-export function resolveLaneMatchup({ participants = [], selectedAccountId } = {}) {
+export function selectedParticipantFor(participants = [], { selectedSlot, selectedAccountId } = {}) {
+  if (Number.isInteger(selectedSlot)) return participants.find((participant) => participant?.slot === selectedSlot) ?? null;
   const accountId = positiveInteger(selectedAccountId);
-  const selected = accountId == null ? null : participants.find((participant) => participant?.accountId === accountId) ?? null;
+  return accountId == null ? null : participants.find((participant) => participant?.accountId === accountId) ?? null;
+}
+
+export function resolveLaneMatchup({ participants = [], selectedAccountId, selectedSlot } = {}) {
+  const selected = selectedParticipantFor(participants, { selectedSlot, selectedAccountId });
   if (!selected) return { selectedLane: null, opponents: [], status: 'unknown', reason: 'selected_player_missing' };
   if (selected.sourceConflict) return { selectedLane: selected.lane ?? null, opponents: [], status: 'unknown', reason: 'source_conflict' };
+  if (selected.lane === 'jungle') return { selectedLane: 'jungle', opponents: [], status: 'unknown', reason: 'selected_in_jungle' };
   if (!PHYSICAL_LANES.has(selected.lane)) return { selectedLane: null, opponents: [], status: 'unknown', reason: 'selected_lane_unknown' };
 
   const candidates = participants.filter((participant) => participant
@@ -150,5 +178,7 @@ export function resolveLaneMatchup({ participants = [], selectedAccountId } = {}
   }
   if (candidates.length === 0) return { selectedLane: selected.lane, opponents: [], status: 'unknown', reason: 'opponents_unknown' };
   if (candidates.length > 3) return { selectedLane: selected.lane, opponents: [], status: 'unknown', reason: 'too_many_opponents' };
-  return { selectedLane: selected.lane, opponents: candidates, status: 'ready', reason: null };
+  const allies = participants.filter((participant) => participant
+    && participant.slot !== selected.slot && participant.side === selected.side && participant.lane === selected.lane);
+  return { selectedLane: selected.lane, opponents: candidates, allies, laneSource: selected.laneSource ?? null, status: 'ready', reason: null };
 }

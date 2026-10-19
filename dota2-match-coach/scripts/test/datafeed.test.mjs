@@ -52,7 +52,7 @@ test('fails one record at a time on a wrong id, an HTTP error or a malformed env
     itemdata: () => json({ result: { data: {} } }),
     patchnotes: () => json({ patch_number: '7.41e', heroes: [], success: true }),
   });
-  const client = createDatafeedClient({ fetchImpl, baseUrl: 'https://feed.invalid/datafeed' });
+  const client = createDatafeedClient({ fetchImpl, baseUrl: 'https://feed.invalid/datafeed', sleep: async () => {} });
 
   const result = await client.loadMechanics({ heroIds: [2, 4], itemIds: [1], patch: '7.41f' });
 

@@ -7,7 +7,7 @@ import { projectArtifact, renderEvidenceMarkdown, writeArtifacts } from '../../d
 
 function evidenceModel() {
   return {
-    schemaVersion: '2.3.0',
+    schemaVersion: '2.4.0',
     request: { matchId: '42', accountId: 56386500 },
     generatedAt: '2026-08-25T00:00:00.000Z',
     sources: {
@@ -58,7 +58,7 @@ function evidenceModel() {
         { metric: 'netWorth', minute: 10, player: 3200, baseline: 3600, delta: -400, ratio: 0.889, matchCount: 1200, crossSourceProxy: true, source: 'stratz' }, // column check: no comparison sets this flag today
       ],
     },
-    deathAnalysis: { contexts: [], patterns: [], priorityDeathTime: null, unresolvedCount: 1 },
+    deathAnalysis: { contexts: [], patterns: [], priorityDeathTime: null, unresolvedCount: 1, timelineSource: null, byKiller: [] },
     dataQuality: { mode: 'degraded', capabilities: { scoreboard: true, phaseAggregates: true, draft: false, peerBaseline: true, selectedTimeline: true, allPlayerPositions: false, deathContext: false, deathPattern: false, currentPatch: true }, missing: ['complete death context'], warnings: ['Position unavailable'] },
     warnings: ['Position unavailable'],
   };
@@ -186,12 +186,12 @@ test('writeArtifacts persists the canonical v2 entity references and death summa
   const artifacts = await writeArtifacts(evidenceModel(), directory);
   const persisted = JSON.parse(await readFile(artifacts.jsonPath, 'utf8'));
 
-  assert.equal(persisted.schemaVersion, '2.3.0');
+  assert.equal(persisted.schemaVersion, '2.4.0');
   assert.deepEqual(persisted.draft.radiant, [{ value: { id: 107, name: 'Earth Spirit' }, source: 'opendota' }]);
   assert.deepEqual(persisted.summary.kda, { kills: 8, deaths: 2, assists: 6, source: 'opendota' });
   assert.deepEqual(persisted.items.purchases, [{ time: 80, source: 'opendota', item: { id: 50, name: 'Phase Boots' } }]);
   assert.deepEqual(persisted.series.denies, { values: [0, 0], source: 'opendota' });
-  assert.deepEqual(persisted.deathAnalysis, { contexts: [], patterns: [], priorityDeathTime: null, unresolvedCount: 1 });
+  assert.deepEqual(persisted.deathAnalysis, { contexts: [], patterns: [], priorityDeathTime: null, unresolvedCount: 1, timelineSource: null, byKiller: [] });
   assert.equal('events' in persisted, false);
 });
 

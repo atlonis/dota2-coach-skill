@@ -1,6 +1,7 @@
 import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { buildEpisode } from './episode.mjs';
 
 function valueOf(field) {
   if (field == null) return '—';
@@ -36,7 +37,10 @@ function phaseRows(phases = []) {
       .filter(([, value]) => value != null)
       .map(([name, value]) => `${name}: ${value}`)
       .join('; ') || '—';
-    return `| ${phase.id ?? '—'} | ${phase.interval ?? '—'} | ${metrics} | ${list(phase.extremaWithinMatch)} |`;
+    const coverage = Number.isFinite(phase.minuteSeriesEnd)
+      ? ` (gold and XP end at ${clock(phase.minuteSeriesEnd)}; last hits, denies and hero damage at the match end)`
+      : '';
+    return `| ${phase.id ?? '—'} | ${phase.interval ?? '—'} | ${metrics}${coverage} | ${list(phase.extremaWithinMatch)} |`;
   });
 }
 
@@ -190,6 +194,8 @@ function projectParticipant(participant, fallbackSlot) {
     side: typeof participant?.side === 'string' ? participant.side : null,
     position: scalar(participant?.position) ?? null,
     lane: typeof participant?.lane === 'string' ? participant.lane : null,
+    laneSource: ['opendota', 'stratz'].includes(participant?.laneSource) ? participant.laneSource : null,
+    isRoaming: typeof participant?.isRoaming === 'boolean' ? participant.isRoaming : null,
     role: typeof participant?.role === 'string' ? participant.role : null,
     rank: scalar(participant?.rank) ?? null,
     playbackAvailable: typeof participant?.playbackAvailable === 'boolean' ? participant.playbackAvailable : null,
@@ -218,20 +224,51 @@ function projectDeathEvent(event, kind) {
   return projected;
 }
 
+const DEATH_SOURCES = new Set(['stratz', 'opendota_deaths_log', 'opendota_kills_log']);
+const KILLER_CLASSES = new Set(['hero', 'building', 'lane_creep', 'neutral', 'roshan', 'tormentor', 'unit']);
+
+function projectKillerUnit(unit) {
+  if (!unit || typeof unit !== 'object' || !['hero', 'non_hero'].includes(unit.kind)) return null;
+  return {
+    kind: unit.kind,
+    unitClass: KILLER_CLASSES.has(unit.unitClass) ? unit.unitClass : null,
+    side: sideOrNull(unit.side),
+    label: boundedText(unit.label),
+  };
+}
+
+function projectHeroList(rows) {
+  return Array.isArray(rows) ? rows.map(projectEntityRef) : [];
+}
+
+function projectInvolvement(involvement) {
+  if (!involvement || typeof involvement !== 'object') return null;
+  return { allies: projectHeroList(involvement.allies), enemies: projectHeroList(involvement.enemies) };
+}
+
 function projectDeathContext(context) {
   const recentReposition = context?.recentReposition;
+  const position = projectPosition(context?.position);
+  if (position && ['opendota_teamfight'].includes(context?.position?.source)) position.source = context.position.source;
   return {
     time: Number.isFinite(context?.time) ? context.time : null,
-    position: projectPosition(context?.position),
+    source: DEATH_SOURCES.has(context?.source) ? context.source : null,
+    contextReady: context?.contextReady === true
+      && context?.observations?.contextIncomplete === false && context?.unavailable?.length === 0,
+    position,
     killerHero: projectEntityRef(context?.killerHero),
+    killerUnit: projectKillerUnit(context?.killerUnit),
     killingAbility: projectEntityRef(context?.killingAbility),
     killingItem: projectEntityRef(context?.killingItem),
     timeDead: Number.isFinite(context?.timeDead) ? context.timeDead : null,
+    goldLost: Number.isFinite(context?.goldLost) ? context.goldLost : null,
     teamfight: {
       inFight: typeof context?.teamfight?.inFight === 'boolean' ? context.teamfight.inFight : null,
       start: Number.isFinite(context?.teamfight?.start) ? context.teamfight.start : null,
       end: Number.isFinite(context?.teamfight?.end) ? context.teamfight.end : null,
+      involvement: projectInvolvement(context?.teamfight?.involvement),
     },
+    proximityComplete: context?.proximityComplete === true,
     nearbyAllies: Array.isArray(context?.nearbyAllies) ? context.nearbyAllies.map(projectParticipantContext) : [],
     nearbyEnemies: Array.isArray(context?.nearbyEnemies) ? context.nearbyEnemies.map(projectParticipantContext) : [],
     ownAbilityUses: Array.isArray(context?.ownAbilityUses) ? context.ownAbilityUses.map((event) => projectDeathEvent(event, 'ability')) : [],
@@ -407,6 +444,44 @@ function projectBuybacks(buybacks) {
   };
 }
 
+function projectMinuteTen(values) {
+  if (!values || typeof values !== 'object') return null;
+  return pickNumbers(values, ['lastHits', 'denies', 'gold', 'xp', 'netWorth', 'laneEfficiencyPct'], { nullable: true });
+}
+
+function projectPlayerRow(row) {
+  return {
+    ...pickNumbers(row, ['slot'], { nullable: true }),
+    side: sideOrNull(row?.side),
+    hero: projectEntityRef(row?.hero),
+    accountId: Number.isSafeInteger(row?.accountId) ? row.accountId : null,
+    position: Number.isInteger(row?.position) ? row.position : null,
+    lane: typeof row?.lane === 'string' ? row.lane : null,
+    isRoaming: booleanOrNull(row?.isRoaming),
+    source: ['opendota', 'stratz'].includes(row?.source) ? row.source : null,
+    ...pickNumbers(row, ['kills', 'deaths', 'assists', 'lastHits', 'denies', 'gpm', 'xpm', 'netWorth', 'heroDamage', 'towerDamage', 'healing', 'level', 'leaverStatus'], { nullable: true }),
+    finalItems: Array.isArray(row?.finalItems) ? row.finalItems.map(projectEntityRef) : [],
+    backpack: Array.isArray(row?.backpack) ? row.backpack.map(projectEntityRef) : [],
+    neutralItem: row?.neutralItem ? projectEntityRef(row.neutralItem) : null,
+    majorItems: Array.isArray(row?.majorItems) ? row.majorItems
+      .filter((item) => Number.isFinite(item?.time))
+      .map((item) => ({ time: item.time, item: projectEntityRef(item.item) })) : [],
+    minute10: projectMinuteTen(row?.minute10),
+  };
+}
+
+const PERCENTILE_POPULATIONS = new Set(['same_hero_recent_public_matches', 'same_hero_recent_turbo_matches']);
+
+function projectPercentiles(percentiles) {
+  return {
+    ...sectionHeader(percentiles, ['opendota']),
+    population: PERCENTILE_POPULATIONS.has(percentiles?.population) ? percentiles.population : null,
+    metrics: Array.isArray(percentiles?.metrics) ? percentiles.metrics
+      .filter((row) => typeof row?.metric === 'string')
+      .map((row) => ({ metric: row.metric, ...pickNumbers(row, ['value', 'percentile', 'bracketPercentile'], { nullable: true }) })) : [],
+  };
+}
+
 function projectSkillBuild(skillBuild) {
   return {
     ...sectionHeader(skillBuild, ['opendota']),
@@ -537,18 +612,25 @@ export function projectArtifact(model = {}) {
   const sources = Object.fromEntries(['opendota', 'stratz', 'valve', 'entityConstants']
     .filter((name) => Object.hasOwn(model.sources ?? {}, name))
     .map((name) => [name, projectSource(model.sources[name])]));
-  const player = Object.fromEntries(['accountId', 'heroId', 'heroName', 'side', 'position', 'lane', 'rank', 'kills', 'deaths', 'assists', 'result']
+  const player = Object.fromEntries(['accountId', 'heroId', 'heroName', 'side', 'position', 'lane', 'isRoaming', 'rank', 'kills', 'deaths', 'assists', 'result']
     .filter((name) => Object.hasOwn(model.player ?? {}, name))
     .map((name) => [name, projectSourced(model.player[name])]));
+  if (Number.isInteger(model.player?.slot)) player.slot = model.player.slot;
   const match = Object.fromEntries(['result', 'durationSeconds', 'startTime', 'averageRank', 'gameMode', 'lobbyType']
     .filter((name) => Object.hasOwn(model.match ?? {}, name))
     .map((name) => [name, projectSourced(model.match[name])]));
+  if (['standard', 'turbo', 'non_standard', 'unknown'].includes(model.match?.modeClass)) match.modeClass = model.match.modeClass;
+  if (Array.isArray(model.match?.abandons)) {
+    match.abandons = model.match.abandons.map((row) => ({
+      ...pickNumbers(row, ['slot', 'leaverStatus'], { nullable: true }), side: sideOrNull(row?.side), hero: projectEntityRef(row?.hero),
+    }));
+  }
   const patch = Object.fromEntries(['match', 'current', 'isCurrentExactPatch']
     .filter((name) => Object.hasOwn(model.patch ?? {}, name))
     .map((name) => [name, projectSourced(model.patch[name])]));
   const phases = Array.isArray(model.phases) ? model.phases.map((phase) => ({
     ...pickStrings(phase, ['id', 'interval']),
-    ...pickNumbers(phase, ['start', 'end']),
+    ...pickNumbers(phase, ['start', 'end', 'minuteSeriesEnd']),
     ...(Object.hasOwn(phase ?? {}, 'metrics') ? { metrics: pickNumbers(phase.metrics, ['gold', 'goldPerMin', 'xp', 'xpPerMin', 'lh', 'lhPerMin', 'denies', 'deniesPerMin', 'heroDamage', 'heroDamagePerMin', 'kills', 'deaths', 'assists'], { nullable: true }) } : {}),
     ...(stringArray(phase?.extremaWithinMatch) !== undefined ? { extremaWithinMatch: stringArray(phase.extremaWithinMatch) } : {}),
   })) : [];
@@ -561,11 +643,12 @@ export function projectArtifact(model = {}) {
     .map((name) => [name, projectSeries(model.series[name])]));
   const artifact = {
     ...pickScalars(model, ['schemaVersion', 'generatedAt']),
-    request: pickScalars(model.request, ['matchId', 'accountId']),
+    request: pickScalars(model.request, ['matchId', 'accountId', 'slot']),
     sources,
     match,
     player,
     participants: Array.from({ length: 10 }, (_, slot) => projectParticipant(model.participants?.[slot], slot)),
+    players: Array.isArray(model.players) ? model.players.map(projectPlayerRow) : [],
     draft: {
       ...pickBooleans(model.draft, ['complete']),
       ...(Array.isArray(model.draft?.radiant) ? { radiant: model.draft.radiant.map(projectSourcedEntity) } : {}),
@@ -579,6 +662,8 @@ export function projectArtifact(model = {}) {
     lane: {
       selectedLane: typeof model.lane?.selectedLane === 'string' ? model.lane.selectedLane : null,
       opponents: Array.isArray(model.lane?.opponents) ? model.lane.opponents.map((opponent) => projectParticipant(opponent, null)) : [],
+      allies: Array.isArray(model.lane?.allies) ? model.lane.allies.map((ally) => projectParticipant(ally, null)) : [],
+      laneSource: ['opendota', 'stratz'].includes(model.lane?.laneSource) ? model.lane.laneSource : null,
       status: typeof model.lane?.status === 'string' ? model.lane.status : 'unknown',
       reason: typeof model.lane?.reason === 'string' ? model.lane.reason : null,
       outcome: projectSourced(model.lane?.outcome),
@@ -606,6 +691,7 @@ export function projectArtifact(model = {}) {
     wards: projectWards(model.wards),
     buybacks: projectBuybacks(model.buybacks),
     skillBuild: projectSkillBuild(model.skillBuild),
+    percentiles: projectPercentiles(model.percentiles),
     mechanics: projectMechanics(model.mechanics),
     baseline: projectBaseline(model.baseline),
     deathAnalysis: {
@@ -618,6 +704,13 @@ export function projectArtifact(model = {}) {
       })) : [],
       priorityDeathTime: Number.isFinite(model.deathAnalysis?.priorityDeathTime) ? model.deathAnalysis.priorityDeathTime : null,
       unresolvedCount: Number.isInteger(model.deathAnalysis?.unresolvedCount) ? model.deathAnalysis.unresolvedCount : null,
+      timelineSource: ['stratz', 'opendota_deaths_log', 'opendota_kills_log'].includes(model.deathAnalysis?.timelineSource) ? model.deathAnalysis.timelineSource : null,
+      byKiller: Array.isArray(model.deathAnalysis?.byKiller) ? model.deathAnalysis.byKiller.map((row) => ({
+        kind: ['hero', 'non_hero', 'unknown'].includes(row?.kind) ? row.kind : 'unknown',
+        label: boundedText(row?.label),
+        count: Number.isInteger(row?.count) ? row.count : null,
+        times: Array.isArray(row?.times) ? row.times.filter(Number.isFinite) : [],
+      })) : [],
     },
     dataQuality: {
       ...pickStrings(model.dataQuality, ['mode']),
@@ -628,6 +721,7 @@ export function projectArtifact(model = {}) {
   };
   if (stringArray(model.warnings) !== undefined) artifact.warnings = stringArray(model.warnings);
   if (model.progress != null) artifact.progress = projectProgress(model.progress);
+  if (model.episode != null) artifact.episode = buildEpisode(artifact, model.episode.at);
   return artifact;
 }
 
@@ -748,10 +842,22 @@ function repositionLabel(reposition) {
   return `${cause} @ ${clock(reposition.time)} (${basis})`;
 }
 
+// Without complete positions, an empty list means unknown, not nobody.
+function proximityLabels(context, rows) {
+  return context?.proximityComplete === true || (Array.isArray(rows) && rows.length > 0)
+    ? participantLabels(rows) + (context?.proximityComplete === true ? '' : ' (others unknown)')
+    : 'unavailable';
+}
+
 function deathEvidenceSummary(context) {
+  // Item and ability uses, teleports and nearby events exist only in STRATZ
+  // playback; for a death known from OpenDota alone they are unknown, not absent.
+  if (context?.source != null && context.source !== 'stratz') {
+    return 'nearby allies, nearby enemies, own abilities and items, teleports, nearby deaths and kills: unavailable without STRATZ playback';
+  }
   return [
-    `nearby allies: ${participantLabels(context?.nearbyAllies)}`,
-    `nearby enemies: ${participantLabels(context?.nearbyEnemies)}`,
+    `nearby allies: ${proximityLabels(context, context?.nearbyAllies)}`,
+    `nearby enemies: ${proximityLabels(context, context?.nearbyEnemies)}`,
     `own abilities: ${entityUseLabels(context?.ownAbilityUses, 'ability')}`,
     `own items: ${entityUseLabels(context?.ownItemUses, 'item')}`,
     `recent reposition: ${repositionLabel(context?.recentReposition)}`,
@@ -760,11 +866,97 @@ function deathEvidenceSummary(context) {
   ].join('; ');
 }
 
+function killerLabel(context) {
+  if (context?.killerHero?.name) return context.killerHero.name;
+  const unit = context?.killerUnit;
+  if (unit?.kind === 'non_hero') return `${(unit.unitClass ?? 'unit').replace('_', ' ')}${unit.label ? ` (${unit.label})` : ''}`;
+  return entityLabel(context?.killerHero);
+}
+
+function teamfightLabel(teamfight) {
+  if (teamfight?.inFight === true) {
+    const involvement = teamfight.involvement;
+    const sides = involvement
+      ? `; involved allies ${involvement.allies.length} (${participantNames(involvement.allies)}), enemies ${involvement.enemies.length} (${participantNames(involvement.enemies)})`
+      : '';
+    return `in a recorded teamfight ${clock(teamfight.start)}–${clock(teamfight.end)}${sides}`;
+  }
+  if (teamfight?.inFight === false) return 'no recorded teamfight (OpenDota records clusters of 3+ deaths only)';
+  return 'unavailable';
+}
+
+function participantNames(heroes) {
+  return Array.isArray(heroes) && heroes.length > 0 ? heroes.map(entityLabel).join(', ') : 'none';
+}
+
 function deathFacts(context) {
   const position = context?.position;
-  const location = position == null ? 'unavailable' : `${position.x},${position.y} at ${clock(position.time)}`;
-  const teamfight = context?.teamfight?.inFight === null ? 'unavailable' : String(context?.teamfight?.inFight);
-  return `killer: ${entityLabel(context?.killerHero)}; ability: ${entityLabel(context?.killingAbility)}; item: ${entityLabel(context?.killingItem)}; position: ${location}; teamfight: ${teamfight}; dead: ${valueOf({ value: context?.timeDead })}; ${deathEvidenceSummary(context)}`;
+  const location = position == null ? 'unavailable'
+    : `${position.x},${position.y}${Number.isFinite(position.time) ? ` at ${clock(position.time)}` : ''}${position.source ? ` (${position.source})` : ''}`;
+  const sourceNote = context?.source && context.source !== 'stratz' ? `source: ${context.source}; ` : '';
+  return `${sourceNote}killer: ${killerLabel(context)}; ability: ${entityLabel(context?.killingAbility)}; item: ${entityLabel(context?.killingItem)}; position: ${location}; teamfight: ${teamfightLabel(context?.teamfight)}; dead: ${valueOf({ value: context?.timeDead })}; gold lost: ${valueOf({ value: context?.goldLost })}; ${deathEvidenceSummary(context)}`;
+}
+
+function playerItemsLabel(row) {
+  const items = (row?.finalItems ?? []).map(entityLabel);
+  if (row?.neutralItem) items.push(`neutral: ${entityLabel(row.neutralItem)}`);
+  return items.length > 0 ? items.join(', ') : '—';
+}
+
+function playersMarkdown(players) {
+  if (!Array.isArray(players) || players.length === 0) return [];
+  const pair = (left, right) => `${valueOf({ value: left })} / ${valueOf({ value: right })}`;
+  return [
+    '## All players',
+    '',
+    'Scoreboard, final items and the first purchase of each item worth 1400 gold or more. Values at 10:00 are cumulative; gold is earned gold, not net worth.',
+    '',
+    '| Slot | Side | Hero | Pos | Lane | K / D / A | LH / DN | GPM / XPM | Net worth | Hero dmg | Tower dmg | Final items | Major item timings |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+    ...players.map((row) => `| ${row.slot}${row.leaverStatus >= 2 ? ' (abandoned)' : ''} | ${valueOf({ value: row.side })} | ${entityLabel(row.hero)} | ${valueOf({ value: row.position })} | ${valueOf({ value: row.lane })}${row.isRoaming ? ' (roaming)' : ''} | ${valueOf({ value: row.kills })} / ${valueOf({ value: row.deaths })} / ${valueOf({ value: row.assists })} | ${pair(row.lastHits, row.denies)} | ${pair(row.gpm, row.xpm)} | ${valueOf({ value: row.netWorth })} | ${valueOf({ value: row.heroDamage })} | ${valueOf({ value: row.towerDamage })} | ${playerItemsLabel(row)} | ${(row.majorItems ?? []).map((item) => `${entityLabel(item.item)} ${clock(item.time)}`).join(', ') || '—'} |`),
+    '',
+  ];
+}
+
+function laneNumbersMarkdown(lane, players, selectedSlot) {
+  if (!Array.isArray(players) || players.length === 0) return [];
+  const bySlot = new Map(players.map((row) => [row.slot, row]));
+  const rows = [
+    ['selected', bySlot.get(selectedSlot)],
+    ...(lane?.allies ?? []).map((ally) => ['lane ally', bySlot.get(ally.slot)]),
+    ...(lane?.opponents ?? []).map((opponent) => ['lane opponent', bySlot.get(opponent.slot)]),
+  ].filter(([, row]) => row);
+  if (!rows.some(([, row]) => row.minute10)) return ['Lane numbers at 10:00: unavailable.', ''];
+  return [
+    '| Lane role | Hero | LH at 10:00 | DN at 10:00 | Earned gold at 10:00 | XP at 10:00 | Net worth at 10:00 | Lane efficiency % |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- |',
+    ...rows.map(([role, row]) => {
+      const at = row.minute10 ?? {};
+      return `| ${role} | ${entityLabel(row.hero)} | ${valueOf({ value: at.lastHits ?? null })} | ${valueOf({ value: at.denies ?? null })} | ${valueOf({ value: at.gold ?? null })} | ${valueOf({ value: at.xp ?? null })} | ${valueOf({ value: at.netWorth ?? null })} | ${valueOf({ value: at.laneEfficiencyPct ?? null })} |`;
+    }),
+    '',
+  ];
+}
+
+const PERCENTILE_LABELS = new Map([
+  ['gpm', 'GPM'], ['xpm', 'XPM'], ['lastHitsPerMin', 'last hits per minute'], ['deniesPerMin', 'denies per minute'],
+  ['killsPerMin', 'kills per minute'], ['deathsPerMin', 'deaths per minute (higher percentile = fewer deaths)'],
+  ['assistsPerMin', 'assists per minute'], ['heroDamagePerMin', 'hero damage per minute'], ['heroHealingPerMin', 'healing per minute'],
+  ['towerDamage', 'tower damage'],
+]);
+
+function percentilesMarkdown(percentiles) {
+  const lines = ['## Percentiles (OpenDota)', ''];
+  if (percentiles?.status !== 'ready') return [...lines, table(statusRows(percentiles)), ''];
+  return [
+    ...lines,
+    `Whole-match rates ranked against the same hero's players in public${percentiles.population === 'same_hero_recent_turbo_matches' ? ' Turbo' : ''} matches OpenDota sampled in about the last hour, every position mixed. No sample size is reported; a bracket percentile, when present, uses only matches of the same average-rank bracket.`,
+    '',
+    '| Metric | Value | Percentile | Bracket percentile |',
+    '| --- | --- | --- | --- |',
+    ...percentiles.metrics.map((row) => `| ${PERCENTILE_LABELS.get(row.metric) ?? row.metric} | ${valueOf({ value: row.value })} | ${valueOf({ value: row.percentile })} | ${valueOf({ value: row.bracketPercentile })} |`),
+    '',
+  ];
 }
 
 function deathObservationFacts(observations = {}) {
@@ -969,6 +1161,13 @@ export function renderEvidenceMarkdown(model = {}) {
     '',
     'This is an evidence inventory, not the final coaching review. It records facts and unavailable observations without assigning an unrecorded cause.',
     '',
+    ...(model.episode ? [
+      '## Requested episode', '',
+      `Anchor ${clock(model.episode.at)}; window ${clock(model.episode.start)}–${clock(model.episode.end)}; status: ${model.episode.status}.`,
+      'This index points to the full evidence below. No recorded event is not evidence of inactivity. Positions, vision and continuous action outside recorded death windows may be unavailable; inspect wider match context before judging a decision.', '',
+      '| Time | Evidence collection | Row index (zero-based) |', '| --- | --- | --- |',
+      ...model.episode.references.map((row) => `| ${clock(row.time)} | ${row.path} | ${row.index} |`), '',
+    ] : []),
     '## Request and sources',
     '',
     table([['matchId', valueOf(request.matchId)], ['accountId', valueOf(request.accountId)], ['generatedAt', valueOf(model.generatedAt)]]),
@@ -980,10 +1179,13 @@ export function renderEvidenceMarkdown(model = {}) {
     table([
       ['durationSeconds', `${valueOf(match.durationSeconds)} (source: ${sourceOf(match.durationSeconds)})`],
       ['gameMode', `${labelledCell(match.gameMode)} (source: ${sourceOf(match.gameMode)})`],
+      ['mode class', valueOf({ value: match.modeClass ?? null })],
+      ['abandons', Array.isArray(match.abandons) && match.abandons.length > 0 ? match.abandons.map((row) => `${entityLabel(row.hero)} (${valueOf({ value: row.side })}, slot ${row.slot})`).join(', ') : 'none recorded'],
       ['lobbyType', `${labelledCell(match.lobbyType)} (source: ${sourceOf(match.lobbyType)})`],
+      ['slot', valueOf({ value: player.slot ?? null })],
       ['hero', `${valueOf(player.heroName)} (source: ${sourceOf(player.heroName)})`],
       ['position', `${valueOf(player.position)} (source: ${sourceOf(player.position)})`],
-      ['lane', `${valueOf(player.lane)} (source: ${sourceOf(player.lane)})`],
+      ['lane', `${valueOf(player.lane)} (source: ${sourceOf(player.lane)})${player.isRoaming?.value === true ? ', roaming' : ''}`],
       ['result', `${valueOf(player.result)} (source: ${sourceOf(player.result)})`],
       ['K / D / A', `${valueOf(player.kills)} / ${valueOf(player.deaths)} / ${valueOf(player.assists)}`],
     ]),
@@ -1003,8 +1205,11 @@ export function renderEvidenceMarkdown(model = {}) {
       ['lane outcome', `${valueOf(model.lane?.outcome)} (source: ${sourceOf(model.lane?.outcome)})`],
       ['lane outcome for the selected side', valueOf({ value: model.lane?.selectedSideOutcome })],
       ['actual opponents', list(laneOpponents.map((opponent) => entityLabel(opponent.hero)))],
+      ['lane allies', list((model.lane?.allies ?? []).map((ally) => entityLabel(ally.hero)))],
     ]),
     '',
+    ...laneNumbersMarkdown(model.lane, model.players, player.slot ?? request.slot),
+    ...playersMarkdown(model.players),
     '## Phases and baseline',
     '',
     '| Phase | Interval (min) | Metrics | Extremes within the match |',
@@ -1020,8 +1225,13 @@ export function renderEvidenceMarkdown(model = {}) {
     ...teamEconomyMarkdown(model.teamEconomy),
     ...objectivesMarkdown(model.objectives),
     ...playerActionsMarkdown(model.wards, model.buybacks, model.skillBuild),
+    ...percentilesMarkdown(model.percentiles),
     ...mechanicsMarkdown(model.mechanics),
     '## Death contexts',
+    '',
+    `Complete individual contexts: ${contexts.filter((row) => row.contextReady === true).length} of ${contexts.length}. Unresolved scoreboard deaths: ${valueOf({ value: model.deathAnalysis?.unresolvedCount })}. Death timeline source: ${valueOf({ value: model.deathAnalysis?.timelineSource ?? null })}. Use each row's contextReady; the match-wide deathContext flag describes full coverage.`,
+    '',
+    `Deaths by killer: ${(model.deathAnalysis?.byKiller ?? []).map((row) => `${row.label} ${row.count}`).join(', ') || '—'}.`,
     '',
     '| Time | Facts | Observations | Unavailable |',
     '| --- | --- | --- | --- |',
