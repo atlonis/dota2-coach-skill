@@ -46,6 +46,25 @@ test('reuses one entity catalog across both normalization passes', async () => {
   assert.ok(seen.every((value) => value === input.entityConstants));
 });
 
+test('a requested episode selects nearby evidence and preserves the complete match artifact', async () => {
+  const { model } = await runAnalysis({ matchId: 999000111, accountId: 100, at: 600 }, fixtureDependencies());
+  const artifact = projectArtifact(model);
+  assert.deepEqual([artifact.episode.at, artifact.episode.start, artifact.episode.end], [600, 570, 630]);
+  assert.equal(artifact.episode.status, 'ready');
+  assert.deepEqual(artifact.episode.references.filter((row) => row.path === 'deathAnalysis.contexts').map((row) => row.time), [600]);
+  assert.equal(artifact.deathAnalysis.contexts.length, 3);
+  assert.ok(artifact.episode.references.some((row) => row.path.endsWith('.ownItemUses') && row.time === 588));
+  assert.ok(artifact.episode.references.every((row) => row.time >= 570 && row.time <= 630));
+});
+
+test('an episode without recorded events stays unavailable and an out-of-match anchor is rejected', async () => {
+  const { model } = await runAnalysis({ matchId: 999000111, accountId: 100, at: 0 }, fixtureDependencies());
+  assert.deepEqual([model.episode.start, model.episode.end], [0, 30]);
+  assert.equal(model.episode.status, 'unavailable');
+  assert.equal(model.episode.reason, 'no_recorded_events_in_window');
+  await assert.rejects(runAnalysis({ matchId: 999000111, accountId: 100, at: 1801 }, fixtureDependencies()), /episode_out_of_match/);
+});
+
 test('refuses an old patch before catalog lookup or artifact writing', async () => {
   let catalogCalls = 0;
   let writes = 0;
@@ -85,7 +104,7 @@ test('uses entity constants for hero selection and keeps selector conflicts at C
   ], { dependencies, stderr: (line) => errors.push(line), stdout: () => {} });
 
   assert.equal(code, 2);
-  assert.deepEqual(errors, ['error: selector_conflict']);
+  assert.deepEqual(errors, ['error: selector_conflict', 'hint: The account and hero (or slot) name different players; correct one of them.']);
   assert.equal(catalogCalls, 1);
 });
 

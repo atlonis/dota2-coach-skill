@@ -71,7 +71,7 @@ test('builds the pinned canonical evidence schema with provenance', () => {
     },
   });
 
-  assert.equal(model.schemaVersion, '2.3.0');
+  assert.equal(model.schemaVersion, '2.4.0');
   assert.deepEqual(model.match.startTime, { value: 1785400000, source: 'opendota' });
   assert.deepEqual(model.match.lobbyType, { value: 7, label: 'Ranked', source: 'opendota' });
   assert.deepEqual(model.match.gameMode, {
@@ -230,25 +230,53 @@ test('formats a non-minute closing phase endpoint with minute and second precisi
   assert.equal(phases.at(-1).interval, '25–32:17');
 });
 
-test('does not fabricate a final-minute value when a cumulative series is short', () => {
+test('does not report part of an interval as the whole when a cumulative series is short', () => {
   const phases = buildPhases(openDotaPlayer({ gold_t: [0, 100], xp_t: [], lh_t: [] }), undefined, 120);
 
-  assert.equal(phases[0].metrics.gold, 100);
-  assert.equal(phases[0].metrics.goldPerMin, 50);
+  assert.equal(phases[0].metrics.gold, null);
+  assert.equal(phases[0].metrics.goldPerMin, null);
   assert.equal(phases[0].metrics.xp, null);
   assert.equal(phases[0].metrics.lhPerMin, null);
+});
+
+test('closes a final partial minute on the scoreboard total for last hits and on the last sample for gold', () => {
+  const phases = buildPhases(openDotaPlayer({
+    gold_t: Array.from({ length: 27 }, (_, minute) => minute * 400),
+    lh_t: Array.from({ length: 27 }, (_, minute) => minute * 6),
+    last_hits: 162,
+  }), undefined, 1611);
+  const closing = phases.at(-1);
+
+  assert.equal(closing.interval, '25–26:51');
+  assert.equal(closing.metrics.lh, 162 - 150);
+  assert.equal(closing.metrics.lhPerMin, Number((12 / (111 / 60)).toFixed(2)));
+  assert.equal(closing.metrics.gold, 400);
+  assert.equal(closing.metrics.goldPerMin, 400);
+});
+
+test('keeps a final interval shorter than a minute out of the per-minute rates and extremes', () => {
+  const phases = buildPhases(openDotaPlayer({
+    gold_t: Array.from({ length: 26 }, (_, minute) => minute * 400),
+    lh_t: Array.from({ length: 26 }, (_, minute) => minute * 6),
+    last_hits: 152,
+  }), undefined, 1520);
+  const closing = phases.at(-1);
+
+  assert.equal(closing.metrics.gold, null);
+  assert.equal(closing.metrics.goldPerMin, null);
+  assert.equal(closing.metrics.lh, 2);
+  assert.equal(closing.metrics.lhPerMin, null);
+  assert.deepEqual(closing.extremaWithinMatch, []);
 });
 
 test('omits later phases when a cumulative series expired before they began', () => {
   const phases = buildPhases(openDotaPlayer({ gold_t: [0, 100, 250], xp_t: [], lh_t: [], dn_t: [], hero_damage_t: [] }), undefined, 960);
 
-  assert.equal(phases[0].metrics.goldPerMin, 25);
+  assert.equal(phases[0].metrics.goldPerMin, null);
   assert.equal(phases[1].metrics.gold, null);
   assert.equal(phases[1].metrics.goldPerMin, null);
   assert.equal(phases[2].metrics.gold, null);
-  assert.deepEqual(phases.map((phase) => phase.extremaWithinMatch), [
-    ['goldPerMin:max', 'goldPerMin:min'], [], [],
-  ]);
+  assert.deepEqual(phases.map((phase) => phase.extremaWithinMatch), [[], [], []]);
 });
 
 test('counts only STRATZ events in each half-open phase interval', () => {
@@ -460,13 +488,32 @@ test('bounds every STRATZ playback family and OpenDota teamfight to match durati
     }] } },
   });
 
-  for (const family of ['kills', 'deaths', 'assists', 'cs', 'runes', 'abilityUses', 'itemUses', 'positions']) {
+  for (const family of ['cs', 'runes', 'abilityUses', 'itemUses', 'positions']) {
     assert.deepEqual(model.events[family].map((event) => event.time), [0, 120], family);
+  }
+  // Kills, deaths and assists can happen before the horn: a pre-game first blood counts.
+  for (const family of ['kills', 'deaths', 'assists']) {
+    assert.deepEqual(model.events[family].map((event) => event.time), [-1, 0, 120], family);
   }
   // Purchases are the one family that starts before the horn, so they keep the pre-game window.
   assert.deepEqual(model.events.purchases.map((event) => event.time), [-1, 0, 120]);
   assert.deepEqual(model.events.teamfights, [{ start: 0, end: 120, source: 'opendota' }]);
-  assert.deepEqual(model.items.purchases.filter((purchase) => purchase.source === 'stratz').map((purchase) => purchase.time), [-1, 0, 120]);
+  // OpenDota logged this player's purchases, so the same purchases from STRATZ are not listed twice.
+  assert.deepEqual(model.items.purchases.map((purchase) => [purchase.time, purchase.source]), [[80, 'opendota']]);
+});
+
+test('falls back to STRATZ purchases, pre-game window included, when OpenDota logged none', () => {
+  const timed = () => [{ time: -301 }, { time: -1 }, { time: 0 }, { time: 120 }, { time: 121 }];
+  const model = normalize({
+    player: openDotaPlayer({ purchase_log: undefined }),
+    stratz: { status: 'ready', match: { players: [{
+      steamAccountId: accountId,
+      heroId: 107,
+      playbackData: { purchaseEvents: timed().map((event) => ({ ...event, itemId: 50 })) },
+    }] } },
+  });
+
+  assert.deepEqual(model.items.purchases.map((purchase) => [purchase.time, purchase.source]), [[-1, 'stratz'], [0, 'stratz'], [120, 'stratz']]);
 });
 
 test('keeps purchases made before the horn and drops the ones outside the pre-game window', () => {
@@ -561,15 +608,23 @@ test('labels extrema independently for every available metric across phases', ()
     { id: 'lane', extremaWithinMatch: ['goldPerMin:max', 'xpPerMin:max', 'lhPerMin:min', 'heroDamagePerMin:min'] },
     { id: 'transition', extremaWithinMatch: ['goldPerMin:min', 'lhPerMin:max', 'heroDamagePerMin:min'] },
     { id: 'midgame', extremaWithinMatch: ['goldPerMin:max', 'xpPerMin:min', 'lhPerMin:min', 'heroDamagePerMin:max'] },
-    { id: 'closing', extremaWithinMatch: ['goldPerMin:max', 'xpPerMin:min', 'lhPerMin:min', 'heroDamagePerMin:max'] },
+    // A one-minute closing interval is too short to rank against whole phases.
+    { id: 'closing', extremaWithinMatch: [] },
   ]);
 });
 
-test('retains ties for a metric while omitting labels for metrics with no values', () => {
+test('does not rank a single interval against itself', () => {
   const phases = buildPhases(openDotaPlayer({ gold_t: [0, 100, 250], xp_t: [], lh_t: [], dn_t: [], hero_damage_t: [] }), undefined, 120);
 
+  assert.deepEqual(phases.map((phase) => phase.extremaWithinMatch), [[]]);
+});
+
+test('retains ties for a metric while omitting labels for metrics with no values', () => {
+  const ramp = (step) => Array.from({ length: 16 }, (_, minute) => minute * step);
+  const phases = buildPhases(openDotaPlayer({ gold_t: ramp(100), xp_t: [], lh_t: [], dn_t: [], hero_damage_t: [] }), undefined, 900);
+
   assert.deepEqual(phases.map((phase) => phase.extremaWithinMatch), [
-    ['goldPerMin:max', 'goldPerMin:min'],
+    ['goldPerMin:max', 'goldPerMin:min'], ['goldPerMin:max', 'goldPerMin:min'],
   ]);
 });
 

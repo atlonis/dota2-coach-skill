@@ -1,56 +1,54 @@
-# Death-analysis policy
+# Death analysis
 
-Use this policy when the artifact contains `deathAnalysis`. It governs claims in the coaching review; it does not authorize reconstruction of missing replay data.
+How to read `deathAnalysis` and talk about deaths. It governs claims; it never licenses inventing replay data.
 
-## Window and inputs
+## Where deaths come from
 
-Each selected-player death has a context window from **15 seconds before** its time through **5 seconds after** it. Read the normalized context, its `unavailable` list, event timestamps, entity references, teamfight interval, and `dataQuality.capabilities`. A name that is `null` stays a localized neutral “unknown entity” in coaching prose; never guess it from hero knowledge or show an internal ID.
+`deathAnalysis.timelineSource` names the source of the death list:
 
-## Position freshness and radius
+- `opendota_deaths_log`: every death of the player from the parsed replay, with the killer (a hero, or a unit class: `building`, `lane_creep`, `neutral`, `roshan`, `tormentor`, `unit`), seconds dead and gold lost. Works without a STRATZ token.
+- `opendota_kills_log`: an older parse; deaths to heroes only, rebuilt from the killers' logs. Deaths to towers or creeps stay in `unresolvedCount`.
+- `stratz`: STRATZ playback, with positions, nearby heroes, the player's item and ability uses and teleports. OpenDota still adds gold lost and the killer unit; a death only OpenDota logged appears with `source: opendota_deaths_log`.
+- `null`: no death list (the replay is not parsed). The scoreboard total stands; nothing can be said about when or how the deaths happened.
 
-For each participant, a position can support proximity only when its last recorded point is no later than the death and is at most **3 seconds** old. Nearness is an Euclidean radius of **20 minimap cells** (about 1,200 game units) from the selected player's valid death position. A missing or stale point makes that participant's proximity unknown; it does not make them absent.
+Deaths before the horn (negative times) count; a pre-game first blood is a real death. Seconds dead end at a buyback: 3 seconds dead followed by a buyback at the next second is a bought-back death, not a short respawn timer. `byKiller` counts deaths by killer. A context with `contextReady: true` has every input; the match-wide `deathContext` capability needs all of them.
 
-## Observable flags
+## Teamfights
 
-The runtime may report only the following observations:
+`teamfight.inFight` reads OpenDota's recorded teamfights, which exist only for a cluster of **three or more deaths**:
 
-- `isolated`: positions are complete for the prerequisite live participants, no ally is nearby, and at least two enemies are nearby;
-- `afterConfirmedTeleport`: death is within 15 seconds of a reposition whose cause is the player's confirmed teleport item;
-- `firstAlliedDeathInFight`: it is the first death on the player's side inside a valid OpenDota teamfight interval;
-- `tradedLocally`: an enemy dies within **±10 seconds** and the same 20-cell radius;
-- `ownDefensiveItemUsed`: the player used an allowed defensive item in the **-5..0 second** window;
-- `contextIncomplete`: one or more prerequisites for tactical context are unavailable.
+- `true`: inside a recorded teamfight; `involvement` lists the allies and enemies who dealt damage, healed, killed or died in it.
+- `false`: no recorded teamfight covers it, so at most one or two deaths happened around it: a gank, a pick-off or a small skirmish. Say "outside a big fight" or "in a gank or a skirmish of one or two deaths", never "not in a fight" (the hero may still have fought).
+- `null`: unknown, including any death in the last 30 seconds that no fight covers (a fight running into the end of the match is often not recorded).
 
-These flags are observations, not intent or a tactical verdict. For example, a confirmed teleport establishes the movement cause; it does not prove the player chose a fight alone.
+## Position and proximity (STRATZ)
 
-## Defensive-item allowlist
+A position supports proximity only when it is at most **3 seconds** old. "Nearby" is a radius of **20 map cells, about 2,560 game units**: the same area of the map, wider than most cast ranges, not "within reach of help". With `proximityComplete: false`, an empty list means unknown, not nobody. Without STRATZ, a position exists only for a death inside a recorded fight (OpenDota's fight cell).
 
-Only a confirmed use of one of these items can set `ownDefensiveItemUsed`: **Force Staff, Hurricane Pike, Glimmer Cape, Ghost Scepter, Eul's Scepter of Divinity, Wind Waker,** or **Black King Bar**. A passive trigger such as **Aeon Disk** is not an item use: the source does not prove its availability or activation timing.
+## Observations
 
-## `true`, `false`, and `null`
+- `isolated`: positions complete, no ally nearby, at least two enemies nearby.
+- `afterConfirmedTeleport`: within 15 seconds of a relocation caused by the player's own teleport item.
+- `firstAlliedDeathInFight`: the first death on the player's side inside a recorded teamfight (works from OpenDota alone).
+- `tradedLocally`: an enemy died within ±10 seconds and the same radius.
+- `ownDefensiveItemUsed`: the player used Force Staff, Hurricane Pike, Glimmer Cape, Ghost Scepter, Eul's Scepter, Wind Waker or Black King Bar in the last 5 seconds.
 
-`true` means all prerequisites were observed and the condition held. `false` means all prerequisites were observed and the condition did not hold. `null` means the condition could not be determined. Never paraphrase `null` as “no” or “did not happen.” `contextIncomplete` is a warning about coverage and never contributes to a pattern signature.
+`true` and `false` mean the prerequisites were observed; `null` means undetermined, never "no". A **pattern** is two or more deaths sharing the same confirmed observations: a pattern in this match, not a permanent habit.
 
-## Patterns in this match
+## How to talk about a death
 
-A pattern exists only when at least **two** deaths share the same non-empty signature of confirmed-`true` observations. It is a pattern **in this match**, not a permanent player habit. An empty pattern list means no repeated confirmed signature was established in the available evidence. Claim observed absence of repetition only with complete death accounting and determinate pattern observations; a false pattern capability alone does not establish that coverage. Confirmed zero deaths need no death pattern or episode.
+For a death you interpret, keep three layers:
 
-## Review coverage and priority death
+1. **Fact:** time, killer, gold lost, seconds dead, fight status and involvement, confirmed observations, each with its own time (a TP at 9:48, a relocation at 9:50, Force Staff at 9:58 and the death at 10:00 are four facts).
+2. **Hypothesis** (optional): allowed with two or more independent facts, labelled, with a confidence word. "Four deaths to Silencer, two of them as the first Dire death in a fight → Silencer probably caught you first in fights (hypothesis, medium confidence)".
+3. **Unknown:** what blocks a stronger statement, in plain words: no positions without STRATZ, no vision data, cooldowns not recorded.
 
-Review every available selected-player death context before choosing the main finding. Every death remains in the evidence artifacts. The review template defines full-mode compact accounting and permits relevant-only display in brief/focused prose; an omitted death must not be described as absent.
+Then the **coach's advice** for the pattern, labelled, with a condition ("if you keep dying first in fights, stand behind the frontliner until the enemy initiator has used his spells"), and the drill.
 
-The artifact's priority death is a runtime candidate: representative of the largest repeated pattern; otherwise a death in a confirmed turning window; otherwise the greatest `timeDead`, breaking a tie by later timecode. Preserve that recorded ordering when describing the artifact. It does not force death analysis to be the main topic or override the user's focus. Select a key death episode for coaching under the decision stack, using relevance and evidence coverage rather than a dramatic appearance; do not relabel a different death as the artifact's priority death.
+## Choosing the key death
 
-## Facts, supported hypothesis, unavailable evidence
+The runtime's `priorityDeathTime` is a candidate: the representative of the largest pattern, else the longest time dead, later time breaking ties. Choose the death that best illustrates the main finding; it need not be the runtime's candidate, and don't relabel another death as that candidate. An objective or buyback after a death is a separate fact, not proof that the death caused it.
 
-For an interpreted death, keep three distinct layers where applicable; a compact factual row need not invent a hypothesis. Copy every rendered timecode directly from the matching artifact field and compare repeated mentions before sending; never reconstruct a timecode from memory. Facts retain their own timestamps: nearby enemies at 14:58 are not facts about a 14:50 arrival or the earlier teleport choice. Preserve distinct event times such as TP use at 9:48, reposition at 9:50, nearby units/Force Staff at 9:58, and death at 10:00.
+## Never claim
 
-1. **Fact:** timestamped artifact evidence, such as the confirmed reposition, observed nearby entities, item use, or `timeDead`.
-2. **Supported hypothesis:** only a cautious inference directly supported by a further event fact, explicitly labelled as a hypothesis and with a confidence level.
-3. **Unavailable:** the missing data that prevents a stronger explanation, such as vision, enemy cooldowns, a stale position, or an unresolved source conflict.
-
-An objective or buyback recorded after a death is a separate timestamped fact; describe the sequence without asserting that the death caused a building loss or forced the buyback. Hypotheses must not smuggle in a new fact. For signature-only evidence, name the confirmed repeated observations and their death timecodes, and state naturally that their recurrence does not establish the cause of the deaths. The pattern can motivate an evidence-checking exercise without becoming a behavioural diagnosis. No stock wording or fixed “medium confidence” label is required. Additional behavioural, timing, item-effect, destination-state or counterfactual hypotheses need explicit supporting artifact evidence; repetition alone never supplies it.
-
-## Forbidden causal language
-
-Do not say or imply “you did not see,” “the ability was ready,” “the player definitely could have escaped,” “the enemy had no cooldown,” or that a different click would certainly save the player. With a signature alone, do not attribute a missing or insufficient safety check, a retreat or entry decision, Force Staff being early, late, insufficient, failed, effective, or outcome-changing, an item's effectiveness, an occupied destination, or a should-have timing. Do not assert intent, vision, mana/health state, aim, target, direction, or correctness of an item use unless the artifact directly contains that fact. Explain the specific evidence boundary in ordinary language.
+That the player did not see something, that a spell was ready, that an enemy had no cooldown, that the player certainly could have escaped, or that an item use was early, late or wasted, unless the artifact records it. Phrase the alternative as advice with "if".

@@ -14,6 +14,8 @@ const LANE_NAMES = new Map([['top', 'top'], ['mid', 'mid'], ['bot', 'bottom']]);
 // Wards cannot be placed before the pre-game clock starts at -1:30; a placement
 // logged earlier carries a parser time that cannot be placed on the match clock.
 const EARLIEST_WARD_TIME = -90;
+// The Ancient's destruction is logged up to a second after the recorded duration.
+const END_OF_MATCH_TOLERANCE_SECONDS = 5;
 
 function finite(value) {
   return typeof value === 'number' && Number.isFinite(value);
@@ -33,12 +35,16 @@ function participantBySlot(participants, playerSlot) {
   return Number.isInteger(index) ? participants[index] ?? null : null;
 }
 
-function participantRef(participant, selectedAccountId) {
+// `selected` names the selected slot when known, otherwise the selected account ID.
+function participantRef(participant, selected) {
   if (!participant) return null;
+  const isSelected = selected?.slot != null
+    ? participant.slot === selected.slot
+    : participant.accountId != null && participant.accountId === selected?.accountId;
   return {
     hero: { id: participant.hero?.id ?? null, name: participant.hero?.name ?? null },
     side: participant.side ?? null,
-    selectedPlayer: participant.accountId != null && participant.accountId === selectedAccountId,
+    selectedPlayer: isSelected,
   };
 }
 
@@ -196,41 +202,41 @@ function unitSide(unit) {
   return null;
 }
 
-function buildingKiller(objective, participants, heroIdsByUnit, selectedAccountId) {
+function buildingKiller(objective, participants, heroIdsByUnit, selected) {
   const bySlot = participantBySlot(participants, objective.player_slot);
   const heroId = heroIdsByUnit.get(objective.unit);
   const byHero = heroId == null ? null : participants.filter((participant) => participant?.hero?.id === heroId);
   const participant = bySlot ?? (byHero?.length === 1 ? byHero[0] : null);
-  if (participant) return { kind: 'hero', ...participantRef(participant, selectedAccountId) };
+  if (participant) return { kind: 'hero', ...participantRef(participant, selected) };
   if (typeof objective.unit === 'string' && objective.unit.startsWith('npc_dota_hero_')) {
     return { kind: 'hero', hero: { id: heroId ?? null, name: null }, side: null, selectedPlayer: null };
   }
   return { kind: 'non_hero', hero: null, side: unitSide(objective.unit), selectedPlayer: false };
 }
 
-function firstBloodVictim(objective, players, participants, selectedAccountId) {
+function firstBloodVictim(objective, players, participants, selected) {
   let playerSlot = Number.isInteger(objective.victim_player_slot) ? objective.victim_player_slot : null;
   const index = Number(objective.key);
   if (playerSlot === null && Number.isInteger(index) && index >= 0 && index < players.length) {
     playerSlot = Number.isInteger(players[index]?.player_slot) ? players[index].player_slot : null;
   }
-  return participantRef(participantBySlot(participants, playerSlot), selectedAccountId);
+  return participantRef(participantBySlot(participants, playerSlot), selected);
 }
 
 function normalizeObjective(objective, context) {
-  const { participants, players, selectedAccountId, selectedSide, heroIdsByUnit } = context;
+  const { participants, players, selected, selectedSide, heroIdsByUnit } = context;
   const time = objective.time;
   const teamEvent = (type) => {
     const team = TEAM_BY_CODE.get(objective.team) ?? null;
     if (!team) return null;
-    const participant = participantRef(participantBySlot(participants, objective.player_slot), selectedAccountId);
+    const participant = participantRef(participantBySlot(participants, objective.player_slot), selected);
     return { time, type, team, bySelectedSide: selectedSide == null ? null : team === selectedSide, participant };
   };
   switch (objective.type) {
     case 'building_kill': {
       const building = buildingFor(objective.key);
       if (!building) return null;
-      const killer = buildingKiller(objective, participants, heroIdsByUnit, selectedAccountId);
+      const killer = buildingKiller(objective, participants, heroIdsByUnit, selected);
       return {
         time, type: 'building_destroyed', building, killer,
         denied: killer.side == null ? null : killer.side === building.side,
@@ -242,15 +248,15 @@ function normalizeObjective(objective, context) {
     case 'CHAT_MESSAGE_AEGIS':
     case 'CHAT_MESSAGE_AEGIS_STOLEN':
     case 'CHAT_MESSAGE_DENIED_AEGIS': {
-      const participant = participantRef(participantBySlot(participants, objective.player_slot), selectedAccountId);
+      const participant = participantRef(participantBySlot(participants, objective.player_slot), selected);
       if (!participant) return null;
       const type = objective.type === 'CHAT_MESSAGE_AEGIS' ? 'aegis_picked_up'
         : objective.type === 'CHAT_MESSAGE_AEGIS_STOLEN' ? 'aegis_stolen' : 'aegis_denied';
       return { time, type, participant, bySelectedSide: selectedSide == null ? null : participant.side === selectedSide };
     }
     case 'CHAT_MESSAGE_FIRSTBLOOD': {
-      const killer = participantRef(participantBySlot(participants, objective.player_slot), selectedAccountId);
-      const victim = firstBloodVictim(objective, players, participants, selectedAccountId);
+      const killer = participantRef(participantBySlot(participants, objective.player_slot), selected);
+      const victim = firstBloodVictim(objective, players, participants, selected);
       return killer || victim ? { time, type: 'first_blood', killer, victim } : null;
     }
     case 'CHAT_MESSAGE_COURIER_LOST': {
@@ -258,14 +264,14 @@ function normalizeObjective(objective, context) {
       if (!lostBy) return null;
       return {
         time, type: 'courier_lost', lostBy, lostBySelectedSide: selectedSide == null ? null : lostBy === selectedSide,
-        killer: participantRef(participantBySlot(participants, objective.killer), selectedAccountId),
+        killer: participantRef(participantBySlot(participants, objective.killer), selected),
       };
     }
     default: return null;
   }
 }
 
-export function buildObjectives({ match, participants = [], selectedAccountId, selectedSide, heroConstants, durationSeconds } = {}) {
+export function buildObjectives({ match, participants = [], selectedAccountId, selectedSlot, selectedSide, heroConstants, durationSeconds } = {}) {
   if (!Array.isArray(match?.objectives)) {
     return { status: 'unavailable', reason: 'objectives_unavailable', source: null, events: [], unrecognizedCount: 0 };
   }
@@ -273,13 +279,15 @@ export function buildObjectives({ match, participants = [], selectedAccountId, s
     .filter((hero) => typeof hero?.name === 'string' && Number.isSafeInteger(hero?.id))
     .map((hero) => [hero.name, hero.id]));
   const context = {
-    participants, players: openPlayers(match), selectedAccountId,
+    participants, players: openPlayers(match),
+    selected: { slot: Number.isInteger(selectedSlot) ? selectedSlot : null, accountId: selectedAccountId ?? null },
     selectedSide: selectedSide === 'radiant' || selectedSide === 'dire' ? selectedSide : null, heroIdsByUnit,
   };
   const events = [];
   let unrecognizedCount = 0;
   for (const objective of match.objectives) {
-    const inMatch = finite(objective?.time) && objective.time >= 0 && (!finite(durationSeconds) || objective.time <= durationSeconds);
+    const inMatch = finite(objective?.time) && objective.time >= 0
+      && (!finite(durationSeconds) || objective.time <= durationSeconds + END_OF_MATCH_TOLERANCE_SECONDS);
     const event = inMatch ? normalizeObjective(objective, context) : null;
     if (event) events.push(event);
     else unrecognizedCount += 1;

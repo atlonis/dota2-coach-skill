@@ -1,4 +1,4 @@
-import { SourceError, requestJson } from './http.mjs';
+import { SourceError, requestJson, withRetry } from './http.mjs';
 
 const DEFAULT_ENDPOINT = 'https://api.stratz.com/graphql';
 const WEEK_SECONDS = 604_800;
@@ -98,7 +98,7 @@ export function mergeWeeklyCurves(curves) {
     });
 }
 
-export function createBaselineClient({ apiKey, fetchImpl = fetch, endpoint = DEFAULT_ENDPOINT } = {}) {
+export function createBaselineClient({ apiKey, fetchImpl = fetch, endpoint = DEFAULT_ENDPOINT, sleep } = {}) {
   return {
     async loadPeerBaseline({ heroId, position, bracket, weeks }) {
       if (!apiKey) return { status: 'unavailable', reason: 'missing_token' };
@@ -108,7 +108,7 @@ export function createBaselineClient({ apiKey, fetchImpl = fetch, endpoint = DEF
       const aliases = weeks.map((week, index) => statsAlias(`w${index}`, { heroId, position, bracket, week }));
       const query = `query HeroBaseline { heroStats { ${aliases.join(' ')} } }`;
       try {
-        const response = await requestJson(endpoint, {
+        const response = await withRetry(() => requestJson(endpoint, {
           fetchImpl,
           method: 'POST',
           headers: {
@@ -117,7 +117,7 @@ export function createBaselineClient({ apiKey, fetchImpl = fetch, endpoint = DEF
             Authorization: `Bearer ${apiKey}`,
           },
           body: JSON.stringify({ query }),
-        });
+        }), sleep ? { sleep } : {});
         const payload = response.data;
         if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
           throw new SourceError('invalid_response', 'Malformed GraphQL response');

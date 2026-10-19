@@ -21,7 +21,7 @@ test('projectArtifact preserves the v2 tactical facts and capability values verb
 
   const artifact = projectArtifact(model);
 
-  assert.equal(artifact.schemaVersion, '2.3.0');
+  assert.equal(artifact.schemaVersion, '2.4.0');
   assert.deepEqual(Object.keys(artifact.sources).sort(), ['entityConstants', 'opendota', 'stratz', 'valve']);
   assert.equal(artifact.player.heroName.value, 'Keeper of the Light');
   assert.equal(artifact.participants.length, 10);

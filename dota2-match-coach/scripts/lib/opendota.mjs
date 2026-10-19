@@ -1,10 +1,11 @@
-import { SourceError, requestJson } from './http.mjs';
+import { SourceError, isTransient, requestJson, withRetry } from './http.mjs';
 
 const DEFAULT_BASE_URL = 'https://api.opendota.com/api';
-const TERMINAL_STATES = new Set(['completed', 'failed', 'error']);
 const HERO_ERROR_CODE = Symbol('heroErrorCode');
 // OpenDota's free tier allows 60 requests a minute; polling every second exhausts it within a single parse.
 const DEFAULT_POLL_INTERVAL_MS = 5_000;
+// An API key raises the limit, so a keyed client can poll faster without risk.
+const KEYED_POLL_INTERVAL_MS = 2_000;
 const ENTITY_CONSTANT_PATHS = [
   ['heroes', '/constants/heroes'],
   ['items', '/constants/items'],
@@ -26,13 +27,6 @@ function makeResult(status, match, parse, error) {
   return error === undefined ? { status, match, parse } : { status, match, parse, error };
 }
 
-function retryDelayMs(value, now) {
-  if (typeof value !== 'string') return null;
-  if (/^\d+$/.test(value)) return Number(value) * 1_000;
-  const timestamp = Date.parse(value);
-  return Number.isFinite(timestamp) ? Math.max(0, timestamp - now) : null;
-}
-
 function validHeroConstants(heroes) {
   if (!heroes || typeof heroes !== 'object' || Array.isArray(heroes)) return false;
   return Object.values(heroes).some((hero) =>
@@ -41,32 +35,29 @@ function validHeroConstants(heroes) {
     && [hero.name, hero.localized_name, hero.localizedName].some((name) => typeof name === 'string' && name.trim()));
 }
 
+function withApiKey(url, apiKey) {
+  if (!apiKey) return url;
+  return `${url}${url.includes('?') ? '&' : '?'}api_key=${encodeURIComponent(apiKey)}`;
+}
+
 export function createOpenDotaClient({
   fetchImpl = fetch,
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   now = () => Date.now(),
   baseUrl = DEFAULT_BASE_URL,
+  apiKey,
+  retryDelaysMs,
 } = {}) {
-  const request = (path, options = {}) => requestJson(`${baseUrl}${path}`, { fetchImpl, ...options });
-
-  async function requestWithinDeadline(path, options, deadline) {
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      const remaining = deadline - now();
-      if (remaining <= 0) throw new SourceError('parse_timeout', 'Parse request timed out');
-      try {
-        return await request(path, { ...options, timeoutMs: Math.min(options?.timeoutMs ?? remaining, remaining) });
-      } catch (error) {
-        if (!(error instanceof SourceError) || error.code !== 'rate_limited') throw error;
-        const delay = retryDelayMs(error.details.retryAfter, now());
-        const retryRemaining = deadline - now();
-        if (delay == null || delay <= 0 || delay >= retryRemaining || attempt === 2) throw error;
-        await sleep(delay);
-      }
-    }
-    throw new SourceError('rate_limited', 'OpenDota retry limit reached');
-  }
+  const once = (path, options = {}) => requestJson(withApiKey(`${baseUrl}${path}`, apiKey), { fetchImpl, ...options });
+  const request = (path, options = {}, deadline = Infinity) => withRetry(() => {
+    const remaining = deadline - now();
+    if (remaining <= 0) throw new SourceError('parse_timeout', 'Parse request timed out');
+    const timeoutMs = Number.isFinite(remaining) ? Math.min(options.timeoutMs ?? remaining, remaining) : options.timeoutMs;
+    return once(path, timeoutMs == null ? options : { ...options, timeoutMs });
+  }, { sleep, now, deadline, ...(retryDelaysMs ? { delaysMs: retryDelaysMs } : {}) });
 
   const degraded = (match, parse, error) => makeResult('ready', match, parse, error);
+  const timedOut = (error) => error?.code === 'parse_timeout' || error?.code === 'timeout';
 
   async function loadEntityConstants() {
     let heroErrorCode;
@@ -111,7 +102,15 @@ export function createOpenDotaClient({
       return { status: 'failed', error: { code: constants[HERO_ERROR_CODE] ?? 'invalid_response' } };
     },
 
-    async loadMatch(matchId, { parseTimeoutMs = 30_000, pollIntervalMs = DEFAULT_POLL_INTERVAL_MS } = {}) {
+    async loadRecentMatches(accountId) {
+      return (await request(`/players/${accountId}/recentMatches`)).data;
+    },
+
+    // `GET /request/{jobId}` returns the job's queue row while it waits and `null`
+    // once the row is gone. The row carries no state field, and the row is deleted
+    // both after a successful parse and after the last failed attempt, so `null`
+    // means "finished" and only a reloaded match tells which way it went.
+    async loadMatch(matchId, { parseTimeoutMs = 30_000, pollIntervalMs = apiKey ? KEYED_POLL_INTERVAL_MS : DEFAULT_POLL_INTERVAL_MS } = {}) {
       const notRequested = { requested: false, state: 'not_requested', jobId: undefined };
       let match;
       try {
@@ -128,10 +127,9 @@ export function createOpenDotaClient({
       const deadline = now() + parseTimeoutMs;
       let parseResponse;
       try {
-        parseResponse = (await requestWithinDeadline(`/request/${matchId}`, { method: 'POST' }, deadline)).data;
+        parseResponse = (await request(`/request/${matchId}`, { method: 'POST' }, deadline)).data;
       } catch (error) {
-        const state = error?.code === 'parse_timeout' || error?.code === 'timeout' ? 'timeout' : 'unavailable';
-        return degraded(match, { requested: true, state, jobId: undefined }, error);
+        return degraded(match, { requested: true, state: timedOut(error) ? 'timeout' : 'unavailable', jobId: undefined }, error);
       }
 
       const jobId = getJobId(parseResponse);
@@ -140,39 +138,39 @@ export function createOpenDotaClient({
         return degraded(match, { ...requested, state: 'unavailable' }, new SourceError('parse_unavailable', 'Parse job ID unavailable'));
       }
 
-      let state = 'requested';
-      while (!TERMINAL_STATES.has(state)) {
+      const timeout = () => degraded(match, { ...requested, state: 'timeout' }, new SourceError('parse_timeout', 'Parse request timed out'));
+      let finished = false;
+      while (!finished) {
         const remainingBeforeSleep = deadline - now();
-        if (remainingBeforeSleep <= 0) {
-          return degraded(match, { ...requested, state: 'timeout' }, new SourceError('parse_timeout', 'Parse request timed out'));
-        }
+        if (remainingBeforeSleep <= 0) return timeout();
         await sleep(Math.min(pollIntervalMs, remainingBeforeSleep));
         const remainingBeforePoll = deadline - now();
-        if (remainingBeforePoll <= 0) {
-          return degraded(match, { ...requested, state: 'timeout' }, new SourceError('parse_timeout', 'Parse request timed out'));
-        }
+        if (remainingBeforePoll <= 0) return timeout();
         try {
-          const job = (await requestWithinDeadline(`/request/${jobId}`, { timeoutMs: remainingBeforePoll }, deadline)).data;
-          state = job?.state ?? job?.status ?? 'pending';
+          const job = (await once(`/request/${jobId}`, { timeoutMs: remainingBeforePoll })).data;
+          finished = job === null;
         } catch (error) {
-          const failedState = error?.code === 'parse_timeout' || error?.code === 'timeout' ? 'timeout' : state;
-          return degraded(match, { ...requested, state: failedState }, error);
+          // A refused or failed poll is not a failed parse: the job keeps running
+          // on OpenDota's side, so the next tick asks again.
+          if (timedOut(error) || isTransient(error)) continue;
+          return degraded(match, { ...requested, state: 'unavailable' }, error);
         }
       }
 
-      if (state !== 'completed') {
-        return degraded(match, { ...requested, state }, new SourceError('parse_failed', 'Parse request failed'));
-      }
-
-      try {
-        const parsedMatch = (await requestWithinDeadline(`/matches/${matchId}`, {}, deadline)).data;
-        if (!hasReplayData(parsedMatch)) {
-          return degraded(match, { ...requested, state: 'incomplete' }, new SourceError('parse_incomplete', 'Parsed match data unavailable'));
+      // The match is reloaded after the job leaves the queue. One more interval
+      // covers a response cache that has not caught up with the parse yet.
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          const parsedMatch = (await request(`/matches/${matchId}`, {}, deadline)).data;
+          if (hasReplayData(parsedMatch)) return makeResult('ready', parsedMatch, { ...requested, state: 'completed' });
+        } catch (error) {
+          return degraded(match, { ...requested, state: timedOut(error) ? 'timeout' : 'unavailable' }, error);
         }
-        return makeResult('ready', parsedMatch, { ...requested, state });
-      } catch (error) {
-        return degraded(match, { ...requested, state }, error);
+        const remaining = deadline - now();
+        if (attempt === 0 && remaining > pollIntervalMs) await sleep(pollIntervalMs);
+        else break;
       }
+      return degraded(match, { ...requested, state: 'failed' }, new SourceError('parse_failed', 'Parse finished without replay data'));
     },
   };
 }

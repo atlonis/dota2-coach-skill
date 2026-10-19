@@ -36,7 +36,12 @@ test('runtime entrypoints stay inside the skill bundle while roadmap remains rep
     'references/death-analysis.md',
     'references/decision-stack.md',
     'references/review-template.md',
+    'references/coaching-playbook.md',
+    'references/examples.md',
+    'references/progress.md',
     'scripts/analyze-match.mjs',
+    'scripts/recent-matches.mjs',
+    'scripts/check-review.mjs',
     'scripts/analyze-match.ps1',
     'scripts/analyze-match.sh',
   ]) {
@@ -44,6 +49,16 @@ test('runtime entrypoints stay inside the skill bundle while roadmap remains rep
   }
   assert.equal(existsSync(path.join(repositoryRoot, 'ROADMAP.md')), true);
   assert.equal(existsSync(path.join(bundleRoot, 'references', 'roadmap.md')), false);
+  for (const relative of ['LICENSE', '.github/workflows/test.yml']) {
+    assert.equal(existsSync(path.join(repositoryRoot, relative)), true, relative);
+  }
+});
+
+test('every reference the skill tells the agent to read is linked from SKILL.md', async () => {
+  const skill = await readFile(path.join(bundleRoot, 'SKILL.md'), 'utf8');
+  for (const name of ['runtime', 'review-template', 'source-policy', 'coaching-playbook', 'death-analysis', 'decision-stack', 'progress', 'examples']) {
+    assert.match(skill, new RegExp(`\\(references/${name}\\.md\\)`), name);
+  }
 });
 
 test('keeps the POSIX wrapper executable on POSIX hosts', async (context) => {

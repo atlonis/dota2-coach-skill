@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createOpenDotaClient, hasReplayData } from '../../dota2-match-coach/scripts/lib/opendota.mjs';
 
+// The queue row OpenDota returns for a job that is still waiting (svc/store/queue.ts).
+const QUEUE_ROW = { id: 1, type: 'parse', timestamp: '2026-10-19T10:00:00.000Z', attempts: 1, data: { match_id: 123 }, next_attempt_time: null, priority: 1, job_key: null };
+
 function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -64,13 +67,15 @@ test('returns invalid_response when OpenDota responds with HTML', async () => {
   assert.equal(result.error.code, 'invalid_response');
 });
 
-test('returns rate_limited when the initial OpenDota match fetch responds with 429', async () => {
-  const client = createOpenDotaClient({ fetchImpl: async () => jsonResponse({}, 429) });
+test('returns rate_limited when the initial OpenDota match fetch stays at 429 after retries', async () => {
+  const sleeps = [];
+  const client = createOpenDotaClient({ fetchImpl: async () => jsonResponse({}, 429), sleep: async (ms) => { sleeps.push(ms); } });
 
   const result = await client.loadMatch(123);
 
   assert.equal(result.status, 'failed');
   assert.equal(result.error.code, 'rate_limited');
+  assert.deepEqual(sleeps, [2_000, 8_000]);
 });
 
 test('classifies advertised JSON that cannot be decoded as invalid_response', async () => {
@@ -113,7 +118,7 @@ test('caps parse polling sleep to the remaining deadline', async () => {
   const replies = [
     { players: [{ account_id: 7 }] },
     { jobId: 'job-1' },
-    { state: 'completed' },
+    null,
     { version: 22, players: [{ gold_t: [0, 100] }] },
   ];
   Date.now = () => 1_000;
@@ -139,7 +144,7 @@ test('bounds poll HTTP timeout to the remaining parse deadline', async () => {
   const replies = [
     { players: [{ account_id: 7 }] },
     { jobId: 'job-1' },
-    { state: 'completed' },
+    null,
     { version: 22, players: [{ gold_t: [0, 100] }] },
   ];
   Date.now = () => 1_000;
@@ -175,8 +180,8 @@ test('preserves the base scoreboard when OpenDota does not return a parse job ID
   assert.equal(result.error.code, 'parse_unavailable');
 });
 
-test('preserves the base scoreboard when the parse job fails', async () => {
-  const replies = [{ players: [{ account_id: 7, kills: 4 }] }, { jobId: 'job-1' }, { state: 'failed' }];
+test('reports a failed parse when the job leaves the queue without replay data', async () => {
+  const replies = [{ players: [{ account_id: 7, kills: 4 }] }, { jobId: 'job-1' }, null, { players: [{ account_id: 7, kills: 4 }] }, { players: [{ account_id: 7, kills: 4 }] }];
   const client = createOpenDotaClient({ fetchImpl: async () => jsonResponse(replies.shift()), sleep: async () => {} });
 
   const result = await client.loadMatch(123, { pollIntervalMs: 1 });
@@ -187,6 +192,85 @@ test('preserves the base scoreboard when the parse job fails', async () => {
   assert.equal(result.error.code, 'parse_failed');
 });
 
+test('stops polling as soon as the job leaves the queue, long before the timeout', async () => {
+  let now = 0;
+  const calls = [];
+  const replies = [
+    { players: [{ account_id: 7 }] },
+    { job: { jobId: 41 } },
+    QUEUE_ROW,
+    QUEUE_ROW,
+    null,
+    { version: 22, players: [{ account_id: 7, gold_t: [0, 1] }] },
+  ];
+  const client = createOpenDotaClient({
+    fetchImpl: async (url) => { calls.push(url); return jsonResponse(replies.shift()); },
+    now: () => now,
+    sleep: async (ms) => { now += ms; },
+  });
+
+  const result = await client.loadMatch(123, { parseTimeoutMs: 120_000 });
+
+  assert.equal(result.status, 'ready');
+  assert.equal(result.parse.state, 'completed');
+  assert.equal(now, 15_000);
+  assert.equal(calls.filter((url) => url.endsWith('/request/41')).length, 3);
+});
+
+test('keeps polling through a rate-limited poll instead of failing the parse', async () => {
+  let now = 0;
+  const replies = [
+    jsonResponse({ players: [{ account_id: 7 }] }),
+    jsonResponse({ jobId: 'job-1' }),
+    new Response('{}', { status: 429, headers: { 'content-type': 'application/json' } }),
+    jsonResponse(null),
+    jsonResponse({ version: 22, players: [{ account_id: 7, gold_t: [0, 1] }] }),
+  ];
+  const client = createOpenDotaClient({
+    fetchImpl: async () => replies.shift(),
+    now: () => now,
+    sleep: async (ms) => { now += ms; },
+  });
+
+  const result = await client.loadMatch(123, { parseTimeoutMs: 60_000 });
+
+  assert.equal(result.status, 'ready');
+  assert.equal(result.parse.state, 'completed');
+});
+
+test('retries the first match request after a rate limit without Retry-After', async () => {
+  const sleeps = [];
+  const replies = [
+    new Response('{}', { status: 429, headers: { 'content-type': 'application/json' } }),
+    jsonResponse({ version: 22, players: [{ account_id: 7, gold_t: [0, 1] }] }),
+  ];
+  const client = createOpenDotaClient({ fetchImpl: async () => replies.shift(), sleep: async (ms) => { sleeps.push(ms); } });
+
+  const result = await client.loadMatch(123);
+
+  assert.equal(result.status, 'ready');
+  assert.deepEqual(sleeps, [2_000]);
+});
+
+test('retries a 503 and passes an API key without exposing it elsewhere', async () => {
+  const urls = [];
+  const replies = [
+    jsonResponse({}, 503),
+    jsonResponse({ version: 22, players: [{ account_id: 7, gold_t: [0, 1] }] }),
+  ];
+  const client = createOpenDotaClient({
+    apiKey: 'k-123',
+    fetchImpl: async (url) => { urls.push(url); return replies.shift(); },
+    sleep: async () => {},
+  });
+
+  const result = await client.loadMatch(123);
+
+  assert.equal(result.status, 'ready');
+  assert.deepEqual(urls, ['https://api.opendota.com/api/matches/123?api_key=k-123', 'https://api.opendota.com/api/matches/123?api_key=k-123']);
+  assert.doesNotMatch(JSON.stringify(result.parse), /k-123/);
+});
+
 test('honors an integer Retry-After inside the parse deadline', async () => {
   const sleeps = [];
   let now = 1_000;
@@ -194,7 +278,7 @@ test('honors an integer Retry-After inside the parse deadline', async () => {
     jsonResponse({ players: [{ account_id: 7 }] }),
     new Response('{}', { status: 429, headers: { 'content-type': 'application/json', 'retry-after': '2' } }),
     jsonResponse({ jobId: 'job-1' }),
-    jsonResponse({ state: 'completed' }),
+    jsonResponse(null),
     jsonResponse({ version: 22, players: [{ account_id: 7, gold_t: [0, 1] }] }),
   ];
   const client = createOpenDotaClient({
@@ -218,7 +302,7 @@ test('honors an HTTP-date Retry-After inside the parse deadline', async () => {
     jsonResponse({ players: [{ account_id: 7 }] }),
     new Response('{}', { status: 429, headers: { 'content-type': 'application/json', 'retry-after': retryAt } }),
     jsonResponse({ jobId: 'job-1' }),
-    jsonResponse({ state: 'completed' }),
+    jsonResponse(null),
     jsonResponse({ version: 22, players: [{ account_id: 7, gold_t: [0, 1] }] }),
   ];
   const client = createOpenDotaClient({
@@ -234,28 +318,48 @@ test('honors an HTTP-date Retry-After inside the parse deadline', async () => {
   assert.deepEqual(sleeps, [2_000, 1]);
 });
 
-for (const retryAfter of ['nonsense', '10']) {
-  test(`fails safely without waiting for Retry-After ${retryAfter}`, async () => {
-    const sleeps = [];
-    let now = 1_000;
-    const replies = [
-      jsonResponse({ players: [{ account_id: 7 }] }),
-      new Response('{}', { status: 429, headers: { 'content-type': 'application/json', 'retry-after': retryAfter } }),
-    ];
-    const client = createOpenDotaClient({
-      fetchImpl: async () => replies.shift(),
-      now: () => now,
-      sleep: async (ms) => { sleeps.push(ms); now += ms; },
-    });
-
-    const result = await client.loadMatch(123, { parseTimeoutMs: 5_000, pollIntervalMs: 1 });
-
-    assert.equal(result.status, 'ready');
-    assert.equal(result.match.players[0].account_id, 7);
-    assert.equal(result.error.code, 'rate_limited');
-    assert.deepEqual(sleeps, []);
+test('fails safely without waiting for a Retry-After beyond the parse deadline', async () => {
+  const sleeps = [];
+  let now = 1_000;
+  const replies = [
+    jsonResponse({ players: [{ account_id: 7 }] }),
+    new Response('{}', { status: 429, headers: { 'content-type': 'application/json', 'retry-after': '10' } }),
+  ];
+  const client = createOpenDotaClient({
+    fetchImpl: async () => replies.shift(),
+    now: () => now,
+    sleep: async (ms) => { sleeps.push(ms); now += ms; },
   });
-}
+
+  const result = await client.loadMatch(123, { parseTimeoutMs: 5_000, pollIntervalMs: 1 });
+
+  assert.equal(result.status, 'ready');
+  assert.equal(result.match.players[0].account_id, 7);
+  assert.equal(result.error.code, 'rate_limited');
+  assert.deepEqual(sleeps, []);
+});
+
+test('falls back to the default delay when Retry-After is unreadable', async () => {
+  const sleeps = [];
+  let now = 1_000;
+  const replies = [
+    jsonResponse({ players: [{ account_id: 7 }] }),
+    new Response('{}', { status: 429, headers: { 'content-type': 'application/json', 'retry-after': 'nonsense' } }),
+    jsonResponse({ jobId: 'job-1' }),
+    jsonResponse(null),
+    jsonResponse({ version: 22, players: [{ account_id: 7, gold_t: [0, 1] }] }),
+  ];
+  const client = createOpenDotaClient({
+    fetchImpl: async () => replies.shift(),
+    now: () => now,
+    sleep: async (ms) => { sleeps.push(ms); now += ms; },
+  });
+
+  const result = await client.loadMatch(123, { parseTimeoutMs: 5_000, pollIntervalMs: 1 });
+
+  assert.equal(result.status, 'ready');
+  assert.deepEqual(sleeps, [2_000, 1]);
+});
 
 test('polls the parse job every five seconds by default, within the free rate limit', async () => {
   const sleeps = [];
@@ -263,8 +367,8 @@ test('polls the parse job every five seconds by default, within the free rate li
   const replies = [
     jsonResponse({ players: [{ account_id: 7 }] }),
     jsonResponse({ jobId: 'job-1' }),
-    jsonResponse({ state: 'pending' }),
-    jsonResponse({ state: 'completed' }),
+    jsonResponse(QUEUE_ROW),
+    jsonResponse(null),
     jsonResponse({ version: 22, players: [{ account_id: 7, gold_t: [0, 1] }] }),
   ];
   const client = createOpenDotaClient({
@@ -285,7 +389,7 @@ test('requests parse, polls job, then reloads the match', async () => {
   const replies = [
     { players: [{ account_id: 7 }] },
     { job: { jobId: 'job-1' } },
-    { state: 'completed' },
+    null,
     { version: 22, players: [{ account_id: 7, gold_t: [0, 100] }] },
   ];
   const fetchImpl = async (url, options = {}) => {

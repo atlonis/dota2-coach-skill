@@ -64,6 +64,8 @@ function identity(artifact) {
   return { matchId: artifact.request.matchId, accountId, heroId, position, gameMode, startTime, duration, patch };
 }
 
+export { identity as evidenceIdentity };
+
 function comparable(current, prior) {
   return prior && prior.matchId !== current.matchId && prior.startTime < current.startTime
     && ['accountId', 'heroId', 'position', 'gameMode', 'patch'].every((field) => current[field] === prior[field]);

@@ -1,6 +1,30 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { computeCapabilities, qualityFromCapabilities } from '../lib/capabilities.mjs';
+import { normalizeEvidence } from '../lib/normalize.mjs';
+import { projectArtifact, renderEvidenceMarkdown } from '../lib/report.mjs';
+import { fullMatchFixture } from './fixtures.mjs';
+
+test('one stale participant closes only its death context, while complete deaths remain usable', () => {
+  const input = fullMatchFixture();
+  input.stratz.match.players[1].playbackData.playerUpdatePositionEvents[0].time = 596;
+  const model = normalizeEvidence(input);
+  const artifact = projectArtifact(model);
+  assert.equal(artifact.dataQuality.capabilities.deathContext, false);
+  assert.equal(artifact.dataQuality.capabilities.individualDeathContext, true);
+  assert.deepEqual(artifact.deathAnalysis.contexts.map((row) => row.contextReady), [false, true, true]);
+  assert.equal(artifact.deathAnalysis.contexts[0].observations.isolated, null);
+  assert.match(renderEvidenceMarkdown(artifact), /Complete individual contexts: 2 of 3/);
+});
+
+test('unresolved scoreboard deaths do not suppress a complete recorded context', () => {
+  const input = fullMatchFixture();
+  input.stratz.match.players[0].playbackData.deathEvents.pop();
+  const model = normalizeEvidence(input);
+  assert.equal(model.deathAnalysis.unresolvedCount, 1);
+  assert.equal(model.dataQuality.capabilities.deathContext, false);
+  assert.equal(model.dataQuality.capabilities.individualDeathContext, true);
+});
 
 test('one ability event does not unlock death context', () => {
   const capabilities = computeCapabilities({

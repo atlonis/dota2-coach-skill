@@ -54,7 +54,7 @@ test('marks unavailable evidence while keeping an explicit null context shape', 
     catalog: { hero: {}, item: {}, ability: {} },
   });
 
-  assert.deepEqual(result.contexts[0].teamfight, { inFight: null, start: null, end: null });
+  assert.deepEqual(result.contexts[0].teamfight, { inFight: null, start: null, end: null, involvement: null });
   assert.equal(result.contexts[0].position, null);
   assert.equal(result.contexts[0].timeDead, null);
   assert.deepEqual(result.contexts[0].observations, {
@@ -88,7 +88,7 @@ test('uses a supplied valid teamfight timeline to distinguish inside and outside
   });
 
   assert.deepEqual(result.contexts.map((context) => context.teamfight), [
-    { inFight: true, start: 90, end: 110 },
-    { inFight: false, start: null, end: null },
+    { inFight: true, start: 90, end: 110, involvement: null },
+    { inFight: false, start: null, end: null, involvement: null },
   ]);
 });

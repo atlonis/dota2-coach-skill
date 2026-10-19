@@ -33,6 +33,7 @@ test('returns partial constants and safe missing names', async () => {
       if (path.endsWith('/heroes')) return response({ 90: { id: 90, localized_name: 'Keeper of the Light' } });
       return response({ error: 'unavailable' }, 503);
     },
+    sleep: async () => {},
   });
   const result = await client.loadEntityConstants();
   assert.equal(result.status, 'partial');
@@ -45,6 +46,7 @@ test('returns failed constants with stable empty groups when all requests fail',
   const client = createOpenDotaClient({
     baseUrl: 'https://test.invalid/api',
     fetchImpl: async () => response({ error: 'unavailable' }, 503),
+    sleep: async () => {},
   });
   const result = await client.loadEntityConstants();
   assert.equal(result.status, 'failed');

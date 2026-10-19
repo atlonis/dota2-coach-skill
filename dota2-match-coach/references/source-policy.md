@@ -1,76 +1,59 @@
-# Source and claim policy
+# Source policy
 
-## Scope and sources
+The review keeps three things apart: **facts** from the artifact, **labelled advice and hypotheses**, and **unknowns**. Strict facts protect the player from invented numbers; labelled advice is what makes the review useful.
 
-The runtime supports only the current exact Dota 2 sub-patch. An older or unverified sub-patch is rejected before a success artifact is written; historical patches are permanently outside this skill's roadmap. Inspect source status before interpreting any artifact.
+## Sources
 
-| Need | Evidence source | Limit |
+| What | Source | Limit |
 |---|---|---|
-| Match facts and parse state | OpenDota | a scoreboard is not replay-derived evidence |
-| Team economy, objectives, wards, buybacks, skill build | OpenDota parsed match | logged values and events locate what happened, not why |
-| Participants, lane, playback, peer baseline | STRATZ | token and each relevant capability are required |
-| Exact current sub-patch | Valve timeline | unavailable verification is not a current-patch result |
-| Mechanics | Valve datafeed for the current exact patch, collected by the runtime; Liquipedia only for an interaction the datafeed text leaves open | explains a recorded fact; does not create match evidence |
-| Personal progress, when requested | runtime-validated normalized local artifacts supplied through `--history-dir` | require comparable player, hero, position, mode and current exact patch; descriptive change only |
+| Scoreboard, all ten players, items, purchase times, wards, buybacks, skill build, objectives, team economy, recorded teamfights | OpenDota (parsed replay for everything but the scoreboard) | logged events locate what happened, not why |
+| Selected player's deaths: time, killer, seconds dead, gold lost, fight involvement | OpenDota `deaths_log`, or the other players' kill logs on older parses | no position outside recorded fights, no item or ability uses |
+| Lane, position, roaming flag, lane numbers at 10:00 | OpenDota estimate; STRATZ when its token is set | an estimate from early positions |
+| Percentiles of the player's whole-match rates | OpenDota benchmarks | see Comparisons |
+| Positions, item and ability uses, teleports, death contexts, peer means, lane result label | STRATZ, with `STRATZ_API_KEY` | per-capability; missing playback leaves them unavailable |
+| Exact current sub-patch | Valve patch list | unverified means no review |
+| Hero, ability and item mechanics | Valve datafeed for the current patch, in the artifact | explains a recorded fact, never supplies match state |
+| Personal progress | saved artifacts through `--history-dir` | same account, hero, position, mode and patch |
 
-Do not add Dota2ProTracker, a raw `.dem`, smoke or historical-patch analysis to the claim set. Personal comparison is permitted only through the validated local-history path above; arbitrary prior-match text, conversation memory or a profile snapshot is not a personal baseline.
+Matches on an earlier sub-patch are rejected; the skill never reviews them.
 
-## Facts, hypotheses and unknowns
+## Facts, hypotheses, advice, unknowns
 
-- A **fact** is a value or event in the normalized artifact with its source and applicable timecode or interval.
-- A **supported hypothesis** is labelled, tied to stated facts and given a confidence level. Plausibility does not turn it into a fact. A repeated death signature establishes a candidate pattern to inspect in this match; by itself it explains neither behaviour nor a death, entry/retreat choice, item timing, item effectiveness or an alternative outcome.
-- `null`, an unknown entity name, a closed capability and an unavailable source remain unavailable. Never restate them as `false`, absence or a guessed name.
-- If sources conflict, name the divergence and lower confidence; do not silently select a candidate. Preserve comparison scope: an interval aggregate is not a cumulative value at a match-time marker.
+- **Fact:** a value or event in the artifact, with its time or interval. Quote it as recorded.
+- **Hypothesis:** a cautious explanation of a fact. Allowed when **at least two independent facts** point the same way, labelled ("гипотеза", "probably") with a confidence word, and with the facts named. Example: three deaths to the same two enemy heroes, all outside recorded fights, plus the roaming flag → "probably caught while moving between lanes; check the minimap before moving (hypothesis, medium confidence)". A repeated observation alone is a pattern to point at, not yet an explanation.
+  - Confidence words: **high** when the facts nearly force the reading (four of five deaths to the same hero as the first death of the team in a fight); **medium** when two independent facts agree but another reading is plausible; **low** when one strong fact meets a weak one. Without two facts, don't hypothesise.
+  - Co-occurrence needs a base rate. A death within a minute after the player's own action (a ward, a purchase, a buyback) counts as a fact for a hypothesis only when it happens far more often than chance would give: a support who placed 23 wards in 41 minutes was "a minute after a ward" for a third of the match, so 4 of 13 such deaths is what chance predicts. Say so, or leave it out.
+- **Advice:** what to do differently, from the [coaching playbook](coaching-playbook.md) and general Dota knowledge, labelled "Совет тренера" / "Coach's advice", tied to a stated fact, never presented as something measured in this match.
+- **Unknown:** `null`, an unknown name, a closed capability, an unavailable source. Never write it as "no", "none" or "did not happen". A conflict between sources is named, not silently resolved.
 
-Never infer intent, vision, enemy cooldowns, mana, health, an ability's readiness or certain survival from a result. An item-use event proves only the recorded use, not an unrecorded target, direction, timing quality, effect or tactical correctness. A purchase proves a recorded purchase, not a correct build. A match-specific role task needs its supporting capability and sourced task facts. Mechanics knowledge can contextualize those facts but cannot supply missing match state.
+Never state as fact what match data cannot contain: what the player saw or intended, vision at a moment, enemy cooldowns, mana or health, whether a spell or item was ready, or that a different action would certainly have worked. Advice may still say "if X, then do Y".
+
+An item-use event proves the use, not its target, direction or effect. A purchase proves a purchase, not a good build; advice may still say what a coach would buy, as advice.
+
+## Comparisons
+
+Four kinds, each with its own wording:
+
+| Kind | What it is | How to use it |
+|---|---|---|
+| Lane opponents and all ten players | the same match's values: last hits, net worth, items and timings at 10:00 or at the end | a direct factual comparison: "at 10:00 you had 4 last hits, Medusa 44" |
+| Peer mean (STRATZ) | the mean for the same hero, position, rank bracket and current-patch weeks, with its sample size | "STRATZ sample mean for <hero> <pos> in <bracket>: …, N matches"; name a rank mismatch; it can support a numeric target only when the bracket matches the player |
+| OpenDota percentile | the player's whole-match per-minute rate ranked against the same hero's players in public matches OpenDota sampled in about the last hour; every position mixed; no sample size; Turbo against Turbo | rough context only: "GPM about the 62nd percentile for this hero on OpenDota (all positions)"; never a target; skip it for a hero often played in another role; for deaths a higher percentile means fewer deaths |
+| Coach's rule of thumb | a figure one coach gave in the playbook | advice only, with its condition; never a norm the player failed |
+
+A numeric target the player "should" reach needs the peer mean with a matching bracket, the lane opponents' values, or the player's own history. Turbo and non-standard modes have no normal-game norm; the runtime leaves the peer mean unavailable for them and labels phases as clock intervals.
 
 ## Match context
 
-The parsed match records context around the player's own facts. Each section has its own status; an unavailable section is not an empty one.
+- **Team economy:** per-minute team difference from the selected side (earned gold, XP, net worth when every player recorded it). A swing or leader change is a measured change over its minutes; what happened inside it co-occurs with it.
+- **Objectives:** the recorded last hit on a building, Roshan, the Tormentor, the Aegis, first blood, couriers. Participation is known only for the recorded killer or carrier.
+- **Wards:** placements and when each ward left the game. Not vision, not a location name, not dewarded or expired.
+- **Abandons:** the artifact lists players who abandoned; say the teams were uneven and treat totals and comparisons with that in mind.
 
-- **Team economy** is the per-minute team difference from the selected side's perspective: earned gold (total gold earned, not net worth), XP, and net worth only when every participant recorded it. A leader change, extreme or largest swing is a measured change over its stated minutes. It can establish that the match situation changed and by how much; it does not establish why. Deaths, teamfights or objectives inside the same interval co-occur with the change; call one a cause only with further event evidence, and otherwise say that the cause is not recorded.
-- **Objectives** are recorded building, Roshan, Aegis, Tormentor, first-blood and courier events with their time and side. The recorded killer is the credited last hit, which for a hero may come from its illusion or controlled unit, not everyone who contributed. The selected player's participation is supported only when they are the recorded killer or carrier; absence from the record is not absence from the objective. A deny is known only when the last hit's side is known.
-- **Wards** are the selected player's recorded placements and the time each ward left the game, plus side totals when all five players' logs exist. A placement does not establish vision at a moment, what the ward revealed, whether it expired or was destroyed, or a named map location. A count is not a vision score or a quota.
-- **Buybacks** are recorded buyback times; they do not establish that a buyback was necessary or effective.
-- **Skill build** is the recorded upgrade order. The order is not the hero level of each upgrade, and a recorded choice does not establish that another choice was better.
+## Names, language, ownership
 
-## Current-patch mechanics
+Use the user's language. Hero, item and ability names as the artifact spells them; an unknown one is "unknown hero/item", never an ID or a guess. Keep field names, capability names, error codes and internal IDs out of the review. Select by account when known; a hero- or slot-only selection uses third person ("игрок на Skywrath Mage") unless the user said the match is theirs.
 
-The artifact's mechanics are Valve datafeed values for the current exact patch: the selected hero's abilities, listed values and talents, the other heroes' abilities, the selected player's purchased items, and current sub-patch notes that touch them. Use them instead of memory to explain what a recorded ability, talent or item does, costs or requires.
+## Secrets and raw data
 
-- They never supply match state. A cooldown, mana cost or effect in the datafeed does not establish that an ability or item was ready, affordable, used well or effective at a moment of the match.
-- A listed talent or value is the patch definition, not the player's choice; only the recorded skill build and purchases show what the player had.
-- Patch notes describe what changed in the current sub-patch, not how the change affected this match.
-- A description marked with an unknown value stays unknown; do not fill it from memory. When a needed mechanic is missing from the artifact, say so rather than relying on general knowledge.
-
-## Language, names and ownership
-
-Use the explicitly requested language; otherwise use the user's last substantive-message language. Localize review headings semantically. Preserve artifact spelling for hero, item, ability and source names. Coaching prose never exposes schema versions, capability or gate names, error-code names, internal IDs or field names. An unresolved name is a localized neutral equivalent of “unknown entity”, never an ID or a guessed name.
-
-Use player-facing terms such as “показатель”, “отметка матча”, “среднее выборки”, “число матчей” and “основа ранговой выборки”, not schema keys. Fill any authoring placeholders with sourced values or omit the unsupported statement; never show placeholder delimiters or text.
-
-Select by `accountId` when available. A hero-only selector must resolve one exact English hero and uses neutral third-person wording (“игрок на <Hero>”); it does not establish match ownership. Use second person only when the user explicitly says the match is theirs. If account and hero selectors conflict, stop with the runtime diagnostic.
-
-## Comparisons and numbers
-
-A ready peer comparison is a **mean** for the artifact's stated hero, position, rank cohort, selection method, patch weeks, player measure, match-time marker and match count. It is not a percentile, a personal comparison, a same-lane-matchup sample or automatically the player's rank. State the actual cohort and selection method, and name any mismatch with the player or match rank. Call it same-rank only when the stated cohort agrees with the player rank. Do not present a week-based patch approximation or current profile medal as a verified historical patch/rank measurement.
-
-The baseline's `weeks` values are epoch-week indices (each represents 604800 seconds from the Unix epoch), not calendar week numbers or `YYYYWW` dates. Do not infer a calendar date from their digits or show these internal indices in coaching prose. Usually describe the selection as complete weeks inside the current patch. If dates matter to the user's question, calculate the UTC boundaries explicitly from the runtime definition before naming them.
-
-A peer-comparison row's source labels the STRATZ reference, not every value in that row: the player's last hits, denies, XP, hero damage and net worth come from OpenDota time series; timed deaths come from STRATZ. Net worth is compared only through the replay's own per-minute net worth; the cumulative gold series is never a net worth measure. A copied comparison value and its original series are the same measurement, not independent corroboration. When scoreboard totals disagree with the same provider's timeline, describe an internal data mismatch rather than attributing the disagreement to different providers.
-
-Distinguish these quantities:
-
-| Quantity | Required support |
-|---|---|
-| Recorded fact or descriptive difference | the actual artifact values, matching definitions and time scope, with their provenance; expose conflicts and unavailable inputs |
-| Numeric performance target or norm | a relevant ready peer row with matching player rank, hero/position and metric/time scope, neither fallback nor conflict; retain its sourced mean, minute, sample size, actual cohort and selection method |
-| Organizational practice count | a clearly proposed workload such as episodes to inspect or games to record; no baseline is needed, and it makes no claim of a performance standard, statistical adequacy or proven training dose |
-
-A sample mean is a reference, not a universal requirement or a guarantee of a better result. Do not invent target percentages, timings, quotas or improvements from it. A mismatched/fallback/conflicting comparison may be described with its limit when relevant but cannot become a same-rank norm or numeric performance target. Without a suitable comparison, use an observation or episode-review exercise. Recorded event counts remain reportable without a peer baseline.
-
-Read the progress reference only for requested or explicitly enabled local-history comparison. Use its runtime-validated rows for the same account, hero, position, mode and current exact sub-patch. Missing comparability fields do not establish a match. Preserve the historical matches' provenance and any unavailable measures; never substitute zeros or mix definitions. A personal average is descriptive, not a peer norm. Between-match improvement or decline does not prove that an exercise, item choice or habit caused the change.
-
-## Data limits
-
-STRATZ without a token is an unavailable source, not a zero-data match: continue with permitted OpenDota facts and state the enrichment that is unavailable. Never ask for a token in chat or write it to an artifact. Raw API responses, headers and secrets never enter reports.
+Never ask for a token in chat or write one anywhere. Raw API responses and headers never enter a review or an artifact.
